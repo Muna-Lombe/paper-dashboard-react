@@ -286,6 +286,8 @@ Copyright (c) 2015 Daniel Eden
 .ps-container:hover > .ps-scrollbar-y-rail:hover > .ps-scrollbar-y {
   background-color: #999; }
 
+
+
 .btn,
 .navbar .navbar-nav > a.btn {
   border-width: 2px;
@@ -380,6 +382,7 @@ Copyright (c) 2015 Daniel Eden
       color: #403D39;
       border-color: #403D39;
       box-shadow: none; }
+  
   .btn.btn-link,
   .navbar .navbar-nav > a.btn.btn-link {
     color: #66615B; }
@@ -2072,6 +2075,7 @@ a[data-toggle="collapse"][aria-expanded="true"] .caret,
   .page-header .title {
     margin-bottom: 15px; }
   .page-header .title + h4 {
+
     margin-top: 10px; }
   .page-header:after, .page-header:before {
     position: absolute;
@@ -3468,6 +3472,12 @@ License - nucleoapp.com/license/
 .off-canvas-sidebar .nav > li > a:focus {
   background: rgba(200, 200, 200, 0.2); }
 
+.main-panel[data-sidebar-disabled="true"]{
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0; 
+
+}
 .main-panel {
   position: relative;
   float: right;
@@ -4399,7 +4409,16 @@ License - nucleoapp.com/license/
     transition: opacity 150ms ease-in; }
   .sidebar .sidebar-wrapper li.active > [data-toggle="collapse"] + div .nav li a:before, .sidebar .sidebar-wrapper li.active > [data-toggle="collapse"] + div .nav li a:after {
     top: 0; } }
-
+.landing-page{
+    /* position: absolute; */
+    /* z-index: 0; */
+    width: 100%;
+    height: 100%;
+    /* display: block;
+    left: 0;
+    top: 0; */
+    /* content: "";  */
+}
 @media screen and (max-width: 768px) {
   .card-stats [class*="col-"] .statistics::after {
     display: none; }

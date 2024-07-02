@@ -24,8 +24,25 @@ import TableList from "views/Tables.js";
 import Maps from "views/Map.js";
 import UserPage from "views/User.js";
 import UpgradeToPro from "views/Upgrade.js";
+import AuthenticationPage from "views/AuthenticationPage.js";
+import LandingPage from "views/Landing.js";
+import React from "react";
 
 var routes = [
+  {
+    path: "/landing",
+    name: "Landing",
+    icon: "nc-icon nc-bank",
+    component: <LandingPage />,
+    layout: "",
+  },
+  {
+    path: "/sign-in",
+    name: "Sign in",
+    icon: "nc-icon nc-bank",
+    component: <AuthenticationPage />,
+    layout: "",
+  },
   {
     path: "/dashboard",
     name: "Dashboard",
@@ -84,4 +101,6 @@ var routes = [
     layout: "/admin",
   },
 ];
+export const NotificationContext = React.createContext(null)
+
 export default routes;

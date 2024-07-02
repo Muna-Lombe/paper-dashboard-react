@@ -20,6 +20,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Collapse,
+  Button,
   Navbar,
   NavbarToggler,
   NavbarBrand,
@@ -89,21 +90,9 @@ function Header(props) {
       sidebarToggle.current.classList.toggle("toggled");
     }
   }, [location]);
-  return (
-    // add or remove classes depending if we are on full-screen-maps page or not
-    <Navbar
-      color={
-        location.pathname.indexOf("full-screen-maps") !== -1 ? "dark" : color
-      }
-      expand="lg"
-      className={
-        location.pathname.indexOf("full-screen-maps") !== -1
-          ? "navbar-absolute fixed-top"
-          : "navbar-absolute fixed-top " +
-            (color === "transparent" ? "navbar-transparent " : "")
-      }
-    >
-      <Container fluid>
+
+  const AuthedActions = ()=>(
+    <Container fluid>
         <div className="navbar-wrapper">
           <div className="navbar-toggle">
             <button
@@ -172,6 +161,41 @@ function Header(props) {
           </Nav>
         </Collapse>
       </Container>
+  )
+
+  const UnauthedActions =()=>(
+    <Button
+      href="/admin/sign-in"
+      className="btn-curved m-1"
+      color="light"
+      size="sm"
+      tag="a"
+      
+    >
+      
+      Sign in
+    </Button>
+  )
+  return (
+    // add or remove classes depending if we are on full-screen-maps page or not
+    <Navbar
+      color={
+        location.pathname.indexOf("full-screen-maps") !== -1 ? "dark" : color
+      }
+      expand="lg"
+      className={
+        location.pathname.indexOf("full-screen-maps") !== -1
+          ? "navbar-absolute fixed-top"
+          : "navbar-absolute fixed-top " +
+            (color === "transparent" ? "navbar-transparent " : "")
+      }
+    >
+      {
+        props.isNotAuthed ?
+         <UnauthedActions/>
+        : <AuthedActions/>
+      }
+      
     </Navbar>
   );
 }
