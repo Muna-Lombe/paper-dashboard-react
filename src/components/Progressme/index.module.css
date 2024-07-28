@@ -1,0 +1,15 @@
+#empty-iframe {
+  display: flex;
+  justify-content: center;
+}
+.iframe_wrapper {
+  width: 100%;
+  aspect-ratio: 1/1;
+  border: 1rem gray;
+  border-radius: 15px;
+}
+.iframe_wrapper iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}

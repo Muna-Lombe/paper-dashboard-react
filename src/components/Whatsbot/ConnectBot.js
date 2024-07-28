@@ -1,13 +1,13 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {Button, Card, CardImg, CardBody, CardText } from 'reactstrap';
 import botImg from '../../assets/img/bot-landing.png'
-const ConnectBot = ({stage, qrcode, handler}) => {
+const ConnectBot = ({stage, qrcode, handlerBotConnect, handleQrRefresh}) => {
 
 
+  
+  
   const UnconnectedState = () =>(
      <>
-      
-  
       <CardBody
         style={{
           display: 'flex',
@@ -47,7 +47,7 @@ const ConnectBot = ({stage, qrcode, handler}) => {
           }}
         >
           <Button
-            onClick={(e) => handler(e)}
+            onClick={(e) => handlerBotConnect(e)}
             color="primary"
             style={{
               width: 'max-content',
@@ -63,48 +63,175 @@ const ConnectBot = ({stage, qrcode, handler}) => {
     </>
     
   )
-  const RefreshState = () =>(
-    <>
-      <CardBody>
-        <CardImg
-          src={qrcode}
-          style={{
-            width: "377px",
-            aspectRatio: "1/1"
-          }}
-          top
-          width="100%"
-        />
-        <CardText>
-          <h3>Refresh QR Code</h3>
-        </CardText>
-
   
-      </CardBody>
-    </>
-  )
-  const ConnectingState = () =>(
-    <>
-      <CardImg
-        src={qrcode}
-        style={{
-          width:"377px",
-          aspectRatio: "1/1"
-        }}
-        top
-        width="100%"
-      />
-      <CardBody>
-        <CardText>
-            Scan the QR Code to register your bot
-        </CardText>
-      </CardBody>
-    </>
-  )
+  // const RefreshState = () =>(
+  //   <>
+  //     <CardBody
+      
+  //       style={{
+  //         display: 'hidden',
+  //         position: 'relative',
+  //         backgroundImage: '#0000',
+  //         backgroundSize: 'cover',
+  //         width: "377px",
+  //         aspectRatio: "1/1"
+  //       }}
+  //     >
+  //       <CardImg
+  //         src={qrcode}
+  //         style={{
+  //           // position: 'absolute',
+  //           width: "100%",
+  //           aspectRatio: "1/1",
+  //         }}
+  //         top="0"
+  //         width="100%"
+  //       />
+  //       <CardText
+  //        style={{
+  //         position: 'absolute',
+  //         width: "377px",
+  //         aspectRatio: "1/1",
+  //         backgroundColor:"rgba(0,0,0,0.7)",
+  //         display:"flex",
+  //         justifyContent:'center',
+  //         alignItems:"center",
+  //         top:"0",
+  //         left:"0",
+  //         borderRadius:"13px",
+
+          
+
+  //        }}
+  //       >
+  //         <h3
+  //           style={{
+  //             color: "white",
+  //             fontWeight: "bold",
+  //             fontSize: "1.5rem",
+  //             // backgroundColor: "rgba(0,0,0,0.5)",
+  //             display: "flex",
+  //             flexDirection:"column",
+  //             justifyContent: 'center',
+  //             alignItems:"center"
+  //           }}
+  //         >
+  //           <span>
+  //             Refresh QR Code
+  //           </span>
+  //           <span onClick={(e) => handleQrRefresh(e)}>
+  //             <i className='fas fa-sync-alt btn btn-md ' />
+  //           </span>
+          
+  //         </h3>
+  //       </CardText>
+
+  //     </CardBody>
+  //   </>
+  // )
+
+
+  const ScanCodeState =()=>{
+    // const [refresh, setRefresh] = useState(false)
+    
+    const UnrefreshState = () =>(
+      <>
+        <CardBody>
+          <CardImg
+            src={qrcode}
+            style={{
+              display:"flex",
+              width:"377px",
+              aspectRatio: "1/1"
+            }}
+            top
+            width="100%"
+          />
+          <CardText 
+            id="no-refresh"
+            style={{
+              color: "black",
+              fontWeight: "bold",
+              fontSize: "1.0rem",
+              // backgroundColor: "rgba(0,0,0,0.5)",
+              display: "flex",
+              justifyContent: 'center',
+              alignItems:"center"
+            }}
+          >
+              Scan the QR Code to register your bot
+          </CardText>
+          {/* <CardText
+            id="refresh"
+            style={{
+              display:"hidden",
+              position: 'absolute',
+              width: "377px",
+              aspectRatio: "1/1",
+              backgroundColor: "rgba(0,0,0,0.7)",
+              display: "flex",
+              justifyContent: 'center',
+              alignItems: "center",
+              top: "0",
+              left: "0",
+              borderRadius: "13px",
+
+
+
+            }}
+          >
+            <h3
+              style={{
+                color: "white",
+                fontWeight: "bold",
+                fontSize: "1.5rem",
+                // backgroundColor: "rgba(0,0,0,0.5)",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: 'center',
+                alignItems: "center"
+              }}
+            >
+              <span>
+                Refresh QR Code
+              </span>
+              <span onClick={(e) => handleQrRefresh(e)}>
+                <i className='fas fa-sync-alt btn btn-md ' />
+              </span>
+
+            </h3>
+          </CardText> */}
+        </CardBody>
+      </>
+    )
+    useEffect(() => {
+      if (stage === 'scanningQr' ) {
+        const refreshElem = document.getElementById("refresh")
+        const noRefreshElem = document.getElementById("no-refresh")
+        // setTimeout(() => {
+        //   // setRefresh(true)
+        //   refreshElem ? refreshElem.style.display = "flex" : (()=>"")()
+        //   noRefreshElem ? noRefreshElem.style.display = "hidden" : (() => "")()
+
+        // },20000)
+      }
+
+      return () => {
+        "second"
+      }
+    }, [])
+    return(
+      <>
+        {/* <RefreshState/>  */}
+        <UnrefreshState/>
+      
+      </>
+    )
+  }
   return (
     <Card className="card-stats connect-state">
       {
-        stage==="getQr" ? <UnconnectedState/> : <ConnectingState/>
+        stage==="disconnected" ? <UnconnectedState/> : <ScanCodeState/>
       }
     </Card>
   )

@@ -8,7 +8,7 @@ const LoadedState = () => {
       <CardImg
         src={botImg}
         style={{
-          aspectRatio: "2/1.5"
+          aspectRatio: "1/1"
         }}
         top
         width="100%"

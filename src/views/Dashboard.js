@@ -16,6 +16,7 @@
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 */
+import Scrapper from "components/Progressme";
 import DisplayNotification from "../components/Headers/DisplayNotification";
 import Whatsbot from "../components/Whatsbot";
 import React from "react";
@@ -129,7 +130,7 @@ function Dashboard() {
               </Card>
             </Col> */}
           </Row>
-          <Row>
+          {/* <Row>
             <Col md="12">
               <Card>
                 <CardHeader>
@@ -152,7 +153,8 @@ function Dashboard() {
                 </CardFooter>
               </Card>
             </Col>
-          </Row>
+          </Row> */}
+          <Scrapper/>
           <Row>
             <Col md="4">
               <Card>

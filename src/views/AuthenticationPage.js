@@ -18,6 +18,8 @@
 */
 import React, { useEffect } from "react";
 import {useNavigate} from "react-router-dom";
+import { addError } from 'variables/errorSlice'
+import { useSelector, useDispatch } from 'react-redux'
 
 // reactstrap components
 import { Button, Card, Form, Input, NavLink, Row, Col } from "reactstrap";
@@ -252,6 +254,7 @@ function SignUpPage ({handleFormSubmit, handleAuthState}) {
 function AuthenticationPage(){
   const [isSignIn, setIsSignIn] = React.useState(true);
   const location = useNavigate()
+  const dispatch = useDispatch()
   const handleFormSubmit = async (e) => {
     e.preventDefault()
     const form = document.forms[isSignIn ? "signin-form":"signup-form"]
@@ -263,20 +266,24 @@ function AuthenticationPage(){
 
     const url = isSignIn ? "http://localhost:5000/session/login" : "http://localhost:5000/user/register";
     const res = await fetch(
-      url,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + (localStorage.getItem("token") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoibW9vcmhvdXNlRU5UIiwiaWF0IjoxNzEwNzEzMTkzfQ.5_SXADx6j1mdAvpX7MDFx5CrlZ_HeWkXdMrKbVm1zmI")
-        },
-        body: JSON.stringify(data)
-      }
-    )
+        url,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + (localStorage.getItem("token") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoibW9vcmhvdXNlRU5UIiwiaWF0IjoxNzEwNzEzMTkzfQ.5_SXADx6j1mdAvpX7MDFx5CrlZ_HeWkXdMrKbVm1zmI")
+          },
+          body: JSON.stringify(data)
+        }
+      )
+      .then(res=> res)
+      .catch(err=>({json:async()=>({status: 500, message:"Connection error!\n Please retry in a minute."})}))
     const resData = await res.json()
     console.log("res", resData)
     if(resData.status !==200){
-      alert(resData.message)
+      // alert(resData.message)
+      dispatch(addError(resData.message))
+
       
     }
     if(resData.status === 200 &&resData?.sessionKey){

@@ -34,15 +34,21 @@ import {
   Row,
   Col
 } from 'reactstrap'
-import { removeError } from 'variables/errorSlice'
+import { removeError } from '../../variables/errorSlice'
+ import { removeToast } from '../../variables/toastSlice'
 
 function DisplayNotification({binderFn=()=>"",children}) {
   const notificationAlert = React.useRef()
-  const {errors} = useSelector(state => state.errors)
+  const {toasts} = useSelector(state => (state.toasts))
+  const {errors} = useSelector(state => (state.errors))
   const dispatch = useDispatch()
 
   const handleRemoveError = error => {
     dispatch(removeError(error))
+  }
+
+  const handleRemoveToast = toast => {
+    dispatch(removeToast(toast))
   }
 
   const notifyType={
@@ -97,13 +103,11 @@ function DisplayNotification({binderFn=()=>"",children}) {
     }
     notificationAlert.current.notificationAlert(options)
   }
-  useEffect(() => {
-    // first
+  const errorfy=()=>{
     console.log("errors", errors)
-    if(errors.length){
-      notify("tr", ()=>(<span> { errors.at(-1)}</span>), notifyType.error)
-
-    }
+    
+    notify("tr", ()=>(<span> { errors.at(-1)}</span>), notifyType.error)
+    
     return () => {
       if(errors.length){
         setTimeout(() => {
@@ -112,7 +116,34 @@ function DisplayNotification({binderFn=()=>"",children}) {
 
       }
     }
-  }, [errors])
+  };
+
+  const toastify = () => {
+    console.log('toasts', toasts)
+    
+    notify('tr', () => <span> {toasts.at(-1)}</span>, notifyType.info)
+    
+    return () => {
+      if (toasts.length) {
+        setTimeout(() => {
+          handleRemoveToast(toasts?.at(-1))
+        }, 300)
+      }
+    }
+  }
+
+  useEffect(() => {
+    // first
+    if (errors.length) {
+      return errorfy();
+    }
+    
+    if (toasts?.length) {
+      return toastify()
+    }
+
+
+  }, [errors, toasts])
 
   return (
     <>
