@@ -44,7 +44,7 @@ const AuthedRoute = () => (
 
 
 //store.dispatch(addBasename(basename));
-
+sessionStorage.setItem('token', 1)
 root.render(
   <Provider store={store}>
     <BrowserRouter basename={"/"+basename}>
