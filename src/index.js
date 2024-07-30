@@ -49,7 +49,7 @@ const AuthedRoute = () => (
 //store.dispatch(addBasename(basename));
 root.render(
   <Provider store={store}>
-    <BrowserRouter basename={"/"+basename}>
+    <BrowserRouter >
     
       <DisplayNotification>
         <Routes>
