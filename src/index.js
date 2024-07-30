@@ -25,10 +25,10 @@ import "assets/scss/paper-dashboard.scss?v=1.3.0";
 import "assets/demo/demo.css";
 import "perfect-scrollbar/css/perfect-scrollbar.css";
 
-import AdminLayout from "layouts/Admin.js";
-import GuestLayout from "layouts/Guest.js";
-import DisplayNotification from "components/Headers/DisplayNotification";
-import store from "variables/reducerStore";
+import AdminLayout from "./layouts/Admin.js";
+import GuestLayout from "./layouts/Guest.js";
+import DisplayNotification from "./components/Headers/DisplayNotification";
+import store from "./variables/reducerStore";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 const AuthedRoute = () => (
@@ -42,7 +42,7 @@ const AuthedRoute = () => (
 
 root.render(
   <Provider store={store}>
-    <BrowserRouter>
+    <BrowserRouter basename="/">
     
       <DisplayNotification>
         <Routes>

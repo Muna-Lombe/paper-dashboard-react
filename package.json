@@ -21,8 +21,10 @@
     "sass": "1.62.1"
   },
   "scripts": {
+    "add-basename": "node addBasename.js",
+    "remove-basename": "node removeBasename.js",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build",
+    "deploy": "npm run add-basename && gh-pages -d build && npm run remove-basename",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
