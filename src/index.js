@@ -49,12 +49,12 @@ const AuthedRoute = () => (
 //store.dispatch(addBasename(basename));
 root.render(
   <Provider store={store}>
-    <BrowserRouter >
+    <BrowserRouter>
     
       <DisplayNotification>
         <Routes>
 
-          <Route path="/admin/*" element={<AuthedRoute/>} />
+          <Route path="/admin/*" element={<AdminLayout/>} />
           <Route path="/*" element={<GuestLayout />} />
           
           <Route path="/" element={<Navigate to="/landing" replace />} />

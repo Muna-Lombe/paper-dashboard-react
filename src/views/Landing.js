@@ -56,7 +56,7 @@ function LandingPage () {
                   <h1>MoorHouse CRM</h1>
                   <h3>Start managing your clients better Today!</h3>
                   <br />
-                  <Link to="/sign-in" >
+                  <Link to="/admin/dashboard" >
                     <Button
                       // href={(basenames[0]||"")+"/sign-in"}
                       className="btn-round mr-1"

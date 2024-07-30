@@ -19,7 +19,7 @@
 import React from "react";
 // javascript plugin used to create scrollbars on windows
 import PerfectScrollbar from "perfect-scrollbar";
-import { Route, Routes, useLocation } from "react-router-dom";
+import { Route, Routes, useLocation,Navigate  } from "react-router-dom";
 
 import DemoNavbar from "components/Navbars/DemoNavbar.js";
 import Footer from "components/Footer/Footer.js";
@@ -35,6 +35,11 @@ function Dashboard(props) {
   const [activeColor, setActiveColor] = React.useState("info");
   const mainPanel = React.useRef();
   const location = useLocation();
+
+
+
+  
+
   React.useEffect(() => {
     if (navigator.platform.indexOf("Win") > -1) {
       ps = new PerfectScrollbar(mainPanel.current);
@@ -57,6 +62,11 @@ function Dashboard(props) {
   const handleBgClick = (color) => {
     setBackgroundColor(color);
   };
+
+  if (!sessionStorage.getItem('token')){
+    return <Navigate to='/sign-in' replace />
+  };
+
   return (
     <div className="wrapper">
       <Sidebar
