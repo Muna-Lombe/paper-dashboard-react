@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/paper-dashboard-react/static/css/main.e59d21be.css",
-    "main.js": "/paper-dashboard-react/static/js/main.a04fb8a0.js",
+    "main.js": "/paper-dashboard-react/static/js/main.c4cb8f0b.js",
     "static/media/bot-landing.png": "/paper-dashboard-react/static/media/bot-landing.223555f49a204f712aa1.png",
     "static/media/damir-bosnjak.jpg": "/paper-dashboard-react/static/media/damir-bosnjak.efcaca50b633c2ba2ba9.jpg",
     "static/media/daniel-olahh.jpg": "/paper-dashboard-react/static/media/daniel-olahh.77c0ffac60f9218de675.jpg",
@@ -18,10 +18,10 @@
     "static/media/logo.svg": "/paper-dashboard-react/static/media/logo.103b5fa18196d5665a7e12318285c916.svg",
     "index.html": "/paper-dashboard-react/index.html",
     "main.e59d21be.css.map": "/paper-dashboard-react/static/css/main.e59d21be.css.map",
-    "main.a04fb8a0.js.map": "/paper-dashboard-react/static/js/main.a04fb8a0.js.map"
+    "main.c4cb8f0b.js.map": "/paper-dashboard-react/static/js/main.c4cb8f0b.js.map"
   },
   "entrypoints": [
     "static/css/main.e59d21be.css",
-    "static/js/main.a04fb8a0.js"
+    "static/js/main.c4cb8f0b.js"
   ]
 }
