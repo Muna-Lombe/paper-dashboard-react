@@ -33,6 +33,9 @@ import { addBasename } from "variables/basenameSlice.js";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 const basename = "/paper-dashboard-react";
+
+sessionStorage.setItem('token', 1);
+
 const AuthedRoute = () => (
   sessionStorage.getItem('token') ? (
     <AdminLayout />
@@ -44,7 +47,6 @@ const AuthedRoute = () => (
 
 
 //store.dispatch(addBasename(basename));
-sessionStorage.setItem('token', 1)
 root.render(
   <Provider store={store}>
     <BrowserRouter basename={"/"+basename}>
