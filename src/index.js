@@ -29,8 +29,10 @@ import AdminLayout from "./layouts/Admin.js";
 import GuestLayout from "./layouts/Guest.js";
 import DisplayNotification from "./components/Headers/DisplayNotification";
 import store from "./variables/reducerStore";
+import { addBasename } from "variables/basenameSlice.js";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
+const basename = "/paper-dashboard-react";
 const AuthedRoute = () => (
   sessionStorage.getItem('token') ? (
     <AdminLayout />
@@ -40,9 +42,12 @@ const AuthedRoute = () => (
 
 )
 
+
+//store.dispatch(addBasename(basename));
+
 root.render(
   <Provider store={store}>
-    <BrowserRouter basename="/">
+    <BrowserRouter basename={"/"+basename}>
     
       <DisplayNotification>
         <Routes>

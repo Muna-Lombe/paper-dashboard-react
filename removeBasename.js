@@ -16,10 +16,14 @@ const removeBaseName = () => {
     if(data.match(/<BrowserRouter\s?>/g)?.[0].length) return console.log("basename already removed");
 
 
-    const browserRouterRegex = /<BrowserRouter\s+basename="[^"]*">/g
-    const replacement = '<BrowserRouter>'
+    const browserRouterRegex = /<BrowserRouter\s+basename={[^"]*}>/g
+    const storeDispatchRegex = /^store\.dispatch\(addBasename\(basename\)\);$/gm;
 
-    const updatedData = data.replace(browserRouterRegex, replacement)
+    const replacement1 = '<BrowserRouter>';
+    const replacement2 = "//store.dispatch(addBasename(basename));";
+
+
+    const updatedData = data.replace(storeDispatchRegex, replacement2).replace(browserRouterRegex, replacement1)
 
     fs.writeFile(indexPath, updatedData, 'utf8', err => {
       if (err) {

@@ -21,8 +21,13 @@ import {
 import ExamplesNavbar from 'components/Navbars/DemoNavbar.js'
 import LandingPageHeader from 'components/Headers/LandingPageHeader.js'
 import DemoFooter from 'components/Footer/Footer.js'
+import { useSelector, useDispatch } from 'react-redux'
+import { Link } from 'react-router-dom'
 
 function LandingPage () {
+  
+  const { basenames } = useSelector(state => state.basenames)
+
   document.documentElement.classList.remove('nav-open')
   React.useEffect(() => {
     document.body.classList.add('profile-page')
@@ -51,18 +56,20 @@ function LandingPage () {
                   <h1>MoorHouse CRM</h1>
                   <h3>Start managing your clients better Today!</h3>
                   <br />
-                  <Button
-                    href="/sign-in"
-                    className="btn-round mr-1"
-                    color="dark"
-                    target="_blank"
-                    outline
-                  >
-                    
-                    Get Started
-                  </Button>
+                  <Link to="/sign-in" >
+                    <Button
+                      // href={(basenames[0]||"")+"/sign-in"}
+                      className="btn-round mr-1"
+                      color="dark"
+                      target="_blank"
+                      outline
+                    >
+                      
+                      Get Started
+                    </Button>
+                  </Link>
                   <Button 
-                  href="/landing#product-section"
+                  href={(basenames[0]||"")+"/landing#product-section"}
                     className="btn-round" color="neutral" 
                     type="button" 
                     outline
@@ -93,7 +100,7 @@ function LandingPage () {
                     <Button
                       className='btn-round'
                       color='info'
-                      href='#pablo'
+                      href={(basenames[0]||"")+'/landing#pablo'}
                       onClick={e => e.preventDefault()}
                     >
                       See Details
@@ -114,7 +121,7 @@ function LandingPage () {
                         Spend your time generating new ideas. You don't have to
                         think of implementing.
                       </p>
-                      <Button className='btn-link' color='info' href='#pablo'>
+                      <Button className='btn-link' color='info' href={(basenames[0]||"")+'/landing#pablo'}>
                         See more
                       </Button>
                     </div>
@@ -131,7 +138,7 @@ function LandingPage () {
                         Larger, yet dramatically thinner. More powerful, but
                         remarkably power efficient.
                       </p>
-                      <Button className='btn-link' color='info' href='#pablo'>
+                      <Button className='btn-link' color='info' href={(basenames[0]||"")+'/landing#pablo'}>
                         See more
                       </Button>
                     </div>
@@ -148,7 +155,7 @@ function LandingPage () {
                         Choose from a veriety of many colors resembling sugar
                         paper pastels.
                       </p>
-                      <Button className='btn-link' color='info' href='#pablo'>
+                      <Button className='btn-link' color='info' href={(basenames[0]||"")+'/landing#pablo'}>
                         See more
                       </Button>
                     </div>
@@ -165,7 +172,7 @@ function LandingPage () {
                         Find unique and handmade delightful designs related items
                         directly from our sellers.
                       </p>
-                      <Button className='btn-link' color='info' href='#pablo'>
+                      <Button className='btn-link' color='info' href={(basenames[0]||"")+'/landing#pablo'}>
                         See more
                       </Button>
                     </div>
@@ -184,7 +191,7 @@ function LandingPage () {
                 <Col md='4'>
                   <Card className='card-profile card-plain'>
                     <div className='card-avatar'>
-                      <a href='#pablo' onClick={e => e.preventDefault()}>
+                      <a href={(basenames[0]||"")+'/landing#pablo'} onClick={e => e.preventDefault()}>
                         <img
                           alt='...'
                           src={require('assets/img/faces/clem-onojeghuo-3.jpg')}
@@ -192,7 +199,7 @@ function LandingPage () {
                       </a>
                     </div>
                     <CardBody>
-                      <a href='#pablo' onClick={e => e.preventDefault()}>
+                      <a href={(basenames[0]||"")+'/landing#pablo'} onClick={e => e.preventDefault()}>
                         <div className='author'>
                           <CardTitle tag='h4'>Henry Ford</CardTitle>
                           <h6 className='card-category'>Product Manager</h6>
@@ -208,7 +215,7 @@ function LandingPage () {
                       <Button
                         className='btn-just-icon btn-neutral'
                         color='link'
-                        href='#pablo'
+                        href={(basenames[0]||"")+'/landing#pablo'}
                         onClick={e => e.preventDefault()}
                       >
                         <i className='fa fa-twitter' />
@@ -216,7 +223,7 @@ function LandingPage () {
                       <Button
                         className='btn-just-icon btn-neutral ml-1'
                         color='link'
-                        href='#pablo'
+                        href={(basenames[0]||"")+'/landing#pablo'}
                         onClick={e => e.preventDefault()}
                       >
                         <i className='fa fa-google-plus' />
@@ -224,7 +231,7 @@ function LandingPage () {
                       <Button
                         className='btn-just-icon btn-neutral ml-1'
                         color='link'
-                        href='#pablo'
+                        href={(basenames[0]||"")+'/landing#pablo'}
                         onClick={e => e.preventDefault()}
                       >
                         <i className='fa fa-linkedin' />
@@ -235,7 +242,7 @@ function LandingPage () {
                 <Col md='4'>
                   <Card className='card-profile card-plain'>
                     <div className='card-avatar'>
-                      <a href='#pablo' onClick={e => e.preventDefault()}>
+                      <a href={(basenames[0]||"")+'/landing#pablo'} onClick={e => e.preventDefault()}>
                         <img
                           alt='...'
                           src={require('assets/img/faces/joe-gardner-2.jpg')}
@@ -243,7 +250,7 @@ function LandingPage () {
                       </a>
                     </div>
                     <CardBody>
-                      <a href='#pablo' onClick={e => e.preventDefault()}>
+                      <a href={(basenames[0]||"")+'/landing#pablo'} onClick={e => e.preventDefault()}>
                         <div className='author'>
                           <CardTitle tag='h4'>Sophie West</CardTitle>
                           <h6 className='card-category'>Designer</h6>
@@ -260,7 +267,7 @@ function LandingPage () {
                       <Button
                         className='btn-just-icon btn-neutral'
                         color='link'
-                        href='#pablo'
+                        href={(basenames[0]||"")+'/landing#pablo'}
                         onClick={e => e.preventDefault()}
                       >
                         <i className='fa fa-twitter' />
@@ -268,7 +275,7 @@ function LandingPage () {
                       <Button
                         className='btn-just-icon btn-neutral ml-1'
                         color='link'
-                        href='#pablo'
+                        href={(basenames[0]||"")+'/landing#pablo'}
                         onClick={e => e.preventDefault()}
                       >
                         <i className='fa fa-google-plus' />
@@ -276,7 +283,7 @@ function LandingPage () {
                       <Button
                         className='btn-just-icon btn-neutral ml-1'
                         color='link'
-                        href='#pablo'
+                        href={(basenames[0]||"")+'/landing#pablo'}
                         onClick={e => e.preventDefault()}
                       >
                         <i className='fa fa-linkedin' />
@@ -287,7 +294,7 @@ function LandingPage () {
                 <Col md='4'>
                   <Card className='card-profile card-plain'>
                     <div className='card-avatar'>
-                      <a href='#pablo' onClick={e => e.preventDefault()}>
+                      <a href={(basenames[0]||"")+'/landing#pablo'} onClick={e => e.preventDefault()}>
                         <img
                           alt='...'
                           src={require('assets/img/faces/erik-lucatero-2.jpg')}
@@ -295,7 +302,7 @@ function LandingPage () {
                       </a>
                     </div>
                     <CardBody>
-                      <a href='#pablo' onClick={e => e.preventDefault()}>
+                      <a href={(basenames[0]||"")+'/landing#pablo'} onClick={e => e.preventDefault()}>
                         <div className='author'>
                           <CardTitle tag='h4'>Robert Orben</CardTitle>
                           <h6 className='card-category'>Developer</h6>
@@ -312,7 +319,7 @@ function LandingPage () {
                       <Button
                         className='btn-just-icon btn-neutral'
                         color='link'
-                        href='#pablo'
+                        href={(basenames[0]||"")+'/landing#pablo'}
                         onClick={e => e.preventDefault()}
                       >
                         <i className='fa fa-twitter' />
@@ -320,7 +327,7 @@ function LandingPage () {
                       <Button
                         className='btn-just-icon btn-neutral ml-1'
                         color='link'
-                        href='#pablo'
+                        href={(basenames[0]||"")+'/landing#pablo'}
                         onClick={e => e.preventDefault()}
                       >
                         <i className='fa fa-google-plus' />
@@ -328,7 +335,7 @@ function LandingPage () {
                       <Button
                         className='btn-just-icon btn-neutral ml-1'
                         color='link'
-                        href='#pablo'
+                        href={(basenames[0]||"")+'/landing#pablo'}
                         onClick={e => e.preventDefault()}
                       >
                         <i className='fa fa-linkedin' />

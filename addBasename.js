@@ -6,7 +6,7 @@ const path = require('path')
 const srcFolder = path.join(__dirname, 'src')
 const indexPath = path.join(srcFolder, 'index.js')
 
-const basename = '/'
+// const basename = 'paper-dashboard-react/'
 
 const addBaseName = () => {
   fs.readFile(indexPath, 'utf8', (err, data) => {
@@ -15,13 +15,18 @@ const addBaseName = () => {
       return
     }
       
-    if(data.match(/<BrowserRouter\s+basename="[^"]*">/g)?.[0].length) return console.log("basename already added");
+    if(data.match(/<BrowserRouter\s+basename="[^"]*">/g)?.[0].length) {
+      return console.log("basename already added");
+    }
 
 
-    const browserRouterRegex = /<BrowserRouter\s?>/g
-    const replacement = `<BrowserRouter basename="${basename}">`
+    const browserRouterRegex = /<BrowserRouter\s?>/g;
+    const storeDispatchRegex = /^\/\/store\.dispatch\(addBasename\(basename\)\);$/gm;
 
-    const updatedData = data.replace(browserRouterRegex, replacement)
+    const replacement1 = "<BrowserRouter basename={basename}>"
+    const replacement2 = "store.dispatch(addBasename(basename));"
+
+    const updatedData = data.replace(storeDispatchRegex, replacement2).replace(browserRouterRegex, replacement1)
    
     // console.log('browserRouterTag replaced?: ', updatedData.includes(replacement))
 

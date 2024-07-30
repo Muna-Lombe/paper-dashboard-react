@@ -23,8 +23,8 @@
   "scripts": {
     "add-basename": "node addBasename.js",
     "remove-basename": "node removeBasename.js",
-    "predeploy": "npm run build",
-    "deploy": "npm run add-basename && gh-pages -d build && npm run remove-basename",
+    "predeploy": "npm run add-basename && npm run build && npm run remove-basename",
+    "deploy": "gh-pages -d build",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",

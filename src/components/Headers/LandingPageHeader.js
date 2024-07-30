@@ -20,11 +20,13 @@ import React from "react";
 
 // reactstrap components
 import { Button, Container } from "reactstrap";
+import { useSelector, useDispatch } from 'react-redux'
 
 // core components
 
 function LandingPageHeader() {
   let pageHeader = React.createRef();
+  const { basenames } = useSelector(state => state.basenames)
 
   React.useEffect(() => {
     if (window.innerWidth < 991) {
@@ -59,7 +61,7 @@ function LandingPageHeader() {
             <h3>Start managing your clients better Today!</h3>
             <br />
             <Button
-              href="/admin/sign-in"
+              href={(basenames[0]||"")+"/admin/sign-in"}
               className="btn-round mr-1"
               color="neutral"
               target="_blank"
@@ -69,7 +71,7 @@ function LandingPageHeader() {
               Get Started
             </Button>
             <Button 
-            href="/admin/landing#product-section"
+            href={(basenames[0]||"")+"/admin/landing#product-section"}
               className="btn-round" color="neutral" 
               type="button" 
               outline
