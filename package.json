@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@reduxjs/toolkit": "^2.2.6",
+    "axios": "^1.7.2",
     "bootstrap": "4.6.2",
     "browser-cookie": "^1.2.1",
     "chart.js": "3.9.1",

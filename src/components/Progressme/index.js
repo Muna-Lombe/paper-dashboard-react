@@ -19,8 +19,11 @@ import {
 } from 'reactstrap'
 import useWebSocket, { ReadyState, useSocketIO } from 'react-use-websocket'
 import Cookie from 'browser-cookie';
+import { AxiosHeaders } from 'axios';
+import { bindActionCreators } from '@reduxjs/toolkit';
+import { Axios } from 'axios';
 // import { Form } from 'react-router-dom';
-
+const axios = new Axios()
 
 
 const Scrapper = () => {
@@ -180,37 +183,72 @@ const Scrapper = () => {
       const {email, password} = ((fd)=>({email:fd.get("email"), password:fd.get("password")}))(new FormData(document.forms["auth-in"]));
       // setTimeout(async () => {
         const authUrl = 'https://progressme.ru/Account/Login'
+        
         const authBody = {
-          Email: email|| 'dante773@protonmail.com',
-          Password: password || '1901',
-          UserRole: 0,
-          ReturnUrl: ''
-        }
-
-        const authHeaders = new Headers({
+          "Email": email|| 'dante773@protonmail.com',
+          "Password": password || '1901',
+          "UserRole": 0,
+          "ReturnUrl": '',
+          "AuthToken": sess.getItem("Auth-Token")
+        }//JSON.stringify();
+        // const authBody = [new FormData()].map((fd)=>{
+        //   fd.set("Email", email|| 'dante773@protonmail.com');
+        //   fd.set("Password", password || '1901');
+        //   fd.set("UserRole", '0');
+        //   fd.set("ReturnUrl", '');
+        //   return fd;
+          
+        // })[0];
+        const authHeaders = new AxiosHeaders(
+          // {
+          //   "User-Agent": "PostmanRuntime/7.40.0",
+          //   "Accept": "application/json",
+          //   "Postman-Token": "1794d5dd-3598-4698-9042-b56d5b3e0144",
+          //   "Host": "progressme.ru",
+          //   "Content-Type": "multipart/form-data; boundary=--------------------------224165945923785312681759",
+          //   // "Content-Length": "510"
+          // }
+        )
+        
+        // authHeaders.set('Cookie','.AspNetCore.Session=CfDJ8DRAP7zzLARCqZPO0sTZINGiGUnnXvL3ERqOH2h6OCWpuuWs9tHB%2BDS3rm5gBnLiG1qR9Z8qu%2FVG4tcYZrZx1MX%2B84wjGtzOBGVNGWab8VB3ixotF2JC3C0sYU6J30KctTIfPbj7aAKGMb3D%2FmOydjTOnV2lhN43P1V1pLrJxzG4; Auth-Token=20ea3840-b3de-4023-8dbc-fc76731f9b42')
+        // authHeaders.set('Cookie','e7afe8e4-a684-491b-af0f-5a2d3e417a1b')
+        // authHeaders((v,k,p)=>{
+        //   console.log("headers:", k,":",v);
+        // })
+        Object.entries(          {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
           'Origin': 'https://progressme.ru',
           'Referer': 'https://progressme.ru/Account/Login',
-          'User-Agent': 'PostmanRuntime/7.40.0',
-          
+          "Cache-Control": "no-cache",
+          "Accept-Encoding": "gzip, deflate, br",
+          "Connection": "keep-alive",
+          'User-Agent': 'PostmanRuntime/7.40.0'
+          }).forEach(([k,v])=>{
+            // console.log("k:", k);
+            authHeaders.set(k,v,true)
         })
-        authHeaders.append('Cookie','Auth-Token=d823f8d6-ba51-4e87-a568-0a237a61eb5f')
-        await fetch(authUrl, {
-          mode: 'no-cors',
+        
+        const res = await fetch(authUrl, {
+          // mode: 'no-cors',
           method: 'POST',
-          // headers: authHeaders,
-          body: JSON.stringify(authBody)
-        })
-        .then(async(res) => {
-          console.log('res:', res.body, res.headers.getSetCookie())
-          const data = await res.json()
+          headers: authHeaders.toJSON(),
+          body: authBody,
           
-          sess.setItem('cToken', res.headers.getSetCookie())
-          sess.setItem('userId', data.Value.id )
-          setIsAuthed(ps=>!ps)
         })
-        .catch(err => console.log(err))
+        // const data = await res.json()
+        // console.log('res:', data)
+          
+
+        // sess.setItem('cToken', res.headers.getSetCookie())
+        // sess.setItem('userId', data.Value.id)
+        // setIsAuthed(ps => !ps)
+
+        // .then(async(res) => {
+        //   console.log('res:', res.body, res.headers.getSetCookie())
+          
+        // })
+        // .catch(err => console.log(err))
       // }, 10000)
 
     }

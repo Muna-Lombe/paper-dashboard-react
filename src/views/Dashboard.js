@@ -16,7 +16,7 @@
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 */
-import Scrapper from "components/Progressme";
+import Scrapper from "../components/Progressme";
 import DisplayNotification from "../components/Headers/DisplayNotification";
 import Whatsbot from "../components/Whatsbot";
 import React from "react";
@@ -75,7 +75,7 @@ function Dashboard() {
             
             </Col>
             <Col lg="3" md="6" sm="6">
-              <Whatsbot  />
+              {/* <Whatsbot  /> */}
             </Col>
             {/* <Col lg="3" md="6" sm="6">
               <Card className="card-stats">
