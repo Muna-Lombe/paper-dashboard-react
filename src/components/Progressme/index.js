@@ -66,23 +66,25 @@ const Scrapper = () => {
     )?.[0]?.length || false
   );
 
-  console.log('rerender counter')
+  // console.log('rerender counter')
 
   // window.addEventListener("message", (msg)=>{
-  //   console.log("new msg:",msg.data)
+    // console.log("new msg:",msg.data)
   // })
   const handleClick = (e) => {
       e.preventDefault();
       
-      console.log(e.target?.[0]?.value);
+      // console.log(e.target?.[0]?.value);
       
-      let url = e.target?.[0]?.value || "" ;
+
+      let url = (e.target?.[0]?.value || "").replace("edvibe.com/course","progressme.ru/SharingMaterial") ;
+
       const regx = /progressme\.ru\/SharingMaterial\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
  
       if(!url.toString().match(regx)?.[0].length){
         url = testUrl;
       }
-      console.log("url:", url);
+      // console.log("url:", url);
       setTargetUrl(url.startsWith("https://")? url : "https://www."+url)
   }
 
@@ -121,15 +123,22 @@ const Scrapper = () => {
         }
         if(sess.getItem("userId")){
           const userId = sess.getItem("userId");
-          document.getElementById("user-id").value = userId
+
+          if(document.getElementById("user-id")?.value){ 
+            document.getElementById("user-id").value = userId
+          }
         }
         if(sess.getItem("bookId")){
           const bookId = sess.getItem("bookId");
-          document.getElementById("book-id").value = bookId
+          if(document.getElementById("book-id")?.value){ 
+            document.getElementById("book-id").value = bookId
+          }
         }      
         if(sess.getItem("bookName")){
           const bookName = sess.getItem("bookName");
-          document.getElementById("book-name").value = bookName
+          if(document.getElementById("book-name")?.value){ 
+            document.getElementById("book-name").value = bookName
+          }
         }
       }
     
@@ -187,8 +196,8 @@ const Scrapper = () => {
         ;
         
         const data = await res.json()
-        console.log("res?.headers");
-        console.log('res:', data)
+        // console.log("res?.headers");
+        // console.log('res:', data)
         
         
         sess.setItem('userId', data.Value.Id)
@@ -196,7 +205,7 @@ const Scrapper = () => {
         // sess.setItem('cToken', res.headers.getSetCookie())
         
         // .then(async(res) => {
-        //   console.log('res:', res.body, res.headers.getSetCookie())
+          // console.log('res:', res.body, res.headers.getSetCookie())
         
         // })
         // .catch(err => console.log(err))
@@ -204,6 +213,13 @@ const Scrapper = () => {
         // sess.setItem('Auth-Token', '20ea3840-b3de-4023-8dbc-fc76731f9b42')
         
         
+      };
+
+      const handleReset=(e)=>{
+        e.preventDefault();
+        sess.removeItem("bookId");
+        sess.removeItem("bookName");
+        setTargetUrl("https://progressme.ru");
       }
       
       const SocketComponent = memo(({onSave})=>{
@@ -293,11 +309,11 @@ const Scrapper = () => {
           useEffect(() => {
             
             if (lastJsonMessageFromUserSocket !== null) {
-              console.log("lastJsonMessageFromUserSocket", lastJsonMessageFromUserSocket)
+              // console.log("lastJsonMessageFromUserSocket", lastJsonMessageFromUserSocket)
               
               if (lastJsonMessageFromUserSocket?.Method === "GetIdMaterial" && lastJsonMessageFromUserSocket.IsSuccess) {
                 // sendJsonMessage(GetBookMessage)
-                console.log("material-message:", lastJsonMessageFromUserSocket.Value);
+                // console.log("material-message:", lastJsonMessageFromUserSocket.Value);
                 const val = lastJsonMessageFromUserSocket.Value;
                 
                 if(val.BookId){
@@ -311,7 +327,7 @@ const Scrapper = () => {
               }
               
               if (lastJsonMessageFromUserSocket?.Method === 'GetCurrentUser' && lastJsonMessageFromUserSocket.IsSuccess) {
-                console.log('user-message:', lastJsonMessageFromUserSocket.Value)
+                // console.log('user-message:', lastJsonMessageFromUserSocket.Value)
                 const val = lastJsonMessageFromUserSocket.Value;
                 document.getElementById('user-id').value = val.UserId;
     
@@ -331,11 +347,11 @@ const Scrapper = () => {
           useEffect(() => {
             
             if (lastJsonMessageFromBookSocket !== null) {
-              console.log("lastJsonMessageFromBookSocket", lastJsonMessageFromBookSocket)
+              // console.log("lastJsonMessageFromBookSocket", lastJsonMessageFromBookSocket)
     
               if (lastJsonMessageFromBookSocket?.Method === "GetIdMaterial" && lastJsonMessageFromBookSocket.IsSuccess) {
                 // sendJsonMessage(GetBookMessage)
-                console.log("book-message:", lastJsonMessageFromBookSocket.Value);
+                // console.log("book-message:", lastJsonMessageFromBookSocket.Value);
                 const val = lastJsonMessageFromBookSocket.Value;
                 
                 if(val.BookId){
@@ -349,7 +365,7 @@ const Scrapper = () => {
                 
               }
               if (lastJsonMessageFromBookSocket?.Method === "GetBook" && lastJsonMessageFromBookSocket.IsSuccess ) {
-                console.log('book-message:', lastJsonMessageFromBookSocket.Value)
+                // console.log('book-message:', lastJsonMessageFromBookSocket.Value)
                 const val = lastJsonMessageFromBookSocket.Value
                 sess.setItem('bookName', val.Name)
     
@@ -358,9 +374,12 @@ const Scrapper = () => {
                 
               }
               if (lastJsonMessageFromBookSocket?.Method === 'CopyBook' && lastJsonMessageFromBookSocket.IsSuccess) {
-                console.log('copiedbook-message:', lastJsonMessageFromBookSocket.Value)
-                sess.removeItem("bookId");
-                sess.removeItem("bookName");
+                // console.log('copiedbook-message:', lastJsonMessageFromBookSocket.Value)
+                setTimeout(() => {
+                  sess.removeItem("bookId");
+                  sess.removeItem("bookName");
+                  
+                }, 3000);
               }
       
             }
@@ -415,7 +434,7 @@ const Scrapper = () => {
                 Log in to 
                 <a href="https://progressme.ru/Account/Login" target="_blank" rel="noopener noreferrer">
                   {" progressme.ru "} 
-                  <i class='fas fa-external-link' aria-hidden='true'></i>
+                  <i className='fas fa-external-link' aria-hidden='true'></i>
                 </a> 
                 to see the book in your personal library
               </h5>
@@ -547,7 +566,7 @@ const Scrapper = () => {
                                   className="btn-semi-round"
                                   color="danger"
                                   type="button"
-                                  onClick={(e)=>{e.preventDefault();setTargetUrl("https://progressme.ru")}}
+                                  onClick={(e)=>handleReset(e)}
                                 >
                                   reset
                               </Button>
