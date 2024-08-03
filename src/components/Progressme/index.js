@@ -66,11 +66,7 @@ const Scrapper = () => {
     )?.[0]?.length || false
   );
 
-  // console.log('rerender counter')
 
-  // window.addEventListener("message", (msg)=>{
-    // console.log("new msg:",msg.data)
-  // })
   const handleClick = (e) => {
       e.preventDefault();
       
@@ -90,10 +86,7 @@ const Scrapper = () => {
 
 
   const disableLogs=async(e)=>{
-    // e.preventDefault();
-    // e.currentTarget.ownerDocument.
-    // e.target.contentWindow.postMessage("function(){console.log('logged')}")//.console.log=function (){};
-    // console.log(e);
+
     setTimeout(() => {
       console.log("disabling logs")//, e, e.target.contentWindow);
       
@@ -153,72 +146,56 @@ const Scrapper = () => {
       e.preventDefault();
       // document.domain = "www.progressme.ru";
       const {email, password} = ((fd)=>({email:fd.get("email"), password:fd.get("password")}))(new FormData(document.forms["auth-in"]));
-      // setTimeout(async () => {
-        const authUrl ='https://progressme.ru/Account/Login'//'https://progressme.ru/Account/GetRolesForUser' //
+      
+      const authUrl ='https://progressme.ru/Account/Login';
 
-        
-        const authBody = {
+      
+      const authBody = {
           "Email": email|| 'dante773@protonmail.com',
           "Password": password || '1901',
           "UserRole": 0,
           "ReturnUrl": '',
-          // "AuthToken": sess.getItem("Auth-Token")
+
         };
-        const authHeaders = new AxiosHeaders()
+      const authHeaders = new AxiosHeaders()
         
         
-        Object.entries(          {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Origin': 'https://progressme.ru',
-          'Referer': 'https://progressme.ru/Account/Login',
-          "Cache-Control": "no-cache",
-          "Accept-Encoding": "gzip, deflate, br",
-          "Access-Control-Allow-Origin":"*",
-          "Access-Control-Allow-Methods":"GET, POST",
-          "Connection": "keep-alive",
-          'User-Agent': 'PostmanRuntime/7.40.0',
-          "x-cors-api-key": "temp_16411e0f52e7224a8fecf2d3b77b8c27"
-          }).forEach(([k,v])=>{
-            // console.log("k:", k);
-            authHeaders.set(k,v,true)
-        })
+      Object.entries({
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Origin': 'https://progressme.ru',
+        'Referer': 'https://progressme.ru/Account/Login',
+        "Cache-Control": "no-cache",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Access-Control-Allow-Origin":"*",
+        "Access-Control-Allow-Methods":"GET, POST",
+        "Connection": "keep-alive",
+        'User-Agent': 'PostmanRuntime/7.40.0',
+        "x-cors-api-key": "temp_16411e0f52e7224a8fecf2d3b77b8c27"
+      }).forEach(([k,v])=>{
+          // console.log("k:", k);
+          authHeaders.set(k,v,true)
+      })
         
-        const res = await 
-        fetchWithProxy(authUrl, {
-          // mode: "no-cors",
-          method: 'POST',
-          headers: authHeaders.toJSON(),
-          body: JSON.stringify(authBody),
-          
-        })
+      const res = await fetchWithProxy(authUrl, {
+        method: 'POST',
+        headers: authHeaders.toJSON(),
+        body: JSON.stringify(authBody),
         
-        ;
+      });
         
-        const data = await res.json()
-        // console.log("res?.headers");
-        // console.log('res:', data)
-        
-        
-        sess.setItem('userId', data.Value.Id)
-        setIsAuthed(ps => !ps)
-        // sess.setItem('cToken', res.headers.getSetCookie())
-        
-        // .then(async(res) => {
-          // console.log('res:', res.body, res.headers.getSetCookie())
-        
-        // })
-        // .catch(err => console.log(err))
-        
-        // sess.setItem('Auth-Token', '20ea3840-b3de-4023-8dbc-fc76731f9b42')
-        
-        
-      };
+      const data = await res.json()
+    
+      sess.setItem('userId', data.Value.Id)
+      setIsAuthed(ps => !ps)
+  
+    };
 
       const handleReset=(e)=>{
         e.preventDefault();
         sess.removeItem("bookId");
         sess.removeItem("bookName");
+        
         setTargetUrl("https://progressme.ru");
       }
       
@@ -250,7 +227,7 @@ const Scrapper = () => {
               return sess.getItem('Auth-Token')
             }
     
-            // sess.setItem('Auth-Token', "20ea3840-b3de-4023-8dbc-fc76731f9b42") 
+
             sess.setItem('Auth-Token',newGuid()) 
             return sess.getItem('Auth-Token')
           }
