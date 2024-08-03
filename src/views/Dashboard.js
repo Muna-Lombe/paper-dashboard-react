@@ -48,7 +48,7 @@ function Dashboard() {
         <div className="content">
           <Row>
             <Col lg="3" md="6" sm="6">
-              <Card className="card-stats">
+              {/* <Card className="card-stats">
                 <CardBody>
                   <Row>
                     <Col md="4" xs="5">
@@ -71,11 +71,11 @@ function Dashboard() {
                     <i className="fas fa-sync-alt" /> Update Now
                   </div>
                 </CardFooter>
-              </Card>
+              </Card> */}
             
             </Col>
             <Col lg="3" md="6" sm="6">
-              <Whatsbot  />
+              {/* <Whatsbot  /> */}
             </Col>
             {/* <Col lg="3" md="6" sm="6">
               <Card className="card-stats">
@@ -155,7 +155,7 @@ function Dashboard() {
             </Col>
           </Row> */}
           <Scrapper/>
-          <Row>
+          {/* <Row>
             <Col md="4">
               <Card>
                 <CardHeader>
@@ -208,7 +208,7 @@ function Dashboard() {
                 </CardFooter>
               </Card>
             </Col>
-          </Row>
+          </Row> */}
         </div>
 
     </>

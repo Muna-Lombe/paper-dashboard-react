@@ -22,199 +22,142 @@ import Cookie from 'browser-cookie';
 import { AxiosHeaders } from 'axios';
 import { bindActionCreators } from '@reduxjs/toolkit';
 import { Axios } from 'axios';
+import fetchWithProxy from '../../variables/fetchWithProxy';
+import spirow from "../../assets/img/spriral-arrow.png";
 // import { Form } from 'react-router-dom';
 const axios = new Axios()
 
-
 const Scrapper = () => {
-    const [targetUrl, setTargetUrl] = useState('https://progressme.ru/')
-    const [authtUrl, setAuthtUrl] = useState('https://progressme.ru/SharingMaterial/c172ca5c-2488-4a14-843f-8caf7c993c79')
-    const [isAuthed, setIsAuthed] = useState(false)
-    const [socketUrl, setSocketUrl] = useState(
-      [
-        "wss://books.progressme.ru/websocket?Page=TeacherProfile&isSharing=True&token=",
-         "wss://progressme.ru/ws/WebSockets/SocketHandler.ashx?Page=TeacherProfile&isSharing=True&MessageShowToken=3740deac-bf24-43ec-b358-16ef183f7059&token="
-      ]
-    );
-    const [messageHistory, setMessageHistory] = useState([]);
-    
-    const sess = sessionStorage;
-    const sessToken = sess.getItem('token');
+  const [targetUrl, setTargetUrl] = useState('https://progressme.ru/')
+  const [isAuthed, setIsAuthed] = useState(false)
+  const [testUrl, setTestUrl] = useState('https://progressme.ru/SharingMaterial/c172ca5c-2488-4a14-843f-8caf7c993c79');
+  // const [sockets, setSockets] = useState({})
+  const sess = sessionStorage
+  const sessToken = sess.getItem('token')
 
- 
-    const cookie = new Cookie({
-      json:true,
-      path: '/',
-      domain: 'progressme.ru',
-      secure: true,
+  const cookie = new Cookie({
+  json: true,
+  path: '/',
+  domain: 'progressme.ru',
+  secure: true
+  });
 
-    });
-
-    console.log("rerender counter");
-  
-    
-    const {GetIdMaterialMessage, GetBookMessage, CopySharedBookMessage,GetAuthMessage, GetUserMessage} ={
+  const {GetIdMaterialMessage, GetBookMessage, CopySharedBookMessage,GetCurrentUserMessage, GetUserMessage, GetDebugMessage} ={
       GetIdMaterialMessage: {
         "controller":"SharingMaterialWsController","method":"GetIdMaterial",
-        "value":`{"Code":"${targetUrl.split("SharingMaterial/")[1]}"}`
+        "value":`{"Code":"${targetUrl.split("SharingMaterial/")[1] || ""}"}`
       },
       GetBookMessage:(bookId)=>({
         "controller":"SharingMaterialWsController","method":"GetBook",
         "value":`{"BookId":${bookId},"UserId":null}`
       }),
-      CopySharedBook:(bookId)=>({
+      CopySharedBookMessage:(bookId, userId)=>({
         "controller":"BookWsController","method":"CopyBook",
-        "value":`{"BookId":${bookId},"UserId":${2238978}}`
+        "value":`{"BookId":${bookId},"UserId":${userId}}`
       }),
-      GetAuthMessage:{"controller":"Auth","metod":"GetCurrentUser","value":"\"\""},
-      GetUserMessage:{"controller":"User","metod":"GetSettingsSource","value":"\"\""}
+      GetCurrentUserMessage:{"controller":"Auth","metod":"GetCurrentUser","value":"\"\""},
+      GetUserMessage:{"controller":"User","metod":"GetSettingsSource","value":"\"\""},
+      GetDebugMessage: {"controller":"Debug","metod":"Ping","value":"\"\""}
 
     }
-    const newGuid = ()=> {
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-        var r = (Math.random() * 16) | 0,
-          v = c == 'x' ? r : (r & 0x3) | 0x8
-        return v.toString(16)
-      })
-    }
-    const getAuthToken = ()=>{
-      sess.getItem('Auth-Token')
-      
-      if(sess.getItem('Auth-Token')){
-        return sess.getItem('Auth-Token')
-      }
+  const targetUrlSet = () =>(
+      targetUrl.match(
+      /progressme\.ru\/SharingMaterial\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/
+    )?.[0]?.length || false
+  );
 
-      sess.setItem('Auth-Token', newGuid()) 
-      return sess.getItem('Auth-Token')
-    }
-    
-    const socket0 = useWebSocket(socketUrl[1] + getAuthToken(),{
-      protocols: [
-        "Cookie"
-      ],
-      onOpen: () => {
-        socket0.sendJsonMessage(GetUserMessage)
-      },
-      onMessage: (msg) => {
-        console.log("socket0 onMessage:", msg.data)
-        socket0.getWebSocket().close()
-      },
-      onClose: () => console.log('closed'),
-      shouldReconnect: closeEvent => false
-    })
+  console.log('rerender counter')
 
-    const socket1 = useWebSocket(socketUrl[0]+getAuthToken(), {
-      onOpen: () =>  {socket1.sendJsonMessage(GetIdMaterialMessage)},
-      onClose: () => console.log('closed'),
-      shouldReconnect: (closeEvent) => false,
-      
-    });
-    
-    const { sendMessage, sendJsonMessage, lastMessage, lastJsonMessage, readyState } = socket1;
-
-    const handleClick = (e) => {
-        e.preventDefault();
-        console.log(e.target?.[0]?.value);
-        
-        const url = e.target?.[0]?.value;
-        
-        setTargetUrl(url.startsWith("https://")? url : "https://www."+url)
-    }
-
-
-    function disableLogs(e){
+  // window.addEventListener("message", (msg)=>{
+  //   console.log("new msg:",msg.data)
+  // })
+  const handleClick = (e) => {
       e.preventDefault();
-      // e.currentTarget.ownerDocument.
-      // e.target.contentWindow.postMessage("function(){console.log('logged')}")//.console.log=function (){};
-      // console.log(e);
-      console.log("disabling logs", e.target.contentWindow);
-
       
-    }
-     useEffect(() => {
-    
-      if (lastJsonMessage !== null) {
-        console.log("lastJsonMessage", lastJsonMessage)
-        
-        if (lastJsonMessage?.Method === "GetIdMaterial" && lastJsonMessage.IsSuccess) {
-          // sendJsonMessage(GetBookMessage)
-          console.log("material-message:", lastJsonMessage.Value);
-          const val = lastJsonMessage.Value;
-          
-          if(val.BookId){
-
-            document.getElementById("book-id").value=val.BookId
-            
-            sendJsonMessage(GetBookMessage(val.BookId))
-            
-          }
-          
-        }
-        if (lastJsonMessage?.Method === "GetBook" && lastJsonMessage.IsSuccess ) {
-          console.log('book-message:', lastJsonMessage.Value)
-          const val = lastJsonMessage.Value
-
-          document.getElementById('book-name').value = val.Name
-            
-          
-        }
-        if (lastJsonMessage?.Method === 'CopyBook' && lastJsonMessage.IsSuccess) {
-          console.log('copiedbook-message:', lastJsonMessage.Value)
-        }
-
+      console.log(e.target?.[0]?.value);
+      
+      let url = e.target?.[0]?.value || "" ;
+      const regx = /progressme\.ru\/SharingMaterial\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+ 
+      if(!url.toString().match(regx)?.[0].length){
+        url = testUrl;
       }
-      return () => {}
-    }, [lastJsonMessage]);
+      console.log("url:", url);
+      setTargetUrl(url.startsWith("https://")? url : "https://www."+url)
+  }
 
-    useEffect(() => {
-     if (targetUrl){
-        const iframe = document.getElementById("iframe_iframe")
-        iframe?.setAttribute("src", targetUrl)
 
-     }
+  const disableLogs=async(e)=>{
+    // e.preventDefault();
+    // e.currentTarget.ownerDocument.
+    // e.target.contentWindow.postMessage("function(){console.log('logged')}")//.console.log=function (){};
+    // console.log(e);
+    setTimeout(() => {
+      console.log("disabling logs")//, e, e.target.contentWindow);
+      
+    }, 3000);
+
+
+    
+  }
+
+  const handleSave = (e, sockets)=>{
+    e.preventDefault();
+    const [bookId, userId] = [sess.getItem("bookId"),sess.getItem("userId")];
+    sockets["bookSocket"]?.sendJsonMessage(CopySharedBookMessage(bookId, userId));
+
+    setTimeout(() => {
+      setTargetUrl("https://progressme.ru/TeacherAccount/materials/personal")
+    }, 10000);
+  }
+  const hasNoBookUserId = ()=> (!(sess.getItem('bookId')?.length > 0 && sess.getItem('userId').length > 0));
+
+  
+  useEffect(() => {
+      if(document.readyState === "complete"){
+        if (targetUrl){
+            const iframe = document.getElementById("iframe_iframe")
+            iframe?.setAttribute("src", targetUrl)
+        }
+        if(sess.getItem("userId")){
+          const userId = sess.getItem("userId");
+          document.getElementById("user-id").value = userId
+        }
+        if(sess.getItem("bookId")){
+          const bookId = sess.getItem("bookId");
+          document.getElementById("book-id").value = bookId
+        }      
+        if(sess.getItem("bookName")){
+          const bookName = sess.getItem("bookName");
+          document.getElementById("book-name").value = bookName
+        }
+      }
     
       return () => {
         // second
       }
-    }, [targetUrl])
+    }, [targetUrl, isAuthed])
  
+    
+
     const handleAuth = async(e)=>{
       e.preventDefault();
+      // document.domain = "www.progressme.ru";
       const {email, password} = ((fd)=>({email:fd.get("email"), password:fd.get("password")}))(new FormData(document.forms["auth-in"]));
       // setTimeout(async () => {
-        const authUrl = 'https://progressme.ru/Account/Login'
+        const authUrl ='https://progressme.ru/Account/Login'//'https://progressme.ru/Account/GetRolesForUser' //
+
         
         const authBody = {
           "Email": email|| 'dante773@protonmail.com',
           "Password": password || '1901',
           "UserRole": 0,
           "ReturnUrl": '',
-          "AuthToken": sess.getItem("Auth-Token")
-        }//JSON.stringify();
-        // const authBody = [new FormData()].map((fd)=>{
-        //   fd.set("Email", email|| 'dante773@protonmail.com');
-        //   fd.set("Password", password || '1901');
-        //   fd.set("UserRole", '0');
-        //   fd.set("ReturnUrl", '');
-        //   return fd;
-          
-        // })[0];
-        const authHeaders = new AxiosHeaders(
-          // {
-          //   "User-Agent": "PostmanRuntime/7.40.0",
-          //   "Accept": "application/json",
-          //   "Postman-Token": "1794d5dd-3598-4698-9042-b56d5b3e0144",
-          //   "Host": "progressme.ru",
-          //   "Content-Type": "multipart/form-data; boundary=--------------------------224165945923785312681759",
-          //   // "Content-Length": "510"
-          // }
-        )
+          // "AuthToken": sess.getItem("Auth-Token")
+        };
+        const authHeaders = new AxiosHeaders()
         
-        // authHeaders.set('Cookie','.AspNetCore.Session=CfDJ8DRAP7zzLARCqZPO0sTZINGiGUnnXvL3ERqOH2h6OCWpuuWs9tHB%2BDS3rm5gBnLiG1qR9Z8qu%2FVG4tcYZrZx1MX%2B84wjGtzOBGVNGWab8VB3ixotF2JC3C0sYU6J30KctTIfPbj7aAKGMb3D%2FmOydjTOnV2lhN43P1V1pLrJxzG4; Auth-Token=20ea3840-b3de-4023-8dbc-fc76731f9b42')
-        // authHeaders.set('Cookie','e7afe8e4-a684-491b-af0f-5a2d3e417a1b')
-        // authHeaders((v,k,p)=>{
-        //   console.log("headers:", k,":",v);
-        // })
+        
         Object.entries(          {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -222,182 +165,455 @@ const Scrapper = () => {
           'Referer': 'https://progressme.ru/Account/Login',
           "Cache-Control": "no-cache",
           "Accept-Encoding": "gzip, deflate, br",
+          "Access-Control-Allow-Origin":"*",
+          "Access-Control-Allow-Methods":"GET, POST",
           "Connection": "keep-alive",
-          'User-Agent': 'PostmanRuntime/7.40.0'
+          'User-Agent': 'PostmanRuntime/7.40.0',
+          "x-cors-api-key": "temp_16411e0f52e7224a8fecf2d3b77b8c27"
           }).forEach(([k,v])=>{
             // console.log("k:", k);
             authHeaders.set(k,v,true)
         })
         
-        const res = await fetch(authUrl, {
-          // mode: 'no-cors',
+        const res = await 
+        fetchWithProxy(authUrl, {
+          // mode: "no-cors",
           method: 'POST',
           headers: authHeaders.toJSON(),
-          body: authBody,
+          body: JSON.stringify(authBody),
           
         })
-        // const data = await res.json()
-        // console.log('res:', data)
-          
-
+        
+        ;
+        
+        const data = await res.json()
+        console.log("res?.headers");
+        console.log('res:', data)
+        
+        
+        sess.setItem('userId', data.Value.Id)
+        setIsAuthed(ps => !ps)
         // sess.setItem('cToken', res.headers.getSetCookie())
-        // sess.setItem('userId', data.Value.id)
-        // setIsAuthed(ps => !ps)
-
+        
         // .then(async(res) => {
         //   console.log('res:', res.body, res.headers.getSetCookie())
-          
+        
         // })
         // .catch(err => console.log(err))
-      // }, 10000)
-
-    }
-    const AuthIn = ()=>{
-      return (
-        <div className="auth-in-wrapper w-75 h-100">
-          <div className="auth-in-header">
-            <h3 className="auth-in-header-title">Temporary Login</h3>
-            <p className="auth-in-header-subtitle">
-              <span>
-                Enter your actual email and password to access your account to save your userId
-              </span>
-              <br/>
-              <em>
-                - This is neccessary to save the book to your account
-              </em>
-              <br />
-
-              <em>
-                - Please remember to change them after, if you feel insecure. 
-                <strong> We do not keep any login credentials</strong>
-              </em>
-            </p>
-            </div>
-          <Form id="auth-in" onSubmit={handleAuth}>
-            <FormGroup controlId="formBasicEmail">
-              <Label>Email address</Label>
-              <Input form='auth-in' name="email" type="email" placeholder="Enter email" />
-            </FormGroup>
-            <FormGroup controlId="formBasicPassword">
-              <Label>Password</Label>
-              <Input form='auth-in' name="password" type="password" placeholder="Password" />
-            </FormGroup>
-            <Button color="primary" type="submit">
-              Submit
-            </Button>
-
-          </Form>
-        </div>
-      )
-    }
-    const MemoizedIframe = memo(
-      ({authedIn,...props }) => {
-        return (
-          authedIn ? (
-            <iframe
-              id='iframe_iframe'
-              src='https://progressme.ru/TeacherAccount/lesson-preview?bookId=77129&lessonId=701806&sectionId=3294846'
-              frameBorder='0'
-              allowFullScreen={true}
-              className='iframe_iframe w-100 h-100'
-              onLoad={disableLogs}
-            ></iframe>
-          ) : (
-            <AuthIn />
-          )
-      )
+        
+        // sess.setItem('Auth-Token', '20ea3840-b3de-4023-8dbc-fc76731f9b42')
+        
+        
       }
-    )
-    return (
-        <Row className='my-4' style={{height:"800px", maxHeight:"1000px"}} >
-          <Col lg="12 " className='h-100'>
-            <Card className='h-100'>
-              <CardHeader>
-                <CardTitle tag="h5">Add the progressme link</CardTitle>
-              </CardHeader>
-              <CardBody className='p-4 h-100'  >
-                <Row className='h-100 w-100 overflow-hidden' >
-                  <Col >
-                    <Row lg={"10"}>
-                      <Form id="load-link" className='w-100 ' onSubmit={handleClick}>
-                        <FormGroup className='w-100' >
+      
+      const SocketComponent = memo(({onSave})=>{
+          
+          const [booksUrl, socketUrl, debugUrl] = [
+            "wss://books.progressme.ru/websocket?Page=TeacherProfile&isSharing=True&token=",
+            "wss://progressme.ru/ws/WebSockets/SocketHandler.ashx?Page=TeacherProfile&isSharing=True&MessageShowToken=3740deac-bf24-43ec-b358-16ef183f7059&token=",
+            "wss://progressme.ru/ws/WebSockets/SocketHandler.ashx?Page=TeacherProfile&MessageShowToken=3740deac-bf24-43ec-b358-16ef183f7059&userRole=0&token="
+          ]
+    
+          const [messageHistory, setMessageHistory] = useState([]);
+          
+          
+        
+          
+         
+          const newGuid = ()=> {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+              var r = (Math.random() * 16) | 0,
+                v = c == 'x' ? r : (r & 0x3) | 0x8
+              return v.toString(16)
+            })
+          }
+          const getAuthToken = ()=>{
+            // sess.getItem('Auth-Token')
+            
+            if(sess.getItem('Auth-Token')){
+              return sess.getItem('Auth-Token')
+            }
+    
+            // sess.setItem('Auth-Token', "20ea3840-b3de-4023-8dbc-fc76731f9b42") 
+            sess.setItem('Auth-Token',newGuid()) 
+            return sess.getItem('Auth-Token')
+          }
+          
+          const userSocket = useWebSocket(socketUrl + getAuthToken(),{
+            onOpen: () => {
+              userSocket.sendJsonMessage(GetUserMessage)
+            },
+            onMessage: (msg) => {
+              // console.log("userSocket onMessage:", msg.data)
+              userSocket.getWebSocket().close()
+            },
+            onClose: () => console.log('closed'),
+            shouldReconnect: closeEvent => false
+          })
+    
+          const bookSocket = useWebSocket(booksUrl+getAuthToken(), {
+            onOpen: () =>  { 
+              if(targetUrl.split("SharingMaterial/")[1]){
+                bookSocket.sendJsonMessage(GetIdMaterialMessage)
+              } 
+            },
+            onClose: () => console.log('closed'),
+            shouldReconnect: (closeEvent) => false,
+            
+          });
+          
+          const debugSocket = useWebSocket(debugUrl+getAuthToken(), {
+            onOpen: () =>  {debugSocket.sendJsonMessage(GetDebugMessage)},
+            onClose: () => console.log('closed'),
+            onMessage: (s)=>{setTimeout(() => {
+              debugSocket.sendJsonMessage(GetDebugMessage)
+            }, 3000);},
+            shouldReconnect: (closeEvent) => false,
+            
+          });
+          
+          
+          const { 
+            sendMessage:sendMessageToUserSocket, 
+            sendJsonMessage:sendJsonMessageToUserSocket, 
+            lastMessage:lastMessageFromUserSocket, lastJsonMessage:lastJsonMessageFromUserSocket, 
+            readyState:userReadyState
+          } = userSocket;
+    
+          const { 
+            sendMessage:sendMessageToBookSocket, 
+            sendJsonMessage:sendJsonMessageToBookSocket, 
+            lastMessage:lastMessageFromBookSocket, lastJsonMessage:lastJsonMessageFromBookSocket, 
+            readyState:booksReadyState
+          } = bookSocket;
+    
+    
+          const sockets = {bookSocket, userSocket, debugSocket}
+          // userSocket Handler
+          useEffect(() => {
+            
+            if (lastJsonMessageFromUserSocket !== null) {
+              console.log("lastJsonMessageFromUserSocket", lastJsonMessageFromUserSocket)
+              
+              if (lastJsonMessageFromUserSocket?.Method === "GetIdMaterial" && lastJsonMessageFromUserSocket.IsSuccess) {
+                // sendJsonMessage(GetBookMessage)
+                console.log("material-message:", lastJsonMessageFromUserSocket.Value);
+                const val = lastJsonMessageFromUserSocket.Value;
+                
+                if(val.BookId){
+    
+                  document.getElementById("book-id").value=val.BookId
+                  
+                  sendJsonMessageToUserSocket(GetBookMessage(val.BookId))
+                  
+                }
+                
+              }
+              
+              if (lastJsonMessageFromUserSocket?.Method === 'GetCurrentUser' && lastJsonMessageFromUserSocket.IsSuccess) {
+                console.log('user-message:', lastJsonMessageFromUserSocket.Value)
+                const val = lastJsonMessageFromUserSocket.Value;
+                document.getElementById('user-id').value = val.UserId;
+    
+              }
+              if (lastJsonMessageFromUserSocket?.Method === 'GetSettingsSource' && lastJsonMessageFromUserSocket.IsSuccess) {
+                sendJsonMessageToUserSocket(GetCurrentUserMessage)
+    
+              }
+    
+    
+    
+            }
+            return () => {}
+          }, [lastJsonMessageFromUserSocket]);
+    
+          // bookSocket Handler
+          useEffect(() => {
+            
+            if (lastJsonMessageFromBookSocket !== null) {
+              console.log("lastJsonMessageFromBookSocket", lastJsonMessageFromBookSocket)
+    
+              if (lastJsonMessageFromBookSocket?.Method === "GetIdMaterial" && lastJsonMessageFromBookSocket.IsSuccess) {
+                // sendJsonMessage(GetBookMessage)
+                console.log("book-message:", lastJsonMessageFromBookSocket.Value);
+                const val = lastJsonMessageFromBookSocket.Value;
+                
+                if(val.BookId){
+                  
+                  sess.setItem("bookId", val.BookId)
+                  document.getElementById("book-id").value=val.BookId
+                  
+                  sendJsonMessageToBookSocket(GetBookMessage(val.BookId))
+                  
+                }
+                
+              }
+              if (lastJsonMessageFromBookSocket?.Method === "GetBook" && lastJsonMessageFromBookSocket.IsSuccess ) {
+                console.log('book-message:', lastJsonMessageFromBookSocket.Value)
+                const val = lastJsonMessageFromBookSocket.Value
+                sess.setItem('bookName', val.Name)
+    
+                document.getElementById('book-name').value = val.Name
+                  
+                
+              }
+              if (lastJsonMessageFromBookSocket?.Method === 'CopyBook' && lastJsonMessageFromBookSocket.IsSuccess) {
+                console.log('copiedbook-message:', lastJsonMessageFromBookSocket.Value)
+                sess.removeItem("bookId");
+                sess.removeItem("bookName");
+              }
+      
+            }
+            return () => {}
+          }, [lastJsonMessageFromBookSocket]);
+          return(
+            <Form id="save-book">
+              <FormGroup className='w-100 '>
+                <Input
+                  className='mb-1'
+                  type="text"
+                  id="book-id"
+                  readOnly
+                  defaultValue={sess.getItem("bookId")|| "book id"}
+                />
+                <Input
+                  className='my-1'
+                  type="text"
+                  id="book-name"
+                  readOnly
+                  defaultValue={sess.getItem("bookName")||"book name"}
+                />
+                <Input
+                  className='mt-1'
+                  type="text"
+                  id="user-id"
+                  readOnly
+                  defaultValue={sess.getItem("userId")||"user name"}
+                />
+                <Button
+                    className="btn-semi-round"
+                    color="primary"
+                    type="button"
+                    disabled={hasNoBookUserId()}
+                    onClick={(e)=>onSave(e, sockets)}
+                  >
+                    save
+                  </Button>
+              </FormGroup>
+            </Form>
+          )
+        });
+
+      const BookCopied =()=>{
+        return(
+          <div className="position-absolute top-100 start-50 translate-middle w-100 overlayer d-flex flex-column justify-content-center align-items-center my-5 px-2" style={{inset:0}}>
+            <div className="w-100 h-100">
+              <h3>
+                Book Copied! 
+              </h3>
+              <h5>
+                Log in to 
+                <a href="https://progressme.ru/Account/Login" target="_blank" rel="noopener noreferrer">
+                  {" progressme.ru "} 
+                  <i class='fas fa-external-link' aria-hidden='true'></i>
+                </a> 
+                to see the book in your personal library
+              </h5>
+              </div>
+          </div>
+        )
+      }
+      const NoTargetUrlSet=()=>(
+      <div className="position-absolute top-100 start-50 translate-middle w-100 overlayer d-flex flex-column justify-content-center align-items-center px-2" style={{inset:0}}>
+        <img src={spirow} className='w-25 scale-x-[-1] rotate-90'/>
+        <h4 className='w-75'>
+          Add the link to your book up here and see the magic
+        </h4>
+      </div>
+      )
+      const IntermediateComponent = ()=>{
+        
+        return(
+          <div className="w-100 position-relative">
+            <div className="w-100 h-100 bg-img">
+              <img src="https://static.tildacdn.com/tild3633-3338-4961-b237-633361646262/Footer_Bg.svg"/>
+            </div>
+            {
+              hasNoBookUserId() ? (
+                <NoTargetUrlSet/>
+              )
+              : (
+                <BookCopied/>
+              )
+            }
+            
+          </div>
+        )
+      }
+
+      
+      const AuthIn = ()=>{
+        return (
+          <div className="auth-in-wrapper w-75 h-100">
+            <div className="auth-in-header">
+              <h3 className="auth-in-header-title">Temporary Login</h3>
+              <p className="auth-in-header-subtitle">
+                <span>
+                  Enter your actual email and password to access your account to save your userId
+                </span>
+                <br/>
+                <em>
+                  - This is neccessary to save the book to your account
+                </em>
+                <br />
+
+                <em>
+                  - Please remember to change them after, if you feel insecure. 
+                  <strong> We do not keep any login credentials</strong>
+                </em>
+              </p>
+              </div>
+            <Form id="auth-in" onSubmit={handleAuth}>
+              <FormGroup id="formBasicEmail">
+                <Label>Email address</Label>
+                <Input form='auth-in' name="email" type="email" placeholder="Enter email" />
+              </FormGroup>
+              <FormGroup id="formBasicPassword">
+                <Label>Password</Label>
+                <Input form='auth-in' name="password" type="password" placeholder="Password" />
+              </FormGroup>
+              <Button color="primary" type="submit">
+                Submit
+              </Button>
+
+            </Form>
+          </div>
+        )
+      }
+      const MemoizedIframe = memo(
+        ({authedIn,targetUrlSet, ...props }) => {
+
+          return (
+            authedIn ? targetUrlSet ? (
+              <>
+                <iframe
+                  id='iframe_iframe'
+                  src='https://progressme.ru/TeacherAccount/lesson-preview?bookId=77129&lessonId=701806&sectionId=3294846'
+                  frameBorder='0'
+                  allowFullScreen={true}
+                  className='iframe_iframe w-100 h-100'
+                  onLoad={disableLogs}
+                  
+                >
+
+                </iframe>
+              </>
+            ) : <IntermediateComponent/>
+            : (
+              <AuthIn />
+            )
+        )
+        }
+      );
+
+
+      return (
+          <Row className='my-4' style={{height:"800px", maxHeight:"1000px"}} >
+            <Col lg="12 " className='h-100'>
+              <Card className='h-100'>
+                <CardHeader>
+                  <CardTitle tag="h5">Add the progressme link</CardTitle>
+                </CardHeader>
+                <CardBody className='p-4 h-100'  >
+                  <Row className='h-100 w-100 overflow-hidden' >
+                    <Col >
+                      <Row lg={"10"}>
+                        <Form id="load-link" className='w-100 ' onSubmit={handleClick}>
+                          <FormGroup className='w-100' >
+                            <Input
+                              type="text"
+                              placeholder="progressme link"
+                              defaultValue={targetUrl || ""}
+                            />
+                            <Col>
+                              <Button
+                                  className="btn-semi-round"
+                                  color="primary"
+                                  type="submit"
+                                >
+                                  connect
+                              </Button>
+                              <Button
+                                  className="btn-semi-round"
+                                  color="danger"
+                                  type="button"
+                                  onClick={(e)=>{e.preventDefault();setTargetUrl("https://progressme.ru")}}
+                                >
+                                  reset
+                              </Button>
+                            
+                            </Col>
+                          </FormGroup>  
+                        </Form>
+                      </Row>
+                      <Row lg={"10"} className='h-100'>
+                        <div className='iframe_wrapper w-100 h-100'>
+                          <MemoizedIframe authedIn={isAuthed} targetUrlSet={targetUrlSet()}/>
+                        </div>
+                      </Row>
+                    </Col>
+                    <Col sm="3"> 
+                    {
+                      isAuthed ? (
+                        <SocketComponent onSave={handleSave}/>
+                        
+                      )
+                      : <Form id="disabled-save-book">
+                        <FormGroup className='w-100 '>
                           <Input
+                            className='mb-1'
                             type="text"
-                            placeholder="progressme link"
-                            defaultValue={targetUrl || ""}
+                            id="disabled-book-id"
+                            readOnly
+                            defaultValue={ "book id"}
                           />
-                          <Col>
-                            <Button
-                                className="btn-semi-round"
-                                color="primary"
-                                type="submit"
-                              >
-                                connect
+                          <Input
+                            className='my-1'
+                            type="text"
+                            id="disabled-book-name"
+                            readOnly
+                            defaultValue={"book name"}
+                          />
+                          <Input
+                            className='mt-1'
+                            type="text"
+                            id="disabled-user-id"
+                            readOnly
+                            defaultValue={"user name"}
+                          />
+                          <Button
+                              className="btn-semi-round"
+                              color="primary"
+                              type="button"
+                              disabled
+                              onClick={(e)=>""}
+                            >
+                              save
                             </Button>
-                            <Button
-                                className="btn-semi-round"
-                                color="danger"
-                                type="button"
-                                onClick={(e)=>{e.preventDefault();setTargetUrl("https://progressme.ru")}}
-                              >
-                                reset
-                            </Button>
-                          
-                          </Col>
-                        </FormGroup>  
+                        </FormGroup>
                       </Form>
-                    </Row>
-                    <Row lg={"10"} className='h-100'>
-                      <div className='iframe_wrapper w-100 h-100'>
-                        <MemoizedIframe authedIn={isAuthed}/>
-                      </div>
-                    </Row>
-                  </Col>
-                  <Col sm="3"> 
-                    <Form id="save-book">
-                      <FormGroup className='w-100 '>
-                        <Input
-                          className='mb-1'
-                          type="text"
-                          id="book-id"
-                          readOnly
-                          defaultValue={"book id"}
-                        />
-                        <Input
-                          className='my-1'
-                          type="text"
-                          id="book-name"
-                          readOnly
-                          defaultValue={"book name"}
-                        />
-                        <Input
-                          className='mt-1'
-                          type="text"
-                          id="user-id"
-                          readOnly
-                          defaultValue={"user id"}
-                        />
-                        <Button
-                            className="btn-semi-round"
-                            color="primary"
-                            type="button"
-                            disabled
-                          >
-                            save
-                          </Button>
-                      </FormGroup>
-                    </Form>
-                  </Col>
-                </Row>
+                    }
+                    </Col>
+                  </Row>
 
 
-              </CardBody>
-            </Card>
-          </Col>
-        </Row>
+                </CardBody>
+              </Card>
+            </Col>
+          </Row>
 
 
-    )
+      )
 };
 
 export default memo(Scrapper);
