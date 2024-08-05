@@ -21,7 +21,7 @@ import {
 import { Link } from 'react-router-dom'
 import { addError } from '../../variables/errorSlice'
 import { addToast } from '../../variables/toastSlice'
-
+import './Whatsbot.css'
 
 
 export default ({onNotify, hookedNotify}) => {
@@ -121,23 +121,54 @@ export default ({onNotify, hookedNotify}) => {
         // }
 
       }
-      if (lastJsonMessage?.event === "connect" && lastJsonMessage?.status === "gettingQr"){
+      if (lastJsonMessage?.event === "register" && lastJsonMessage?.status === "gettingQr"){
         setConnection((ps) => ({ ...ps, gettingQr: true }))
       }
-      if (lastJsonMessage?.event === "connect" && lastJsonMessage?.status === "scanningQr") {
+      if (lastJsonMessage?.event === "register" && lastJsonMessage?.status === "scanningQr") {
         setConnection((ps) => ({ ...ps, error:null, gettingQr: false, scanningQr:true }));
         
         setQrCode(lastJsonMessage?.data?.qrLink)
         setMessageHistory((prev) => prev.concat(lastJsonMessage));
       }
+      if (lastJsonMessage?.event === "register" && lastJsonMessage?.status === "pending") {
+        setConnection((ps) => ({ ...ps, error: null, gettingQr: false, scanningQr: false, isConnecting:true }))
+      }
+      if (lastJsonMessage?.event === "register" && lastJsonMessage?.status === "complete") {
+        const { data } = lastJsonMessage
+        
+
+        if (data?.bots?.length > 0) {
+          // const childBody = botsTable.getElementsByTagName('tbody')[0]
+          // // console.log("setting connection state", bots, childBody);
+          // bots.forEach((bot,i)=>(childBody.insertAdjacentElement("beforeend", createtableRow({i, ...bot}))))
+          setConnection((ps) => ({ ...ps, bots:data?.bots, error: null, gettingQr: false, scanningQr: false, isConnecting: false, isConnected: true }))
+        
+        }else{
+          setConnection((ps) => ({ ...ps, error: null, gettingQr: false, scanningQr: false, isConnecting: false, isConnected:true }))
+        }
+          
+      }
+      if (lastJsonMessage?.event === "register" && lastJsonMessage?.status === "fail") {
+        setConnection((ps) => ({ ...ps, error: "bot registration failed", gettingQr: false, scanningQr: false, isConnecting: false, isConnected:false }))
+      }
+      
       if (lastJsonMessage?.event === "connect" && lastJsonMessage?.status === "pending") {
         setConnection((ps) => ({ ...ps, error: null, gettingQr: false, scanningQr: false, isConnecting:true }))
       }
       if (lastJsonMessage?.event === "connect" && lastJsonMessage?.status === "complete") {
         setConnection((ps) => ({ ...ps, error: null, gettingQr: false, scanningQr: false, isConnecting: false, isConnected:true }))
       }
+      if (lastJsonMessage?.event === "connect" && lastJsonMessage?.status === "fail") {
+        if(lastJsonMessage.message === "request_bot_register"){
+          // handleBotRegister();
+          setConnection((ps) => ({ ...ps, error: "bot registration failed", gettingQr: false, scanningQr: false, isConnecting: false, isConnected:false }))
+
+        }
+        setConnection((ps) => ({ ...ps, error: "bot registration failed", gettingQr: false, scanningQr: false, isConnecting: false, isConnected:false }))
+      }
       if (lastJsonMessage?.event === "disconnect" && lastJsonMessage?.status === "complete") {
         dispatch(addToast("Bot disconnected"))
+        setConnection((ps) => ({ ...ps, error: null, gettingQr: false, scanningQr: false, isConnecting: false, isConnected:false }))
         
       }
       if (lastJsonMessage?.event === "disconnect" && lastJsonMessage?.status === "fail") {
@@ -152,30 +183,11 @@ export default ({onNotify, hookedNotify}) => {
   const handleClickSendMessage = useCallback((msg) => sendJsonMessage(msg), [])
 
 
-  const handleBotConnect = async (e) => {
-    e.preventDefault();
+  const handleBotRegister = async (e) => {
+    e?.preventDefault();
     // const url = 'http://localhost:5000/bot/connect'
     
-    setConnection(ps => ({ ...ps, isConnecting: true, gettingQr: false }))
-
-    // const res = await fetch(
-    //   url,
-    //   {
-    //     method: "POST",
-    //     headers: {
-    //       "Content-Type": "application/json",
-    //       Authorization: "Bearer " + (localStorage.getItem("token") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoibW9vcmhvdXNlRU5UIiwiaWF0IjoxNzEwNzEzMTkzfQ.5_SXADx6j1mdAvpX7MDFx5CrlZ_HeWkXdMrKbVm1zmI")
-    //     },
-    //     body: JSON.stringify({
-    //       token: sessionStorage.getItem("token")
-    //     })
-    //   }
-    // )
-    
-
-    // setTimeout(() => {
-    //   handleQrScan({preventDefault: ()=>{}})
-    // }, 5000);
+    setConnection(ps => ({ ...ps, isConnecting: true, gettingQr: false }));
 
     await getQr()
   }
@@ -189,8 +201,8 @@ export default ({onNotify, hookedNotify}) => {
   }
 
   const getQr =async () =>{
-    const res = await handleClickSendMessage({
-      event: 'connect',
+    const res =  handleClickSendMessage({
+      event: 'register',
       token: sessToken
     })
     // const resData = messageHistory.at(-1) || {error:true}
@@ -212,8 +224,13 @@ export default ({onNotify, hookedNotify}) => {
     await getQr()
 
   }
-  const handleConnect = (e) => {
+  const handleConnect = (e, botId) => {
     e?.preventDefault();
+    sendJsonMessage({
+      event: 'connect',
+      token: sessToken,
+      botId:botId 
+    })
     setConnection(ps=> ({...ps, isConnecting: false, isConnected: true}))
   }
   const handleRemoveBot = (e, id) =>{
@@ -228,7 +245,7 @@ export default ({onNotify, hookedNotify}) => {
     // setConnection(ps=> ({...ps, isConnected: false, isConnecting: false}))
   }
 
-  const handleReconnect = (e, id) =>{
+  const handleRefreshBotState = (e, id) =>{
     e?.preventDefault();
     handleClickSendMessage({event:"botHealthCheck", token:sessToken, botId:id})
   }
@@ -251,11 +268,53 @@ export default ({onNotify, hookedNotify}) => {
   }
 
   const BotStatusState = ()=>{
-   
+    const ShouldConnectState =({bot})=>(
+      <td colSpan={2} className='text-center  bg-secondary opacity-50 p-2'>
+        <button className='btn btn-sm btn-primary' onClick={(e)=>handleConnect(e, bot.token)}>Connect</button>
+      </td>
+
+    )
+    const DefaultState = ({bot})=>(
+      <>
+        <td >
+          <span>{
+              bot?.token.split("_")[2].length>8 ? 
+              bot?.token.split("_")[2].slice(8)+"..." :
+              bot?.token.split("_")[2]} </span>
+          
+          <i onClick = {(e)=> handleRefreshBotState(e, bot.token) } className='fas fa-sync-alt text-muted btn-md  btn-neutral' />
+        </td>
+        <>
+          {bot ? (
+            <td class={addStatusStyle(bot.status)}>{bot?.status}</td>
+          ) : (
+            <td className='text-muted'>disconnected</td>
+          )}
+        </>
+        <td >
+          <i onClick = {(e)=> handleDisconnect(e, bot.token) } className='fas fa-trash-alt text-muted btn-md btn-neutral 
+          btn-danger  ' />
+
+        </td>
+      </>
+    )
+    const BotItem =({idx, bot})=>{
+      const [shouldConnect, setShouldConnect] = useState(true)
+      return (
+        <tr key={idx} className='position-relative'>
+          <th scope='row'>{ idx+1}</th>
+          {
+            shouldConnect 
+            ? <ShouldConnectState bot={bot}/>
+            : <DefaultState bot={bot}/>
+          }
+        </tr>
+      )
+    }
     return(
       <Card className="card-stats" style={{width:"377px", aspectRatio:"1/1", display:"flex", justifyContent:"center"}}>
         <CardBody>
-          <Table id='bots-table' size="sm">
+          <Table id='bots-table' size="sm" className='table-bordered table-rounded'>
             <thead>
               <tr>
                 <th>#</th>
@@ -268,25 +327,7 @@ export default ({onNotify, hookedNotify}) => {
               {
                 connection?.bots?.map((bot, index) => {
                   return (
-                    <tr key={index}>
-                      <th scope='row'>{ index+1}</th>
-                      <td>{bot?.token.split("_")[2]}</td>
-                      <>
-                        {bot ? (
-                          <td class={addStatusStyle(bot.status)}>{bot?.status}</td>
-                        ) : (
-                          <td className='text-muted'>disconnected</td>
-                        )}
-                      </>
-                      <td >
-                        <i onClick = {(e)=> handleReconnect(e, bot.token) }
- className='fas fa-sync-alt text-muted btn-md  btn-neutral' />
-                        <i onClick = {(e)=> handleDisconnect(e, bot.token) }
- className='fas fa-trash-alt text-muted btn-md btn-neutral 
-                        btn-danger  ' />
-
-                      </td>
-                    </tr>
+                    <BotItem idx={index} bot={bot}/>
                   )
 
                 })
@@ -313,13 +354,14 @@ export default ({onNotify, hookedNotify}) => {
       </span>
     </UncontrolledAlert>
   )
-
+  
+  
   return (
     <>
       {/* <NotificationAlert ref={notificationAlert} /> */}
       <ConnectBot 
         stage={stages[0]} 
-        handlerBotConnect={handleBotConnect}
+        handlerBotConnect={handleBotRegister}
         handleQrRefresh={handleQrRefresh}
         
       />

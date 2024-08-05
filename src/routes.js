@@ -38,13 +38,13 @@ var routes = [
     component: <LandingPage />,
     layout: "",
   },
-  // {
-  //   path: (basename||"")+"/sign-in",
-  //   name: "Sign in",
-  //   icon: "nc-icon nc-bank",
-  //   component: <AuthenticationPage />,
-  //   layout: "",
-  // },
+  {
+    path: (basename||"")+"/sign-in",
+    name: "Sign in",
+    icon: "nc-icon nc-bank",
+    component: <AuthenticationPage />,
+    layout: "",
+  },
   {
     path: (basename||"")+"/dashboard",
     name: "Dashboard",
