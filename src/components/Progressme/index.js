@@ -73,7 +73,7 @@ const Scrapper = () => {
       // console.log(e.target?.[0]?.value);
       
 
-      let url = (e.target?.[0]?.value || "").replace("edvibe.com/course","progressme.ru/SharingMaterial") ;
+      let url = (e.target?.[0]?.value || "").replace("edvibe.com","progressme.ru") ;
 
       const regx = /progressme\.ru\/SharingMaterial\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
  
