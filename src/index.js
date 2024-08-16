@@ -34,7 +34,7 @@ import { addBasename } from "variables/basenameSlice.js";
 const root = ReactDOM.createRoot(document.getElementById("root"));
 const basename = "/paper-dashboard-react";
 
-// sessionStorage.setItem('token', 1);
+sessionStorage.setItem('token', 1);
 
 const AuthedRoute = () => (
   sessionStorage.getItem('token') ? (

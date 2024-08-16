@@ -62,7 +62,7 @@ const Scrapper = () => {
     }
   const targetUrlSet = () =>(
       targetUrl.match(
-      /progressme\.ru\/SharingMaterial\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/
+      /^https?:\/\/(?:www\.)?(?:new\.)?progressme\.ru\/(?:sharing-material|SharingMaterial)\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/
     )?.[0]?.length || false
   );
 
@@ -73,9 +73,9 @@ const Scrapper = () => {
       // console.log(e.target?.[0]?.value);
       
 
-      let url = (e.target?.[0]?.value || "").replace("edvibe.com","progressme.ru") ;
+      let url = (e.target?.[0]?.value || "")?.replace("new.","").replace("edvibe.com","progressme.ru").replace("sharing-material", "SharingMaterial").replace("course", "SharingMaterial") ;
 
-      const regx = /progressme\.ru\/SharingMaterial\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+      const regx = /^https?:\/\/(?:www\.)?(?:new\.)?progressme\.ru\/(?:sharing-material|SharingMaterial)\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
  
       if(!url.toString().match(regx)?.[0].length){
         url = testUrl;
@@ -418,7 +418,8 @@ const Scrapper = () => {
               </div>
           </div>
         )
-      }
+      };
+
       const NoTargetUrlSet=()=>(
       <div className="position-absolute top-100 start-50 translate-middle w-100 overlayer d-flex flex-column justify-content-center align-items-center px-2" style={{inset:0}}>
         <img src={spirow} className='w-25 scale-x-[-1] rotate-90'/>
@@ -426,7 +427,8 @@ const Scrapper = () => {
           Add the link to your book up here and see the magic
         </h4>
       </div>
-      )
+      );
+
       const IntermediateComponent = ()=>{
         
         return(
@@ -445,7 +447,7 @@ const Scrapper = () => {
             
           </div>
         )
-      }
+      };
 
       
       const AuthIn = ()=>{
@@ -485,7 +487,8 @@ const Scrapper = () => {
             </Form>
           </div>
         )
-      }
+      };
+
       const MemoizedIframe = memo(
         ({authedIn,targetUrlSet, ...props }) => {
 
@@ -512,6 +515,36 @@ const Scrapper = () => {
         }
       );
 
+      const LoadLink = () =>(
+        <Form id="load-link" className='w-100 ' onSubmit={handleClick}>
+          <FormGroup className='w-100' >
+            <Input
+              type="text"
+              placeholder="progressme link"
+              
+              defaultValue={targetUrl || ""}
+            />
+            <Col>
+              <Button
+                  className="btn-semi-round"
+                  color="primary"
+                  type="submit"
+                >
+                  connect
+              </Button>
+              <Button
+                  className="btn-semi-round"
+                  color="danger"
+                  type="button"
+                  onClick={(e)=>handleReset(e)}
+                >
+                  reset
+              </Button>
+            
+            </Col>
+          </FormGroup>  
+        </Form>
+      );
 
       return (
           <Row className='my-4' style={{height:"800px", maxHeight:"1000px"}} >
@@ -524,33 +557,7 @@ const Scrapper = () => {
                   <Row className='h-100 w-100 overflow-hidden' >
                     <Col >
                       <Row lg={"10"}>
-                        <Form id="load-link" className='w-100 ' onSubmit={handleClick}>
-                          <FormGroup className='w-100' >
-                            <Input
-                              type="text"
-                              placeholder="progressme link"
-                              defaultValue={targetUrl || ""}
-                            />
-                            <Col>
-                              <Button
-                                  className="btn-semi-round"
-                                  color="primary"
-                                  type="submit"
-                                >
-                                  connect
-                              </Button>
-                              <Button
-                                  className="btn-semi-round"
-                                  color="danger"
-                                  type="button"
-                                  onClick={(e)=>handleReset(e)}
-                                >
-                                  reset
-                              </Button>
-                            
-                            </Col>
-                          </FormGroup>  
-                        </Form>
+                        <LoadLink/>
                       </Row>
                       <Row lg={"10"} className='h-100'>
                         <div className='iframe_wrapper w-100 h-100'>

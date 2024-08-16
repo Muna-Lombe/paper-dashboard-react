@@ -75,7 +75,7 @@ function Dashboard() {
             
             </Col>
             <Col lg="3" md="6" sm="6">
-              <Whatsbot  />
+              {/* <Whatsbot  /> */}
             </Col>
             {/* <Col lg="3" md="6" sm="6">
               <Card className="card-stats">
