@@ -47,6 +47,10 @@ const AuthedRoute = () => (
 
 
 //store.dispatch(addBasename(basename));
+// import store from './variables/reducerStore'
+
+
+
 root.render(
   <Provider store={store}>
     <BrowserRouter>
@@ -54,10 +58,10 @@ root.render(
       <DisplayNotification>
         <Routes>
 
-          <Route path="/admin/*" element={<AuthedRoute/>} />
-          <Route path="/*" element={<GuestLayout />} />
+          <Route path={(store.getState().basenames[0]||"")+"/admin/*"} element={<AuthedRoute/>} />
+          <Route path={(store.getState().basenames[0]||"")+"/*"} element={<GuestLayout />} />
           
-          <Route path="/" element={<Navigate to="/landing" replace />} />
+          <Route path={(store.getState().basenames[0]||"")+"/"} element={<Navigate to={(store.getState().basenames[0]||"")+"/landing" }replace />} />
         </Routes>
       
       </DisplayNotification>  
