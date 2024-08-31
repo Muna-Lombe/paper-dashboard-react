@@ -47,8 +47,6 @@ const AuthedRoute = () => (
 
 
 //store.dispatch(addBasename(basename));
-// import store from './variables/reducerStore'
-
 
 
 root.render(
