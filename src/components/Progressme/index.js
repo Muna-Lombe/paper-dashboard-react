@@ -41,7 +41,7 @@ const Progressme = () => {
               </a>
             </li>
             <li className="nav-item">
-              <a data-toggle="tab" role="tab" href="#course-builder" className={"nav-link"+(activeTab === "course-builder" ? " active" : "")} onClick={()=>""}>
+              <a data-toggle="tab" role="tab" href="#course-builder" className={"nav-link"+(activeTab === "course-builder" ? " active" : "")} onClick={()=>setActivetab("course-builder")}>
                 <div>
                   <span><i className="nc-icon nc-shop"></i> Course Builder </span>
                 </div>
@@ -53,7 +53,7 @@ const Progressme = () => {
               <CourseScraper />
             </div>
             <div id="course-builder" className={"tab-pane"+(activeTab === "course-builder" ? " active" : "")} style={{"display":" none;"}}> 
-               {/* <CourseBuilder /> */}
+              <CourseBuilder />
             </div>
             
           </div>

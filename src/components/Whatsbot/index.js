@@ -19,8 +19,8 @@ import {
   Button
 } from 'reactstrap'
 import { Link } from 'react-router-dom'
-import { addError } from '../../variables/errorSlice'
-import { addToast } from '../../variables/toastSlice'
+import { addError } from '../../variables/slices/errorSlice'
+import { addToast } from '../../variables/slices/toastSlice'
 import './Whatsbot.css'
 
 

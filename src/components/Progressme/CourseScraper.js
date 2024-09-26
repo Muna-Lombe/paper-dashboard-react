@@ -23,8 +23,8 @@ import Cookie from 'browser-cookie';
 import { AxiosHeaders } from 'axios';
 import { bindActionCreators } from '@reduxjs/toolkit';
 import { Axios } from 'axios';
-import { addError } from '../../variables/errorSlice'
-import { addToast } from '../../variables/toastSlice'
+import { addError } from '../../variables/slices/errorSlice'
+import { addToast } from '../../variables/slices/toastSlice'
 import { useSelector, useDispatch } from 'react-redux'
 
 import fetchWithProxy from '../../variables/fetchWithProxy';

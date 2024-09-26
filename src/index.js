@@ -29,7 +29,7 @@ import AdminLayout from "./layouts/Admin.js";
 import GuestLayout from "./layouts/Guest.js";
 import DisplayNotification from "./components/Headers/DisplayNotification";
 import store from "./variables/reducerStore";
-import { addBasename } from "variables/basenameSlice.js";
+import { addBasename } from "variables/slices/basenameSlice.js";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 const basename = "/paper-dashboard-react";

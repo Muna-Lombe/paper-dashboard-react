@@ -18,7 +18,7 @@
 */
 import React, { useEffect } from "react";
 import {useNavigate} from "react-router-dom";
-import { addError } from 'variables/errorSlice'
+import { addError } from 'variables/slices/errorSlice'
 import { useSelector, useDispatch } from 'react-redux'
 
 // reactstrap components
