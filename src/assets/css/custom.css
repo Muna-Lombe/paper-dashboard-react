@@ -1,0 +1,46 @@
+:root {
+  --bs-primary: #4341cc;
+  --bs-success: #1bbc9d;
+  --bs-info: #10a6ba;
+  /* Add other variables as needed */
+}
+
+.navbar-custom {
+  background-color: var(--bs-dark);
+}
+
+.section {
+  position: relative;
+}
+
+.bg-home {
+  background-image: url('../img/bg-home.png');
+  background-size: cover;
+  background-position: center;
+}
+
+.bg-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.footer {
+  background-color: var(--bs-dark);
+}
+
+.footer a {
+  color: #fff;
+  margin-right: 15px;
+}
+
+.footer p {
+  margin: 0;
+}
+
+/* .bg-pattern-effect { */
+  /* Add any decorative patterns or SVGs */
+/* } */

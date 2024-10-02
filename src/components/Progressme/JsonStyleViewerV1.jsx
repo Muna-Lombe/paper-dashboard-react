@@ -27,7 +27,7 @@ const JsonStyleViewer = () => {
   // const [corrections, setCorrections] = useState([{property: '', correction: '' }]);
   const [socketUrl, setSocketUrl] = useState('ws://localhost:8000/ws');
   const socket = useWebSocket(socketUrl, {
-    onOpen: () => { socket.sendJsonMessage({ event: "begin-process-pdfs" }) },
+    onOpen: () => { socket.sendJsonMessage({ event: "fetch-processed-book", 'opts':['await-pages'] }) },
     onClose: () => console.log('closed'),
 
     onMessage: (event) => {
@@ -36,7 +36,7 @@ const JsonStyleViewer = () => {
         console.log(jsonData);
 
         // setData(jsonData["output"]);
-        dispatch(resetStateWithNewData(flattenObject(jsonData.output.results)))
+        dispatch(resetStateWithNewData(flattenObject(jsonData.data)))
       } catch (error) {
         console.error('Error parsing JSON:', error);
       }

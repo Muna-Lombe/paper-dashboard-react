@@ -26,7 +26,7 @@ const pdfDataSlice = createSlice({
       const { pathArray, update } = action.payload
       console.log('path-array:', state, pathArray, update)
 
-      const item = state.find(item => item[0] === pathArray.join('-'))
+      const item = state.find(item => item[0] === (pathArray.join('-')))
       item[1] = update
     },
     updateOrder: (state, action) => {
