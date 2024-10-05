@@ -148,6 +148,23 @@ const ScheduleBuilder = () => {
     setSelectAll(updatedMonths.every(Boolean));
   };
 
+  const createImagePreview = () => {
+    const table = document.querySelector("#schedule-table");
+    const img = document.createElement("img");
+
+    // hide schedule-header
+    const header = table.querySelector(".schedule-header");
+    header.style.display = "none";
+
+    //create an modal, add the table to the modal, make sure the full table component is in full view and open the modal
+    const modal = document.createElement("div");
+    modal.style.position = "fixed";
+    modal.style.top = "0";
+    modal.style.left = "0";
+    modal.style.width = "100%";
+    
+
+  }
   // Export the table to an image
   const exportToImage = () => {
     html2canvas(document.querySelector("#schedule-table")).then((canvas) => {
