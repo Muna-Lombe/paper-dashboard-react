@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Table,
   Button,
@@ -10,6 +10,9 @@ import {
   UncontrolledTooltip,
   UncontrolledPopover,
   PopoverBody,
+  Modal,
+  ModalHeader,
+  ModalBody,
 } from 'reactstrap';
 import html2canvas from 'html2canvas';
 
@@ -38,7 +41,7 @@ const languages = {
       exportButton: "Export as Image",
       resetButton: "Reset Schedule",
       scheduleTable: "Schedule Table",
-      scheduleName: "Schedule Name",
+      scheduleName: "Class",
       exportSchedule: "Export Schedule",
       toggleLanguage: "Ru",
       legendTitle: "Legend",
@@ -84,7 +87,7 @@ const languages = {
       exportButton: "Экспорт в изображение",
       resetButton: "Сбросить расписание",
       scheduleTable: "Расписание занятий",
-      scheduleName: "Название расписания",
+      scheduleName: "Урок",
       exportSchedule: "Экспорт расписания",
       toggleLanguage: "En",
       legendTitle: "Легенда",
@@ -125,6 +128,9 @@ const ScheduleBuilder = () => {
   const [popoverOpen, setPopoverOpen] = useState({});
   const [currentCell, setCurrentCell] = useState(null);
   const [makeRecurring, setMakeRecurring] = useState(false);
+  const [imageModalOpen, setImageModalOpen] = useState(false)
+  const [imagePreview, setImagePreview] =  useState(null)
+  const toggleImageModal = () => setImageModalOpen(!imageModalOpen);
 
   // Toggle Language
   const toggleLanguage = () => {
@@ -148,20 +154,58 @@ const ScheduleBuilder = () => {
     setSelectAll(updatedMonths.every(Boolean));
   };
 
+
   const createImagePreview = () => {
-    const table = document.querySelector("#schedule-table");
-    const img = document.createElement("img");
-
+    const tablewrapper = document.querySelector(".table-wrapper ");
+    
+    
     // hide schedule-header
-    const header = table.querySelector(".schedule-header");
-    header.style.display = "none";
+    // const header = tablewrapper.querySelector(".schedule-header");
+    // header.style.display = "none";
+    // table.removeChild(header)
+    
+    //check the screen size 
+    //and resize the table component accordingly 
+    //then add it to a canvas as an image
+    // make sure the whole component can be seen and no parts are cut off
+    // then add the image to the modal
+    // Check the screen size and resize the table component accordingly
+    const table = tablewrapper.querySelector('table')
+    const scale = Math.min(window.innerWidth / table.offsetWidth, 1);
+    table.style.transform = `scale(${scale})`;
+    table.style.transformOrigin = 'top left';
 
-    //create an modal, add the table to the modal, make sure the full table component is in full view and open the modal
-    const modal = document.createElement("div");
-    modal.style.position = "fixed";
-    modal.style.top = "0";
-    modal.style.left = "0";
-    modal.style.width = "100%";
+    // Use html2canvas to capture the table as an image
+    html2canvas(tablewrapper, { scale: 1 }).then((canvas) => {
+      // Reset the table's transform
+      table.style.transform = '';
+      tablewrapper.querySelector(".table-name> input").type = 'text'
+      // header.style.display = '';
+
+      // Make sure the whole component can be seen and no parts are cut off
+      const img = document.createElement("img");
+      img.src = canvas.toDataURL("image/png");
+      img.style.width = '100%';
+      const link = document.createElement("a");
+      link.href = canvas.toDataURL("image/png");
+      link.download = "schedule.png";
+      
+      // Add the image to the modal
+      setImagePreview(() => () => (
+        <div className="image-preview-wrapper d-flex flex-column">
+          <a href={link.href} download={link.download} className='btn btn-primary'>
+            {currentLabels.exportSchedule}
+          </a>
+            <img src={img.src} id="image-preview" alt="Schedule Preview" style={{ width: '100%' }} />
+        </div>
+      ));
+      setImageModalOpen(true);
+    });
+    
+   
+
+  
+    // setImagePreview(table)
     
 
   }
@@ -323,62 +367,167 @@ const ScheduleBuilder = () => {
     { name: languages[language].months[8], month: 4, year: currentYear + 1 }, // May
   ];
 
+  
   // Handle cell click to open popover
   const handleCellClick = (e, monthIndex, day) => {
+    
+
+    // console.log("setting popover open 3");
     setCurrentCell({ monthIndex, day });
+
     setPopoverOpen({ ...popoverOpen, [`cell-${monthIndex}-${day}`]: true });
     setMakeRecurring(false); // Reset the 'Make Recurring' checkbox
   };
 
   // Toggle popover
-  const togglePopover = (monthIndex, day) => {
+  const togglePopover = (e=null,monthIndex, day) => {
+    // console.log("setting popover open 1",e);
+    if(e?.srcElement?.tagName === "TR"){
+      e?.preventDefault();
+      return
+    }
     setPopoverOpen({
       ...popoverOpen,
       [`cell-${monthIndex}-${day}`]: !popoverOpen[`cell-${monthIndex}-${day}`],
     });
   };
+  
+  //Handle cell range select to open popover
+  const handleCellRangeSelect = (e, cellRange) => {
+    // console.log("setting popover open 2");
+    setPopoverOpen({ ...popoverOpen, [`cell-${cellRange.last.monthIndex}-${cellRange.last.day}`]: true });
+    setCurrentCell({...cellRange.last, isRange:true, range:cellRange});
+    // togglePopover(cellRange.last.monthIndex,  cellRange.last.day)
+    setMakeRecurring(false);
+
+  }
 
   // Handle 'Make Recurring' checkbox change
   const handleMakeRecurringChange = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     setMakeRecurring(e.target.checked);
   };
 
   // Remove activity by cellId
-  const handleDeleteActivity = (cellId, category, handlePopover=true) => {
-    if(!category) return;
-
-    if (category === "lesson") {
-      const updatedLessonDays = {...lessonDays};
-      const [_,monthIndex, day] = cellId.split("-");
+  const handleDeleteActivity = (cellId, category, handlePopover=true, rangeOfCellIds=null) => {
+    let monthIndex, day;
+    const removeFromLessons = (cellId, prevState) =>{
+      // console.log(cellId, prevState);
       
-      const month =   updatedLessonDays[parseInt(monthIndex)]
-      if(!month) return;
+      const updatedLessonDays = { ...prevState };
+      const [_, monthIndex, day] = cellId.split("-");
 
-      updatedLessonDays[parseInt(monthIndex)].splice(month.findIndex(x => x === parseInt(day)), 1);
+      const month = updatedLessonDays[parseInt(monthIndex)]
+      if (!month) return {};
+
+      const dayIdx = month.findIndex(x => x === parseInt(day));
+      if (dayIdx !== -1) {
+
+        updatedLessonDays[parseInt(monthIndex)].splice(dayIdx, 1);
+      }
+      return updatedLessonDays;
+    }
+    const removeFromHolidays = (cellId, prevState)=>{
+      const hDays = prevState;
+      const updatedHolidayDays = { ...hDays };
+      const [_, monthIndex, day] = cellId.split("-");
+      const month = updatedHolidayDays[parseInt(monthIndex)]
+      if (!month) return {};
+
+      const dayIdx = month.findIndex(x => x === parseInt(day));
+      if (dayIdx !== -1) {
+
+        updatedHolidayDays[parseInt(monthIndex)].splice(dayIdx, 1);
+      }
+      return updatedHolidayDays;
+    }
+    const removeFromHolidayLessons = (cellId, prevState)=>{
+      const hLessons = prevState ;
+      const updatedHolidayLessons = { ...hLessons };
+      const [_, monthIndex, day] = cellId.split("-");
+      const month = updatedHolidayLessons[parseInt(monthIndex)]
+      if (!month) return {};
+
+      const dayIdx = month.findIndex(x => x === parseInt(day));
+      if (dayIdx !== -1) {
+
+        updatedHolidayLessons[parseInt(monthIndex)].splice(dayIdx, 1);
+      }
+      return updatedHolidayLessons
+    }
+    if(!category) return;
+    
+    if (category === "lesson") {
+      let updatedLessonDays = { ...lessonDays };
+      if(rangeOfCellIds){
+        const [_,m,d] = rangeOfCellIds.at(-1).split('-')
+        monthIndex=m
+        day=d
+        // console.log("updated lessons...", updatedLessonDays);
+        for(const c in rangeOfCellIds){
+          const oldUpdate = updatedLessonDays
+          const newUpdate = removeFromLessons(rangeOfCellIds[c], oldUpdate);
+          updatedLessonDays = newUpdate;
+          // setLessonDays(updatedLessonDays);
+        }
+        
+      }else{
+        const [_,m,d] = cellId.split('-')
+        monthIndex = m
+        day = d
+        updatedLessonDays = removeFromLessons(cellId, {...lessonDays});
+
+      }
+
       if(handlePopover) { 
         togglePopover(parseInt(monthIndex), parseInt(day))
       }
       setLessonDays(updatedLessonDays);
     } else if (category === "holiday") {
-      const updatedHolidayDays = {...holidayDays};
-      const [_,monthIndex, day] = cellId.split("-");
-      const month = updatedHolidayDays[parseInt(monthIndex)]
-      if (!month) return;
-
-      updatedHolidayDays[parseInt(monthIndex)].splice(month.findIndex(x => x === parseInt(day)), 1);
+      let updatedHolidayDays = {...holidayDays};
+      if (rangeOfCellIds) {
+        const [_, m, d] = rangeOfCellIds.at(-1).split('-')
+        monthIndex = m
+        day = d
+        for (const c in rangeOfCellIds) {
+          const oldUpdate = updatedHolidayDays
+          const newUpdate = removeFromHolidays(rangeOfCellIds[c], oldUpdate);
+          updatedHolidayDays = newUpdate;
+          // setLessonDays(updatedLessonDays);
+        }
+      }else{
+        const [_, m, d] = cellId.split('-')
+        monthIndex = m
+        day = d
+  
+        updatedHolidayDays = removeFromHolidays(cellId, {...holidayDays})
+      }
       if(handlePopover) { 
         togglePopover(parseInt(monthIndex), parseInt(day))
       }
       setHolidayDays(updatedHolidayDays);
       
 
-    } else if (category === "holidayLesson") {
-      const updatedHolidayLessons = {...holidayLessons};
-      const [_,monthIndex, day] = cellId.split("-");
-      const month = updatedHolidayLessons[parseInt(monthIndex)]
-      if (!month) return;
+    } else if (category === "holidayLesson" || category === "holiday-lesson") {
+      let updatedHolidayLessons = {...holidayLessons};
+      if (rangeOfCellIds) {
+        const [_, m, d] = rangeOfCellIds.at(-1).split('-')
+        monthIndex = m
+        day = d
+        for (const c in rangeOfCellIds) {
+          const oldUpdate = updatedHolidayLessons;
+          const newUpdate = removeFromHolidayLessons(rangeOfCellIds[c], oldUpdate);
+          updatedHolidayLessons = newUpdate;
+          // setLessonDays(updatedLessonDays);
+        }
+      }else{
+        const [_, m, d] = cellId.split('-')
+        monthIndex = m
+        day = d
 
-      updatedHolidayLessons[parseInt(monthIndex)].splice(month.findIndex(x => x === parseInt(day)), 1);
+        updatedHolidayLessons = removeFromHolidayLessons(cellId,{...holidayLessons})
+      }
       if(handlePopover) { 
         togglePopover(parseInt(monthIndex), parseInt(day))
       }
@@ -390,16 +539,39 @@ const ScheduleBuilder = () => {
   //first remove all other activities from the cell 
   // then add a new activity
   const updateCell = (category) =>{
-    ['lesson', 'holiday', 'holidayLesson'].forEach(cat=>(
-      handleDeleteActivity(`cell-${currentCell.monthIndex}-${currentCell.day}`, cat, null)
-    ))
-    addActivityFromCell(category)
+    console.log("currentCell", currentCell);
+    
+    if(currentCell.isRange){
+      const {first, last} = currentCell.range;
+      const {monthIndex:fm, day:fd} = first;
+      const {monthIndex:lm, day:ld} = last;
+      if(fm !== lm){
+        return;
+      }
+      
+      const rangeOfCellIds = []
+      for(let i = fd; i <= ld; i++){
+        // addActivityToCell(category, {monthIndex:fm, day:i})
+        rangeOfCellIds.push(`cell-${fm}-${i}`)
+      }
+      // console.log("setting activity for range");
+      ['lesson', 'holiday', 'holidayLesson'].forEach(cat=>(
+        handleDeleteActivity(null, cat, false, rangeOfCellIds)
+      ))
+      // return
+    }else{
+      ['lesson', 'holiday', 'holidayLesson'].forEach(cat=>(
+        handleDeleteActivity(`cell-${currentCell.monthIndex}-${currentCell.day}`, cat, null)
+      ))
+      
+    }
+    addActivityToCell(category)
 
 
   }
   // Add day to specific category from cell menu
-  const addActivityFromCell = (category) => {
-    const { monthIndex, day } = currentCell;
+  const addActivityToCell = (category, cell = currentCell) => {
+    const { monthIndex, day } = cell;
     let updatedDays;
 
     if (category === "lesson") {
@@ -429,10 +601,25 @@ const ScheduleBuilder = () => {
     } else {
       
       // handleDeleteActivity(`cell-${monthIndex}-${day}`, category)
-      
-      updatedDays[monthIndex] = [
-        ...new Set([...(updatedDays[monthIndex] || []), day]),
-      ];
+      if(cell.isRange){
+        const {first, last} = cell.range;
+        const {monthIndex:fm, day:fd} = first;
+        const {monthIndex:lm, day:ld} = last;
+        if(fm !== lm){
+          return;
+        }
+        for(let i = fd; i <= ld; i++){
+          updatedDays[fm] = [
+            ...new Set([...(updatedDays[fm] || []), i]),
+          ];
+        }
+        
+      }else{
+
+        updatedDays[monthIndex] = [
+          ...new Set([...(updatedDays[monthIndex] || []), day]),
+        ];
+      }
     }
 
     // Update the corresponding state
@@ -494,10 +681,131 @@ const ScheduleBuilder = () => {
       <path d="M0 2a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v3h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3H2a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H2zm7.138 9.995c.193.301.402.583.63.846-.748.575-1.673 1.001-2.768 1.292.178.217.451.635.555.867 1.125-.359 2.08-.844 2.886-1.494.777.665 1.739 1.165 2.93 1.472.133-.254.414-.673.629-.89-1.125-.253-2.057-.694-2.82-1.284.681-.747 1.222-1.651 1.621-2.757H14V8h-3v1.047h.765c-.318.844-.74 1.546-1.272 2.13a6.066 6.066 0 0 1-.415-.492 1.988 1.988 0 0 1-.94.31z" />
     </svg>
   )
+  
+  const removeHighlightSelection = () =>{
+    // find any cells that have been highlighted and remove highilighting
+    // console.log("removing styles");
+    
+    const highlightedCells = document.querySelectorAll('.highlighted')
+    highlightedCells.forEach(cell => {
+      cell.classList.remove('highlighted')
+      cell.classList.remove('highlighted-first-edge')
+      cell.classList.remove('highlighted-inner')
+      cell.classList.remove('highlighted-last-edge')
+    })
+  }
+  const highlightSelection = ()=> {
+    const userSelection = window.getSelection().getRangeAt(0);
+    let sc = userSelection.startContainer;
+    let ec = userSelection.endContainer;
+    const startContainerIsCell = (
+      (userSelection.startContainer.tagName === "TD" &&
+      userSelection.startContainer.id.includes("cell-")) ||
+      (userSelection.startContainer.tagName === "SPAN" &&
+        userSelection.startContainer.parentElement.id.includes("cell-") && (sc = userSelection.startContainer.parentElement)) 
+    )
+    const endContainerIsCell = (
+      (userSelection.endContainer.tagName === "TD" &&
+        userSelection.endContainer.id.includes("cell-")) ||
+      (userSelection.endContainer.tagName === "SPAN" &&
+        userSelection.endContainer.parentElement.id.includes("cell-") && (ec = userSelection.endContainer.parentElement))
+    )
+    if (startContainerIsCell && endContainerIsCell){
+      return highlightRange({sc,ec});
+
+    }
+    return;
+    
+  }
+  
+  const highlightRange = (range) => {
+    const {ec, sc} =range;
+    const firstCell = sc.id;
+    const lastCell = ec.id;
+   
+    markHighlightedCellsInRange(firstCell,lastCell)
+  }
+  const markHighlightedCellsInRange = (firstCell, lastCell) => {
+    const table = document.querySelector('.schedule-table');
+    const rows = table.querySelectorAll('tr');
+    const [f_, fm, fd] = firstCell.split("-")
+    const [l_, lm, ld] = lastCell.split("-")
+    const rangeDirection = (()=>{
+      if(fm === lm){
+        return fd > ld ? 'up' : 'down'
+      }
+      if ( fd===ld){
+        return fm > lm ? 'left' : 'right'
+      }
+      if (fm > lm && fd > ld){
+        return 'left-diagonal'
+      }
+      if (fm > lm && fd < ld){
+        return 'right-diagonal'
+      }
+      if (fm < lm && fd > ld){
+        return 'right-diagonal'
+      }
+      if (fm < lm && fd < ld){
+        return 'left-diagonal'
+      }
+    })();
+    const highlightedCells = Array.from(rows).reduce((acc, row, index) => {
+      const cells = Array.from(row.children);
+      const firstCellIndex = cells.findIndex(cell=>cell.id === firstCell);
+      const lastCellIndex = cells.findIndex(cell=>cell.id === lastCell);
+      if(firstCellIndex !== -1 && lastCellIndex !== -1){
+        if(rangeDirection === 'up'){
+          for(let i = firstCellIndex; i <= lastCellIndex; i++){
+            acc.push(cells[i])
+          }
+        }else if(rangeDirection === 'down'){
+          for(let i = lastCellIndex; i >= firstCellIndex; i--){
+            acc.push(cells[i])
+          }
+        }else if(rangeDirection === 'left'){
+          for(let i = fm; i <= lm; i++){
+            acc.push(rows[i].children[fd])
+          }
+        }else if(rangeDirection === 'right'){
+          for(let i = lm; i <= fm; i++){
+            acc.push(rows[i].children[ld])
+          }
+        }else if(rangeDirection === 'right-diagonal'){
+          let x = fd;
+          for(let i = fm; i <= lm; i++){
+            acc.push(rows[i].children[x])
+            x++;
+          }
+        }else if (rangeDirection === 'left-diagonal'){
+          let x = fd;
+          for(let i = fm; i <= lm; i++){
+            acc.push(rows[i].children[x])
+            x--;
+          }
+        }
+      }
+      return acc;
+    }, []);
+    // console.log(highlightedCells);
+    handleCellRangeSelect(null, { first: { monthIndex: parseInt(fm), day: parseInt(fd) }, last: { monthIndex: parseInt(lm), day: parseInt(ld) } });
+    
+    (
+      highlightedCells.forEach((cell, x)=> (x===0 || x===highlightedCells.length-1) ? 
+      x===0 ?
+          (cell.classList.add('highlighted'), cell.classList.add('highlighted-last-edge'))
+        : (cell.classList.add('highlighted') , cell.classList.add('highlighted-first-edge'))
+      : (cell.classList.add('highlighted') , cell.classList.add('highlighted-inner')))
+    )
+
+    
+    
+  }
+
   const DaysInput= ()=>(
     <div className="days-input d-flex flex-column">
       <h5>{currentLabels.lessonSettings}</h5>
-      <p className='font-xs'>{currentLabels.lessonSettingsTip}</p>
+      <p className='text-danger font-weight-bold'>{currentLabels.lessonSettingsTip}</p>
       <div className="grouped-forms d-flex flex-row flex-lg-column" style={{gap:'8px'}}>
         <FormGroup>
           <Label for="lessonDays" id="lessonDaysTooltip">
@@ -594,6 +902,21 @@ const ScheduleBuilder = () => {
     </div>
   )
  
+  useEffect(() => {
+    const table = document.querySelector('.schedule-table');
+
+    const handleMouseUp = () => {
+      if (window.getSelection().toString()) {
+        highlightSelection();
+      }
+    };
+
+    table.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      table.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
   return (
     <div className="d-flex flex-column bg-white" style={{ overflowX: "auto" }}>
       <p onClick={toggleLanguage} className='btn  m-3 d-flex  justify-content-center align-items-center m-1 border rounded' style={{width:'50px', height:'40px', cursor:'pointer'}}>
@@ -618,19 +941,20 @@ const ScheduleBuilder = () => {
             <Button size='sm' color="danger" className="mt-3" onClick={resetSchedule}>
               {currentLabels.resetButton}
             </Button>
-            <Button color="success" onClick={exportToImage}>
+            <Button color="success" onClick={createImagePreview}>
               {currentLabels.exportButton}
             </Button>
           </div>
-          <div>
-            <p className='w-100 d-flex text-nowrap justify-content-center align-items-baseline' style={{gap:'8px'}}>
-              <Label for="holidayLessons" id="holidayLessonsTooltip">
-                {currentLabels.scheduleName}
+          <div className='table-wrapper'>
+            <p className='table-name w-100 d-flex text-nowrap justify-content-center align-items-baseline font-weight-bold' style={{gap:'8px'}}>
+              <Label for="scheduleName" id="scheduleNameTooltip">
+                {currentLabels.scheduleName}:
               </Label>
               <Input
                 type="text"
-                id="holidayLessons"
-                className='w-25'
+                id="scheduleName"
+                className='w-25 font-weight-bold'
+                
                 // value={holidayLessonsInput}
                 placeholder={""}
               // onChange={(e) => setHolidayLessonsInput(e.target.value)}
@@ -686,28 +1010,46 @@ const ScheduleBuilder = () => {
                           id={cellId}
                           className={`${isHighlighted ? cellClass : ""} ${isInvalidDay ? "invalid-day" : ""
                             }`}
-                          onClick={
-                            !isInvalidDay
-                              ? (e) => handleCellClick(e, monthIndex, day)
-                              : undefined
-                          }
+                          
                           style={{
                             position: "relative",
                             cursor: isInvalidDay ? "not-allowed" : "pointer",
                             height: "10px"
                           }}
+                          
                         >
                           {isInvalidDay ? (
                             <div className="invalid-day-overlay"></div>
                           ) : (
-                            isHighlighted && cellClass && "x"
+                            
+                            <span 
+                              style={{width:'100%', height:'100%'}}
+                              onClick={
+                                !isInvalidDay
+                                  ? (e) => {
+                                    // console.log("reaching span");
+
+                                    // e.preventDefault();
+                                    e.stopPropagation();
+                                    removeHighlightSelection();
+                                    handleCellClick(e, monthIndex, day)
+                                  }
+                                  : undefined
+                              }
+                            >
+                                {
+                                  isHighlighted && cellClass ?  "x" : ' '
+                                }
+                            </span> 
                           )}
                           {!isInvalidDay && (
                             <UncontrolledPopover
                               trigger="legacy"
                               isOpen={popoverOpen[cellId]}
                               target={cellId}
-                              toggle={() => togglePopover(monthIndex, day)}
+                              toggle={(e) => {
+                                togglePopover(e,monthIndex, day)
+                              }}
                               placement="auto"
                             >
                               <PopoverBody>
@@ -718,8 +1060,10 @@ const ScheduleBuilder = () => {
                                   <Label check className="lessons">
                                     <Input
                                       type="checkbox"
-                                      onChange={() =>{
+                                      onChange={(e) =>{
                                           //ensure all other inputs are unchecked
+                                        e.preventDefault();
+                                        e.stopPropagation();
                                         const checkFormGroup = document.querySelectorAll(".checkbox-formgroup.activity:not(:has(label.lessons))")
                                           checkFormGroup.forEach((formGroup)=>{
                                             const checkbox = formGroup.querySelector("input[type='checkbox']")
@@ -740,8 +1084,10 @@ const ScheduleBuilder = () => {
                                   <Label check className='holiday-days'>
                                     <Input
                                       type="checkbox"
-                                      onChange={() =>{
+                                      onChange={(e) =>{
                                           //ensure all other inputs are unchecked
+                                          e.preventDefault();
+                                          e.stopPropagation();
                                           const checkFormGroup = document.querySelectorAll(".checkbox-formgroup.activity:not(:has(label.holiday-days))")
 
                                           checkFormGroup.forEach((formGroup)=>{
@@ -760,8 +1106,10 @@ const ScheduleBuilder = () => {
                                   <Label check className='holiday-lessons'>
                                     <Input
                                       type="checkbox"
-                                      onChange={() =>{
+                                      onChange={(e) =>{
                                           //ensure all other inputs are unchecked
+                                          e.preventDefault();
+                                          e.stopPropagation();
                                           const checkFormGroup = document.querySelectorAll(".checkbox-formgroup.activity:not(:has(label.holiday-lessons))")
 
                                           checkFormGroup.forEach((formGroup)=>{
@@ -838,6 +1186,15 @@ const ScheduleBuilder = () => {
                 </tr>
               </tfoot>
             </Table>
+            <Modal isOpen={imageModalOpen} toggle={toggleImageModal} size="lg" modalClassName='image-modal d-block'>
+              <ModalHeader toggle={toggleImageModal}>close</ModalHeader>
+              <ModalBody>
+                {
+                  imagePreview && imagePreview()
+                }
+                {/* <ImagePreview/> */}
+              </ModalBody>
+            </Modal>
           </div>
         </div>
         {/* Right Sidebar */}
@@ -881,10 +1238,49 @@ const ScheduleBuilder = () => {
         .schedule-table td {
           text-align: center;
           vertical-align: middle;
-          padding: 5px;
+          // padding: 5px;
           position: relative;
           min-width: 30px;
         }
+        .schedule-table td span{
+          display: block;
+          width: 100%;
+          height: 100%;
+          // position: absolute;
+          // top: 0;
+          // left: 0;
+        }
+        td.highlighted.highlighted-first-edge{
+          background-color: #e9ecef;
+          // border-radius: 5px;
+          border-top: 3px solid #44c47d;
+          // border-bottom-left-radius: 8px;
+          border-left: 3px solid #44c47d;
+          border-bottom: 3px solid #44c47d;
+          border-bottom-left-radius: 8px;
+          
+          
+          box-shadow: 0 0 0 2px blue;
+        }
+        td.highlighted.highlighted-inner{
+          background-color: #e9ecef;
+          border-top: 3px solid #44c47d;
+          border-bottom: 3px solid #44c47d;
+          
+          
+          box-shadow: 0 0 0 2px blue;
+        }
+        td.highlighted.highlighted-last-edge{
+          background-color: #e9ecef;
+          border-radius: 0 5px 5px 0;
+          border-top: 3px solid #44c47d;
+          border-right: 3px solid #44c47d;
+          border-bottom: 3px solid #44c47d;
+          // border-color: blue;
+          
+          box-shadow: 0 0 0 2px blue;
+        }
+          
         .invalid-day {
           background-color: #e9ecef;
           cursor: not-allowed;
