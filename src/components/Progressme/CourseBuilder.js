@@ -18,17 +18,39 @@ import {
   FormGroup,
   Form,
   Input,
-  Label
+  Label,
+  Pagination,
+  PaginationLink,
+  PaginationItem,
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from 'reactstrap'
-import JsonStyleViewer from './JsonStyleViewer';
+import JsonStyleViewerV1 from './JsonStyleViewerV1';
+import JsonStyleViewerV2 from './JsonStyleViewerV2';
 import useWebSocket, { ReadyState, useSocketIO } from 'react-use-websocket'
+import SectionViewer1 from './SectionViewerV1';
+import SectionViewerV2 from './SectionViewerV2';
+import SectionViewerV3 from './SectionViewerV3';
+import SectionViewerV4 from './SectionViewerV4';
+import SectionViewerV5 from './SectionViewerV5';
+import SectionViewerV6 from './SectionViewerV6';
+import SectionViewerV7 from './SectionViewerV7';
+import SectionViewerV8 from './SectionViewerV8';
+import SectionViewerV9 from './SectionViewerV9';
+import useSocketWrapper from '../../variables/hooks/useSocketWrapper';
+import sampleBook from '../../variables/sampleBook.json'
+// import { resetStateWithNewData } from 'variables/slices/pdfSlices';
+import { flattenObject } from 'variables';
+import { useDispatch, useSelector } from 'react-redux'
+import { updateOrder, updateCorrection, updateData, addCorrection, add, resetStateWithNewData, removeCorrection, addData } from '../../variables/slices/pdfSlices'
+
+const response = sampleBook
+
+
 
 const CourseBuilder = () => {
-  
-  
-
-  
-
   const textBlocks = ([
     {
       'top': 82, 'left': 102, 'width': 330, 'height': 17, 'font': 2, 'data': 'Complete the sentences with him/her/them.'
@@ -66,11 +88,138 @@ const CourseBuilder = () => {
     {
       'top': 195, 'left': 102, 'width': 427, 'height': 17, 'font': 39, 'data': "5 I don't know Mr. Stevens. Do you know ........................ ................... ?"
     }])
+  
+  const [pageRanges, setPageRanges] = useState(0)
+  const [pages, setPages] = useState([]);//response.results[0].pages)
+  // { id: 0, page: { ...pages[0], source: "https://images.pexels.com/photos/45201/kitty-cat-kitten-pet-45201.jpeg" } }
+  const [currentPage, setCurrentpage] = useState({})
   const [updatedList, updatePosition, updateOrder, updateState] = usePositionReorder(textBlocks);
-  const pages = []
+  const [imageModalOpen, setImageModalOpen] = useState(false)
   const text=""
   const axios = new Axios()
+  const toggleImageModal = () => setImageModalOpen(!imageModalOpen);
+  const dispatch = useDispatch()
+  const data = useSelector(state => state.pdfData)
 
+  const handleOnMessage = (message, socket) => {
+    console.log(message)
+    try {
+      const jsonData = JSON.parse(message.data)
+      console.log(jsonData)
+      if ( jsonData.event === 'fetch-processed-book'){
+          
+        // setData(jsonData["output"]);
+        dispatch(resetStateWithNewData(flattenObject(jsonData.data)))
+        socket.sendJsonMessage({ event: 'fetch-processed-book-page', page_number: 0 })
+        
+      }
+      if (jsonData.event === 'fetch-processed-book-page-range') {
+        const { bookId, range } = jsonData.data
+        socket.sendJsonMessage({ event: "fetch-processed-book", 'opts': ['await-pages'] })
+        
+        
+
+        setPageRanges(range)
+      }
+      if (jsonData.event === 'fetch-processed-book-page') {
+        const { bookId, page_number, page } = jsonData.data
+        setPages(ps=> {
+          const prevActiveIdx = ps?.findIndex(p=> p.active) || -1
+          if (prevActiveIdx !== -1 ) {
+            (ps[prevActiveIdx].active = false) 
+          }
+          ps?.push({...page, active:true})
+          return ps
+        })
+        
+        
+        // flattenObject({ page: currentPage.page }).forEach(pc=>{
+          //   console.log("pc", pc);
+          
+          //   dispatch(addData(pc))
+          // })
+        // dispatch(updateData({ pathArray: ["pages"], update: flattenObject({pages:[{...page, page_image:{url:null}}]})}))
+        
+        const newState = data.filter(s => (!(s[0].includes("pages-0-"))))
+        console.log("newState", newState)
+        dispatch(resetStateWithNewData(
+          [
+            ...newState, 
+            ...flattenObject({
+              pages:[{ 
+                ...page, 
+                page_image: { url: null } 
+              }]
+            })
+          ]
+        ))
+          
+        setCurrentpage({ id:page_number, page: { ...page, source: page?.page_image?.url || "https://images.pexels.com/photos/45201/kitty-cat-kitten-pet-45201.jpeg" } })
+        
+        // setPageRanges(range)
+      }
+      // setData(jsonData["output"]);
+      // dispatch(resetStateWithNewData(flattenObject(jsonData.output.results)))
+    } catch (error) {
+      console.error('Error parsing JSON:', error)
+    }
+  }
+  const handleOnOpen = (ws, socket) => {
+    console.log('Connected', ws)
+    socket.sendJsonMessage({ event: 'fetch-processed-book-page-range' })
+    
+  }
+  const {
+    sendMessage,
+    sendJsonMessage,
+    lastMessage,
+    lastJsonMessage,
+    readyState,
+    socket
+  } = useSocketWrapper({
+    url: 'ws://localhost:8000/ws',
+    onOpenCallback: (ev, socket) => handleOnOpen(ev, socket),
+    onCloseCallback: (ev, socket) => console.log('Disconnected'),
+    onMessageCallback: (ev, socket) => handleOnMessage(ev, socket),
+    onErrorCallback: (ev, socket) => console.log('Rerror:', ev.error),
+
+  })
+  const handleGetPage = (e,id) =>{
+    e.preventDefault()
+    // let page;
+    // if(id > pages?.length-1){
+
+    //   // axios.get(`https://api.example.com/processed_book/${id}`)
+    //   // .then(response => {
+    //   //   console.log(response.data)
+    //   //   setPages(ps=> ps.push(response.data.page))
+    //   // })
+    //   // .catch(error => {console.log("error:", error)}
+    //   // page=response.data.page
+    //   page = pages?.at(-1)
+    //   id = pages?.length - 1
+    // }else{
+    //   page = pages?.[id]
+
+    // }
+    // setCurrentpage({ id, page: { ...page, source:"https://images.pexels.com/photos/45201/kitty-cat-kitten-pet-45201.jpeg"}})
+    let page;
+    if(id > pageRanges){
+
+      page = pages?.at(-1)
+      id = pages?.length - 1
+    }else{
+      sendJsonMessage({
+        event:'fetch-processed-book-page',
+        book_id:1, 
+        page_number:id
+      })
+      // page=response.data.page
+      // page = pages?.[id]
+
+    }
+    // setCurrentpage({ id, page: { ...page, source:"https://images.pexels.com/photos/45201/kitty-cat-kitten-pet-45201.jpeg"}})
+  }
   const handleInputValueChange = (e, itemIdx)=>{
     const list = [...updatedList]
     list[itemIdx].data = e.target.value
@@ -157,6 +306,7 @@ const CourseBuilder = () => {
       
     );
   }
+
   const UploadPdf = ()=>{
     const handleUploadPdf = (e)=>{
       e.preventDefault()
@@ -186,14 +336,89 @@ const CourseBuilder = () => {
       </div>
     )
   }
+  
 
+  const JsonStyleViewerWrapper = () =>(
+    <Row className='w-100  d-flex flex-row ' style={{height:'800px'}}>
+      <div className='w-75 h-100 lg-w-50 overflow-auto '>
+
+        <JsonStyleViewerV2 page={currentPage.page} socket={socket} />
+      </div>
+      <div className='w-25 mh-50 lg-w-50'>
+        <h3 className='d-none d-lg-flex justify-content-center w-50 pe-none border rounded' >Source image</h3>
+        <h3 className='d-flex justify-content-center w-100 d-lg-none pe-auto border rounded' style={{ cursor: 'pointer' }} onClick={toggleImageModal}>Source image</h3>
+        {/* <img src={currentPage.page.source_image} alt="source image" /> */}
+        <CardImg
+          src={currentPage?.page?.source}
+          sizes='sm'
+          className='w-auto d-none d-lg-block border rounded'
+          style={{ cursor: 'pointer' }}
+          onClick={toggleImageModal}
+        />
+
+
+        <Modal isOpen={imageModalOpen} toggle={toggleImageModal} size="lg" modalClassName='image-modal d-block'>
+          <ModalHeader toggle={toggleImageModal}>close</ModalHeader>
+          <ModalBody>
+            <CardImg
+              src={currentPage?.page?.source}
+              sizes='sm'
+
+            />
+          </ModalBody>
+        </Modal>
+
+      </div>
+    </Row>
+  )
+
+  const SectionViewerWrapper =() =>(
+    <Row className='d-flex flex-row'>
+      <Col className='w-50'>
+
+        {
+          currentPage?.page?.sections?.map((section,idx) => (
+            <div >
+              <h4>Section {idx+1}</h4>
+              <SectionViewerV9 section={section} />
+
+            </div>
+          ))
+          
+        }
+      </Col>
+      <Col>
+        <h3 className='d-none d-lg-flex justify-content-center w-50 pe-none border rounded' >Source image</h3>
+        <h3 className='d-flex justify-content-center w-50 d-lg-none pe-auto border rounded' style={{ cursor: 'pointer' }} onClick={toggleImageModal}>Source image</h3>
+        {/* <img src={currentPage.page.source_image} alt="source image" /> */}
+        <CardImg
+          src={currentPage?.page?.source}
+          sizes='sm'
+          className='d-none d-lg-block'
+        />
+
+
+        <Modal isOpen={imageModalOpen} toggle={toggleImageModal} size="lg" modalClassName='image-modal d-block d-lg-none'>
+          <ModalHeader toggle={toggleImageModal}>close</ModalHeader>
+          <ModalBody>
+            <CardImg
+              src={currentPage?.page?.source}
+              sizes='sm'
+
+            />
+          </ModalBody>
+        </Modal>
+
+      </Col>
+    </Row>
+  )
   return (
-    <Col lg="12 " className='h-100'>
-      <Card className='h-100'>
+    <Col lg="0" className=''>
+      <Card className='h-auto px-2'>
         <CardHeader>
           <h3>Course Builder</h3>
         </CardHeader>
-        <CardBody className='h-25'>
+        {/* <CardBody className='h-25'> */}
           
           {/* <Form id="text-block-editable-form overflow-hidden">
             {
@@ -211,8 +436,48 @@ const CourseBuilder = () => {
             
             <Button>Submit</Button>
           </Form> */}
-          <JsonStyleViewer/>
-        </CardBody>
+          {/* <SectionViewerV7 /> */}
+          {/* {
+            response.results[0].pages[0].sections.map(section=>(
+              
+              <SectionViewerV9 section={section}/>
+              ))
+              } */}
+        {/* </CardBody> */}
+        <Pagination className='px-3' aria-label="Page navigation example">
+          <PaginationItem key="page-prev" onClick={(e)=> handleGetPage(e,(currentPage.id > 1 ?  currentPage.id-1 : 0))}>
+            <PaginationLink previous href="#" />
+          </PaginationItem>
+          {
+            Array(pageRanges).fill("x").map((p,x) => (
+              <PaginationItem active={p?.active} key={x} onClick={(e) => handleGetPage(e,x)}>
+                <PaginationLink href="#">
+                  {x+1}
+                </PaginationLink>
+              </PaginationItem>
+            ))
+          }
+          <PaginationItem key="page-next" onClick={(e) => handleGetPage(e,currentPage.id + 1)}>
+            <PaginationLink next href="#" />
+          </PaginationItem>
+        </Pagination>
+        <CardBody className='' style={{ height: 'auto', minHeight:'200px', maxHeight: '800px' }}>
+            <Row>
+              <Col lg="12">
+              <h3 className='d-flex align-items-center'>
+                <p>
+                  Page:
+                </p> 
+                <p className={`p-2 ${currentPage?.page?.page ? 'text-info':'text-danger'} font-weight-meidum `} style={{ width: 'fit-content', height:'fit-content' }}>{currentPage?.page?.page || 'no page'}</p>
+                </h3>
+              </Col>
+            </Row>
+            
+            {/* <JsonStyleViewerWrapper/> */}
+            <SectionViewerWrapper/>
+            {/* <SectionViewerV9 section={section} /> */}
+          </CardBody>
+           
       </Card>
 
     </Col>
