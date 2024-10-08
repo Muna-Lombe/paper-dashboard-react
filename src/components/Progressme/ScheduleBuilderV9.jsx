@@ -539,7 +539,7 @@ const ScheduleBuilder = () => {
   //first remove all other activities from the cell 
   // then add a new activity
   const updateCell = (category) =>{
-    console.log("currentCell", currentCell);
+    // console.log("currentCell", currentCell);
     
     if(currentCell.isRange){
       const {first, last} = currentCell.range;
@@ -1023,7 +1023,7 @@ const ScheduleBuilder = () => {
                           ) : (
                             
                             <span 
-                              style={{width:'100%', height:'100%'}}
+                              // style={{width:'100%', height:'100%'}}
                               onClick={
                                 !isInvalidDay
                                   ? (e) => {
@@ -1143,6 +1143,14 @@ const ScheduleBuilder = () => {
                               </PopoverBody>
                               <style jsx>
                                 {`
+                                  td span{
+                                    display: block;
+                                    width: 100%;
+                                    height: 100%;
+                                    // position: absolute;
+                                    // top: 0;
+                                    // left: 0;
+                                  }
                                   .checkbox-formgroup{
                                     border:1px;
                                     border-radius: 5px;
@@ -1168,6 +1176,20 @@ const ScheduleBuilder = () => {
                               </style>
                             </UncontrolledPopover>
                           )}
+                          <style jsx>
+                            {
+                              `
+                                td span{
+                                    display: block;
+                                    width: 100%;
+                                    height: 100%;
+                                    // position: absolute;
+                                    // top: 0;
+                                    // left: 0;
+                                  }
+                              `
+                            }
+                          </style>
                         </td>
                       );
                     })}
@@ -1242,14 +1264,14 @@ const ScheduleBuilder = () => {
           position: relative;
           min-width: 30px;
         }
-        .schedule-table td span{
-          display: block;
-          width: 100%;
-          height: 100%;
-          // position: absolute;
-          // top: 0;
-          // left: 0;
-        }
+        // .schedule-table td span{
+        //   display: block;
+        //   width: 100%;
+        //   height: 100%;
+        //   // position: absolute;
+        //   // top: 0;
+        //   // left: 0;
+        // }
         td.highlighted.highlighted-first-edge{
           background-color: #e9ecef;
           // border-radius: 5px;
