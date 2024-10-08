@@ -339,12 +339,12 @@ const CourseBuilder = () => {
   
 
   const JsonStyleViewerWrapper = () =>(
-    <Row className='w-100 d-flex flex-row'>
-      <div className='w-75 lg-w-50 '>
+    <Row className='w-100  d-flex flex-row ' style={{height:'800px'}}>
+      <div className='w-75 h-100 lg-w-50 overflow-auto '>
 
         <JsonStyleViewerV2 page={currentPage.page} socket={socket} />
       </div>
-      <div className='w-25 lg-w-50'>
+      <div className='w-25 mh-50 lg-w-50'>
         <h3 className='d-none d-lg-flex justify-content-center w-50 pe-none border rounded' >Source image</h3>
         <h3 className='d-flex justify-content-center w-100 d-lg-none pe-auto border rounded' style={{ cursor: 'pointer' }} onClick={toggleImageModal}>Source image</h3>
         {/* <img src={currentPage.page.source_image} alt="source image" /> */}
@@ -413,8 +413,8 @@ const CourseBuilder = () => {
     </Row>
   )
   return (
-    <Col lg="12 " className='h-100'>
-      <Card className='h-100'>
+    <Col lg="0" className=''>
+      <Card className='h-auto px-2'>
         <CardHeader>
           <h3>Course Builder</h3>
         </CardHeader>
@@ -444,7 +444,7 @@ const CourseBuilder = () => {
               ))
               } */}
         {/* </CardBody> */}
-        <Pagination aria-label="Page navigation example">
+        <Pagination className='px-3' aria-label="Page navigation example">
           <PaginationItem key="page-prev" onClick={(e)=> handleGetPage(e,(currentPage.id > 1 ?  currentPage.id-1 : 0))}>
             <PaginationLink previous href="#" />
           </PaginationItem>
@@ -461,14 +461,20 @@ const CourseBuilder = () => {
             <PaginationLink next href="#" />
           </PaginationItem>
         </Pagination>
-          <CardBody className='h-25'>
+        <CardBody className='' style={{ height: 'auto', minHeight:'200px', maxHeight: '800px' }}>
             <Row>
               <Col lg="12">
-              <h3>Page {currentPage?.page?.page}</h3>
+              <h3 className='d-flex align-items-center'>
+                <p>
+                  Page:
+                </p> 
+                <p className={`p-2 ${currentPage?.page?.page ? 'text-info':'text-danger'} font-weight-meidum `} style={{ width: 'fit-content', height:'fit-content' }}>{currentPage?.page?.page || 'no page'}</p>
+                </h3>
               </Col>
             </Row>
             
-            <JsonStyleViewerWrapper/>
+            {/* <JsonStyleViewerWrapper/> */}
+            <SectionViewerWrapper/>
             {/* <SectionViewerV9 section={section} /> */}
           </CardBody>
            
