@@ -25,12 +25,17 @@ import "assets/scss/paper-dashboard.scss?v=1.3.0";
 import "assets/demo/demo.css";
 import "perfect-scrollbar/css/perfect-scrollbar.css";
 
-import AdminLayout from "layouts/Admin.js";
-import GuestLayout from "layouts/Guest.js";
-import DisplayNotification from "components/Headers/DisplayNotification";
-import store from "variables/reducerStore";
+import AdminLayout from "./layouts/Admin.js";
+import GuestLayout from "./layouts/Guest.js";
+import DisplayNotification from "./components/Headers/DisplayNotification";
+import store from "./variables/reducerStore";
+import { addBasename } from "variables/slices/basenameSlice.js";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
+const basename = "/paper-dashboard-react";
+
+sessionStorage.setItem('token', 1);
+
 const AuthedRoute = () => (
   sessionStorage.getItem('token') ? (
     <AdminLayout />
@@ -40,6 +45,10 @@ const AuthedRoute = () => (
 
 )
 
+
+//store.dispatch(addBasename(basename));
+
+
 root.render(
   <Provider store={store}>
     <BrowserRouter>
@@ -47,10 +56,10 @@ root.render(
       <DisplayNotification>
         <Routes>
 
-          <Route path="/admin/*" element={<AuthedRoute/>} />
-          <Route path="/*" element={<GuestLayout />} />
+          <Route path={(store.getState().basenames[0]||"")+"/admin/*"} element={<AuthedRoute/>} />
+          <Route path={(store.getState().basenames[0]||"")+"/*"} element={<GuestLayout />} />
           
-          <Route path="/" element={<Navigate to="/landing" replace />} />
+          <Route path={(store.getState().basenames[0]||"")+"/"} element={<Navigate to={(store.getState().basenames[0]||"")+"/landing" }replace />} />
         </Routes>
       
       </DisplayNotification>  

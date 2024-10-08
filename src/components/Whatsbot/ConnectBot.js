@@ -55,7 +55,7 @@ const ConnectBot = ({stage, qrcode, handlerBotConnect, handleQrRefresh}) => {
               
             }}
           >
-            Connect Bot
+            Register Bot
           </Button>
 
         </CardText>

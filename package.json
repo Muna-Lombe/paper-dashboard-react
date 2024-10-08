@@ -3,11 +3,16 @@
   "version": "1.3.2",
   "private": true,
   "dependencies": {
-    "@reduxjs/toolkit": "^2.2.6",
+    "@reduxjs/toolkit": "^2.2.7",
+    "array-move": "^4.0.0",
+    "axios": "^1.7.5",
     "bootstrap": "4.6.2",
     "browser-cookie": "^1.2.1",
     "chart.js": "3.9.1",
+    "framer-motion": "^11.3.30",
+    "html2canvas": "^1.4.1",
     "perfect-scrollbar": "1.5.5",
+    "popmotion": "^11.0.5",
     "prop-types": "^15.8.1",
     "react": "18.2.0",
     "react-chartjs-2": "3.3.0",
@@ -21,7 +26,9 @@
     "sass": "1.62.1"
   },
   "scripts": {
-    "predeploy": "npm run build",
+    "add-basename": "node addBasename.js",
+    "remove-basename": "node removeBasename.js",
+    "predeploy": "npm run add-basename && npm run build && npm run remove-basename",
     "deploy": "gh-pages -d build",
     "start": "react-scripts start",
     "build": "react-scripts build",

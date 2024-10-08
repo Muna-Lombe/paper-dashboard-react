@@ -34,8 +34,8 @@ import {
   Row,
   Col
 } from 'reactstrap'
-import { removeError } from '../../variables/errorSlice'
- import { removeToast } from '../../variables/toastSlice'
+import { removeError } from '../../variables/slices/errorSlice'
+ import { removeToast } from '../../variables/slices/toastSlice'
 
 function DisplayNotification({binderFn=()=>"",children}) {
   const notificationAlert = React.useRef()

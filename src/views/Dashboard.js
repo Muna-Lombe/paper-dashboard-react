@@ -16,12 +16,12 @@
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 */
-import Scrapper from "components/Progressme";
+import Scrapper from "../components/Progressme/CourseScraper";
 import DisplayNotification from "../components/Headers/DisplayNotification";
 import Whatsbot from "../components/Whatsbot";
 import React from "react";
 // react plugin used to create charts
-import { Line, Pie } from "react-chartjs-2";
+
 // reactstrap components
 import {
   Card,
@@ -40,6 +40,7 @@ import {
   dashboardEmailStatisticsChart,
   dashboardNASDAQChart,
 } from "variables/charts.js";
+import Progressme from "../components/Progressme";
 
 function Dashboard() {
 
@@ -48,7 +49,7 @@ function Dashboard() {
         <div className="content">
           <Row>
             <Col lg="3" md="6" sm="6">
-              <Card className="card-stats">
+              {/* <Card className="card-stats">
                 <CardBody>
                   <Row>
                     <Col md="4" xs="5">
@@ -71,11 +72,11 @@ function Dashboard() {
                     <i className="fas fa-sync-alt" /> Update Now
                   </div>
                 </CardFooter>
-              </Card>
+              </Card> */}
             
             </Col>
             <Col lg="3" md="6" sm="6">
-              <Whatsbot  />
+              {/* <Whatsbot  /> */}
             </Col>
             {/* <Col lg="3" md="6" sm="6">
               <Card className="card-stats">
@@ -130,32 +131,9 @@ function Dashboard() {
               </Card>
             </Col> */}
           </Row>
+         
+          <Progressme/>
           {/* <Row>
-            <Col md="12">
-              <Card>
-                <CardHeader>
-                  <CardTitle tag="h5">Users Behavior</CardTitle>
-                  <p className="card-category">24 Hours performance</p>
-                </CardHeader>
-                <CardBody>
-                  <Line
-                    data={dashboard24HoursPerformanceChart.data}
-                    options={dashboard24HoursPerformanceChart.options}
-                    width={400}
-                    height={100}
-                  />
-                </CardBody>
-                <CardFooter>
-                  <hr />
-                  <div className="stats">
-                    <i className="fa fa-history" /> Updated 3 minutes ago
-                  </div>
-                </CardFooter>
-              </Card>
-            </Col>
-          </Row> */}
-          <Scrapper/>
-          <Row>
             <Col md="4">
               <Card>
                 <CardHeader>
@@ -183,32 +161,9 @@ function Dashboard() {
               </Card>
             </Col>
             <Col md="8">
-              <Card className="card-chart">
-                <CardHeader>
-                  <CardTitle tag="h5">NASDAQ: AAPL</CardTitle>
-                  <p className="card-category">Line Chart with Points</p>
-                </CardHeader>
-                <CardBody>
-                  <Line
-                    data={dashboardNASDAQChart.data}
-                    options={dashboardNASDAQChart.options}
-                    width={400}
-                    height={100}
-                  />
-                </CardBody>
-                <CardFooter>
-                  <div className="chart-legend">
-                    <i className="fa fa-circle text-info" /> Tesla Model S{" "}
-                    <i className="fa fa-circle text-warning" /> BMW 5 Series
-                  </div>
-                  <hr />
-                  <div className="card-stats">
-                    <i className="fa fa-check" /> Data information certified
-                  </div>
-                </CardFooter>
-              </Card>
+              
             </Col>
-          </Row>
+          </Row> */}
         </div>
 
     </>

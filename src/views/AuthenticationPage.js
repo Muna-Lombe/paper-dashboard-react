@@ -18,7 +18,7 @@
 */
 import React, { useEffect } from "react";
 import {useNavigate} from "react-router-dom";
-import { addError } from 'variables/errorSlice'
+import { addError } from 'variables/slices/errorSlice'
 import { useSelector, useDispatch } from 'react-redux'
 
 // reactstrap components
@@ -255,6 +255,8 @@ function AuthenticationPage(){
   const [isSignIn, setIsSignIn] = React.useState(true);
   const location = useNavigate()
   const dispatch = useDispatch()
+  const { basenames } = useSelector(state => state.basenames)
+
   const handleFormSubmit = async (e) => {
     e.preventDefault()
     const form = document.forms[isSignIn ? "signin-form":"signup-form"]
@@ -289,7 +291,7 @@ function AuthenticationPage(){
     if(resData.status === 200 &&resData?.sessionKey){
 
       sessionStorage.setItem("token", resData?.sessionKey);
-      location("/admin/dashboard")
+      location((basenames[0]||"")+"/admin/dashboard")
     }
 
     return;
