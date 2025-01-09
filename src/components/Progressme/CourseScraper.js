@@ -29,6 +29,7 @@ import { useSelector, useDispatch } from 'react-redux'
 
 import fetchWithProxy from '../../variables/fetchWithProxy';
 import spirow from "../../assets/img/spriral-arrow.png";
+import { newGuid } from 'variables';
 // import { Form } from 'react-router-dom';
 const axios = new Axios()
 
@@ -47,7 +48,17 @@ const CourseScrapper = () => {
   domain: 'progressme.ru',
   secure: true
   });
+  const getAuthToken = ()=>{
+    // sess.getItem('Auth-Token')
+    
+    if(sess.getItem('Auth-Token')){
+      return sess.getItem('Auth-Token')
+    }
 
+
+    sess.setItem('Auth-Token',newGuid()) 
+    return sess.getItem('Auth-Token')
+  }
   const {GetIdMaterialMessage, GetBookMessage, CopySharedBookMessage,GetCurrentUserMessage, GetUserMessage, GetDebugMessage} ={
       GetIdMaterialMessage: {
         "controller":"SharingMaterialWsController","method":"GetIdMaterial",
@@ -160,14 +171,15 @@ const CourseScrapper = () => {
       setAuthing(true)
       const {email, password} = ((fd)=>({email:fd.get("email"), password:fd.get("password")}))(new FormData(document.forms["auth-in"]));
       
-      const authUrl ='https://new.progressme.ru/Account/Login';
+      const authUrl ='https://progressme.ru/Account/Login';
 
       
       const authBody = {
           "Email": email|| 'dante773@protonmail.com',
           "Password": password || '1901',
-          "UserRole": 0,
+          "UserRole": 4,
           "ReturnUrl": '',
+          "Auth-token": getAuthToken()
 
         };
       const authHeaders = new AxiosHeaders()
@@ -191,7 +203,7 @@ const CourseScrapper = () => {
           authHeaders.set(k,v,true)
       })
         
-      const res = await fetchWithProxy(authUrl, {
+      const res = await fetch(authUrl, {
         method: 'POST',
         headers: authHeaders.toJSON(),
         body: JSON.stringify(authBody),
@@ -228,24 +240,8 @@ const CourseScrapper = () => {
         
           
          
-          const newGuid = ()=> {
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-              var r = (Math.random() * 16) | 0,
-                v = c == 'x' ? r : (r & 0x3) | 0x8
-              return v.toString(16)
-            })
-          }
-          const getAuthToken = ()=>{
-            // sess.getItem('Auth-Token')
-            
-            if(sess.getItem('Auth-Token')){
-              return sess.getItem('Auth-Token')
-            }
-    
-
-            sess.setItem('Auth-Token',newGuid()) 
-            return sess.getItem('Auth-Token')
-          }
+          
+          
           
           const userSocket = useWebSocket(socketUrl + getAuthToken(),{
             onOpen: () => {
