@@ -69,7 +69,7 @@ const Progressme = () => {
               <CourseScraper />
             </div>
             <div id="course-builder" className={"tab-pane"+(activeTab === "course-builder" ? " active" : "")} style={{"display":" none;"}}> 
-              <CourseBuilder />
+              {/* <CourseBuilder /> */}
             </div>
             <div id="schedule-builder" className={"tab-pane"+(activeTab === "schedule-builder" ? " active" : "")} style={{"display":" none;"}}> 
               <ScheduleBuilderV9 />
