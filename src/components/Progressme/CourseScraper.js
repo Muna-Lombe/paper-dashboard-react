@@ -160,7 +160,7 @@ const CourseScrapper = () => {
       setAuthing(true)
       const {email, password} = ((fd)=>({email:fd.get("email"), password:fd.get("password")}))(new FormData(document.forms["auth-in"]));
       
-      const authUrl ='https://progressme.ru/Account/Login';
+      const authUrl ='https://new.progressme.ru/Account/Login';
 
       
       const authBody = {
@@ -175,7 +175,8 @@ const CourseScrapper = () => {
         
       Object.entries({
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        // 'Accept': 'application/json',
+        'Accept': '*/*',
         'Origin': 'https://progressme.ru',
         'Referer': 'https://progressme.ru/Account/Login',
         "Cache-Control": "no-cache",
@@ -183,8 +184,8 @@ const CourseScrapper = () => {
         "Access-Control-Allow-Origin":"*",
         "Access-Control-Allow-Methods":"GET, POST",
         "Connection": "keep-alive",
-        'User-Agent': 'PostmanRuntime/7.40.0',
-        "x-cors-api-key": "temp_16411e0f52e7224a8fecf2d3b77b8c27"
+        'User-Agent': 'PostmanRuntime/7.42.0',
+        // "x-cors-api-key": "temp_16411e0f52e7224a8fecf2d3b77b8c27"
       }).forEach(([k,v])=>{
           // console.log("k:", k);
           authHeaders.set(k,v,true)

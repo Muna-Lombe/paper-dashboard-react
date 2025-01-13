@@ -29,15 +29,20 @@
     "add-basename": "node addBasename.js",
     "remove-basename": "node removeBasename.js",
     "predeploy": "npm run add-basename && npm run build && npm run remove-basename",
-    "deploy": "gh-pages -d build",
+    "deploy": "npm run predeploy && gh-pages -d build",
     "start": "react-scripts start",
+    "server-dev": "nodemon server/server.js",
+    "server-start": "node server/server.js",
+    "dev:start-all": "npm run server-dev && npm run start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "install:clean": "rm -rf node_modules/ && rm -rf package-lock.json && npm install && npm start",
     "compile-sass": "node-sass src/assets/scss/paper-dashboard.scss src/assets/css/paper-dashboard.css",
     "minify-sass": "node-sass src/assets/scss/paper-dashboard.scss src/assets/css/paper-dashboard.min.css --output-style compressed",
-    "map-sass": "node-sass src/assets/scss/paper-dashboard.scss src/assets/css/paper-dashboard.css --source-map true"
+    "map-sass": "node-sass src/assets/scss/paper-dashboard.scss src/assets/css/paper-dashboard.css --source-map true",
+    "lint": "eslint .",
+    "clean": "npm prune --production && rm -rf build"
   },
   "eslintConfig": {
     "extends": "react-app"
