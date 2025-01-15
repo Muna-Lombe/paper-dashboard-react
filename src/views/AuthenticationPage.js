@@ -266,22 +266,22 @@ function AuthenticationPage(){
     const data = rest;
    
 
-    const url = isSignIn ? "http://localhost:5000/session/login" : "http://localhost:5000/user/register";
+    const url = isSignIn ? "http://localhost:5000/api/auth/login" : "http://localhost:5000/api/auth/register";
     const res = await fetch(
         url,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: "Bearer " + (localStorage.getItem("token") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoibW9vcmhvdXNlRU5UIiwiaWF0IjoxNzEwNzEzMTkzfQ.5_SXADx6j1mdAvpX7MDFx5CrlZ_HeWkXdMrKbVm1zmI")
+            "x-auth-token": ""//"Bearer " + (localStorage.getItem("token") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoibW9vcmhvdXNlRU5UIiwiaWF0IjoxNzEwNzEzMTkzfQ.5_SXADx6j1mdAvpX7MDFx5CrlZ_HeWkXdMrKbVm1zmI")
           },
           body: JSON.stringify(data)
         }
       )
       .then(res=> res)
       .catch(err=>({json:async()=>({status: 500, message:"Connection error!\n Please retry in a minute."})}))
+      console.log("res", res)
     const resData = await res.json()
-    console.log("res", resData)
     if(resData.status !==200){
       // alert(resData.message)
       dispatch(addError(resData.message))
@@ -290,7 +290,7 @@ function AuthenticationPage(){
     }
     if(resData.status === 200 &&resData?.sessionKey){
 
-      sessionStorage.setItem("token", resData?.sessionKey);
+      sessionStorage.setItem("Auth-Token", resData?.sessionKey);
       location((basenames[0]||"")+"/admin/dashboard")
     }
 

@@ -85,6 +85,13 @@ const CourseScraper = () => {
     const password = formData.get("password");
 
     try {
+      // Get a new token if not already set
+      if (!sess.getItem('Auth-Token')) {
+        const tokenResponse = await axios.get(`${API_URL}/scraper/token`);
+        sess.setItem('Auth-Token', tokenResponse.data.token);
+      }
+  
+      // Authenticate with the token
       const response = await axios.post(`${API_URL}/scraper/auth`, {
         email,
         password
@@ -92,9 +99,6 @@ const CourseScraper = () => {
 
       sess.setItem('userId', response.data.Value.Id);
       
-      // Get a new token
-      const tokenResponse = await axios.get(`${API_URL}/scraper/token`);
-      sess.setItem('Auth-Token', tokenResponse.data.token);
       
       setIsAuthed(true);
     } catch (error) {

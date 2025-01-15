@@ -45,6 +45,8 @@ router.post('/auth', [
         const { email, password } = req.body;
         const authResult = await courseScraperService.authenticateWithProgressMe(email, password);
         res.json(authResult);
+        courseScraperService.cleanup();
+        
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Authentication failed');

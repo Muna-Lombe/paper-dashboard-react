@@ -34,8 +34,8 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "server-dev": "nodemon server/server.js",
-    "server-start": "node server/server.js",
+    "server-dev": "nodemon -p 5000 server/index.js",
+    "server-start": "node server/index.js",
     "dev:start-all": "npm run server-dev && npm run start",
     
     "install:clean": "rm -rf node_modules/ && rm -rf package-lock.json && npm install && npm start",
