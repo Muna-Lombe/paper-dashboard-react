@@ -2,6 +2,8 @@ const WebSocket = require('ws');
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const randomUseragent = require('random-useragent');
+const dns = require('dns');
+const { promisify } = require('util');
 
 puppeteer.default.use(StealthPlugin());
 
@@ -11,11 +13,17 @@ class CourseScraperService {
         this.socketUrls = {
             books: "wss://books.progressme.ru/websocket",
             socket: "wss://progressme.ru/ws/WebSockets/SocketHandler.ashx",
-            debug: "wss://progressme.ru/ws/WebSockets/SocketHandler.ashx"
+            debug: "wss://progressme.ru/ws/WebSockets/SocketHandler.ashx",
+            auth: "wss://proxy.progressme.ru/websocket"
         };
         this.browser = null;
         this.page = null;
         this.currentXHR={}
+        this.dnsServers = [
+            '8.8.8.8',      // Google DNS
+            '1.1.1.1',      // Cloudflare DNS
+            '208.67.222.222' // OpenDNS
+        ];
     }
 
     validateUrl(url) {
@@ -33,13 +41,19 @@ class CourseScraperService {
         if (!this.browser) {
             this.browser = await puppeteer.default.launch({
                 headless: false,
-                args: ['--no-sandbox', '--disable-setuid-sandbox']
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-web-security',
+                    '--disable-features=IsolateOrigins,site-per-process',
+                    '--disable-site-isolation-trials'
+                ]
             });
         }
         if (!this.page) {
             this.page = await this.browser.newPage();
             
-            // Set random viewport size
+            // Set a more realistic viewport
             await this.page.setViewport({
                 width: 1920 + Math.floor(Math.random() * 100),
                 height: 3000 + Math.floor(Math.random() * 100),
@@ -49,76 +63,146 @@ class CourseScraperService {
                 isMobile: false,
             });
 
+            // Set more browser-like settings
+            await this.page.setExtraHTTPHeaders({
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+                'Sec-Fetch-Site': 'same-origin',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-User': '?1',
+                'Sec-Fetch-Dest': 'document'
+            });
+
+            // Disable request interception (allow all resources)
+            await this.page.setRequestInterception(false);
+
             // Set random user agent
             const userAgent = randomUseragent.getRandom();
             await this.page.setUserAgent(userAgent);
 
-            // Skip unnecessary resource types
-            await this.page.setRequestInterception(true);
-            this.page.on('request', (req) => {
-                if(['stylesheet', 'font', 'image'].indexOf(req.resourceType()) !== -1) {
-                    req.abort();
-                } else {
-                    req.continue();
-                }
-            });
-
-            // Listen for specific network responses
-            this.page.on('response', async response => {
-                const url = response.url();
-                const method = response.request().method()
-                // console.log("tick points", url, method);
-                
-                // You can check for specific endpoints
-                if (url.includes('https://progressme.ru/Account/Login') && method === "POST") {
-                    try {
-                        const responseData = await response.json();
-                        console.log('Response data:', responseData);
-                        this.currentXHR[`${this.page.title.toString()}`].res = responseData;
-
-                    } catch (e) {
-                        // Handle non-JSON responses
-                        console.log('Non-JSON response:', await response.text());
-                    }
-                }
-            });
-
             
-
-            // Add anti-detection scripts
+            // Add additional browser characteristics
             await this.page.evaluateOnNewDocument(() => {
-                // Pass webdriver check
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => false,
-                });
-
-                // Pass chrome check
-                window.chrome = {
-                    runtime: {},
-                };
-
-                // Pass notifications check
-                const originalQuery = window.navigator.permissions.query;
-                window.navigator.permissions.query = (parameters) => (
-                    parameters.name === 'notifications' ?
-                        Promise.resolve({ state: Notification.permission }) :
-                        originalQuery(parameters)
-                );
-
-
-                // Pass plugins check
+                // Add common browser features
                 Object.defineProperty(navigator, 'plugins', {
-                    get: () => [1, 2, 3, 4, 5],
+                    get: () => [
+                        {
+                            0: {type: "application/x-google-chrome-pdf", suffixes: "pdf", description: "Portable Document Format"},
+                            description: "Portable Document Format",
+                            filename: "internal-pdf-viewer",
+                            length: 1,
+                            name: "Chrome PDF Plugin"
+                        }
+                    ],
                 });
+                
+                // Listen for specific network responses
+                // this.page.on('response', async response => {
+                //     const url = response.url();
+                //     const method = response.request().method()
+                //     // console.log("tick points", url, method);
+                    
+                //     // You can check for specific endpoints
+                //     if (url.includes('https://progressme.ru/Account/Login') && method === "POST") {
+                //         try {
+                //             const responseData = await response.json();
+                //             console.log('Response data:', responseData);
+                //             this.currentXHR[`${this.page.title.toString()}`].res = responseData;
 
-                // Pass languages check
+                //         } catch (e) {
+                //             // Handle non-JSON responses
+                //             console.log('Non-JSON response:', await response.text());
+                //         }
+                //     }
+                // });
+                // Add language preferences
                 Object.defineProperty(navigator, 'languages', {
                     get: () => ['en-US', 'en'],
+                });
+
+                // Add WebGL support
+                Object.defineProperty(window, 'WebGL2RenderingContext', {
+                    get: () => true,
+                });
+
+                // // Pass chrome check
+                // window.chrome = {
+                //     runtime: {},
+                // };
+
+                // // Pass notifications check
+                // const originalQuery = window.navigator.permissions.query;
+                // window.navigator.permissions.query = (parameters) => (
+                //     parameters.name === 'notifications' ?
+                //         Promise.resolve({ state: Notification.permission }) :
+                //         originalQuery(parameters)
+                // );
+
+
+                // // Pass plugins check
+                // Object.defineProperty(navigator, 'plugins', {
+                //     get: () => [1, 2, 3, 4, 5],
+                // });
+
+
+                // Add media devices
+                Object.defineProperty(navigator, 'mediaDevices', {
+                    get: () => ({
+                        enumerateDevices: () => Promise.resolve([
+                            {kind: 'audioinput', label: 'Default', deviceId: 'default', groupId: 'default'},
+                            {kind: 'videoinput', label: 'Default', deviceId: 'default', groupId: 'default'}
+                        ])
+                    })
                 });
             });
         }
     }
 
+    async handleNavigateToLogin(page=this.page) {
+        try {
+            // Wait for network to be idle first
+            await page.waitForNetworkIdle({ 
+                timeout: 60000,
+                idleTime: 500
+            });
+            
+            console.log("page is landing page");
+            
+            const loginBtn = await page.evaluate(() => {
+                return document.querySelector('button[text="start_b_login"]');
+            });
+
+            if(!loginBtn){
+                return false
+            }
+
+            const btnBox = loginBtn.getBoundingClientRect()
+            
+            this.page.mouse.click(
+                btnBox.x, btnBox.y,
+                {
+                    delay: 50
+                }
+            )
+
+            await page.waitForNavigation({
+                timeout: 60000,
+                waitUntil: ['networkidle0', 'load', 'domcontentloaded']
+            })
+           await page.waitForNetworkIdle({
+                timeout: 60000,
+                idleTime: 500
+            })
+
+
+        } catch (error) {
+            console.error('Login navigation handling failed:', error);
+            return false;
+        }
+    }
     async handleCaptcha(page=this.page) {
         try {
             // Wait for network to be idle first
@@ -131,13 +215,10 @@ class CourseScraperService {
             const pageContainsCaptchaButton = await page.evaluate(() => {
                 return document.querySelector('.CheckboxCaptcha-Button') !== null;
             });
-            const pageHasCaptchaInUrl = page.url().startsWith('https://progressme.ru/showcaptcha?');
             
             console.log("page is captcha page", pageHasCaptchaInUrl, pageContainsCaptchaButton);
             
-            if (!pageHasCaptchaInUrl) return true;
-            
-            console.log("Page is captcha page");
+            // console.log("Page is captcha page");
             
             // Wait for iframe to load
             // if the iframe doesn't appear after 3sec, reload the page
@@ -170,23 +251,37 @@ class CourseScraperService {
             // Random delay before clicking (between 100ms and 300ms)
             await new Promise(resolve => setTimeout(resolve, Math.random() * 200 + 100));
 
-
+            this.page.mouse.click(
+                box.x, box.y,
+                {
+                    delay: 50
+                }
+            )
             // Click the button
-            await button.click({ delay: 50 }); // Small click delay
+            // await button.click({ delay: 50 }); // Small click delay
 
             // Wait for navigation or success with multiple conditions
-            await Promise.race([
-                page.waitForNetworkIdle({
-                    timeout: 60000,
-                    idleTime: 500
-                }),
-                page.waitForNavigation({
-                    timeout: 60000,
-                    waitUntil: ['networkidle0', 'load', 'domcontentloaded']
-                })
-            ]).catch(() => {}); // Ignore timeout
+            // await Promise.race([
+            //     page.waitForNetworkIdle({
+            //         timeout: 60000,
+            //         idleTime: 500
+            //     }),
+            //     page.waitForNavigation({
+            //         timeout: 60000,
+            //         waitUntil: ['networkidle0', 'load', 'domcontentloaded']
+            //     })
+            // ]).catch(() => {}); // Ignore timeout
 
-            console.log("Captcha is solved");
+            await page.waitForNavigation({
+                timeout: 60000,
+                waitUntil: ['networkidle0', 'load', 'domcontentloaded']
+            })
+            await page.waitForNetworkIdle({
+                timeout: 60000,
+                idleTime: 500
+            })
+
+            console.log("Captcha is solved and redirected. current url:", this.page.url());
             
             return true;
         } catch (error) {
@@ -195,6 +290,167 @@ class CourseScraperService {
         }
     }
 
+    async resolveHostname(hostname) {
+        for (const dnsServer of this.dnsServers) {
+            try {
+                const resolver = new dns.Resolver();
+                resolver.setServers([dnsServer]);
+                const resolve4 = promisify(resolver.resolve4.bind(resolver));
+                const addresses = await resolve4(hostname);
+                console.log(`Successfully resolved ${hostname} to ${addresses[0]} using ${dnsServer}`);
+                return addresses[0];
+            } catch (error) {
+                console.log(`DNS resolution failed with ${dnsServer}:`, error.message);
+                continue;
+            }
+        }
+        throw new Error('Failed to resolve hostname with all DNS servers');
+    }
+
+    async createWebSocketConnection(url, maxRetries = 3) {
+        const urlObj = new URL(url);
+        let retryCount = 0;
+        
+        // First try to resolve the hostname
+        try {
+            // Use system DNS first
+            try {
+                const address = await new Promise((resolve, reject) => {
+                    dns.lookup(urlObj.hostname, (err, address) => {
+                        if (err) reject(err);
+                        else {
+                            console.log(`Resolved ${urlObj.hostname} to ${address}`);
+                            resolve(address);
+                        }
+                    });
+                });
+                console.log('System DNS lookup succeeded:', address);
+            } catch (error) {
+                console.log('System DNS lookup failed:', error.message);
+                // If system DNS fails, try our custom DNS resolvers
+                await this.resolveHostname(urlObj.hostname);
+            }
+            
+            while (retryCount < maxRetries) {
+                try {
+                    // Create WebSocket connection with additional options
+                    const ws = new WebSocket(url, {
+                        headers: {
+                            'Host': urlObj.hostname,
+                            'Origin': 'https://progressme.ru',
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124 Safari/537.36',
+                            'Accept-Language': 'en-US,en;q=0.9',
+                            'Accept-Encoding': 'gzip, deflate, br',
+                            'Cache-Control': 'no-cache',
+                            'Pragma': 'no-cache',
+                            'Connection': 'Upgrade',
+                            'Upgrade': 'websocket'
+                        },
+                        timeout: 30000,
+                        followRedirects: true,
+                        handshakeTimeout: 30000,
+                        rejectUnauthorized: false,
+                        family: 4,
+                        perMessageDeflate: false
+                    });
+
+                    return await new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => {
+                            ws.close();
+                            reject(new Error('Connection timeout'));
+                        }, 30000);
+
+                        ws.on('open', () => {
+                            clearTimeout(timeout);
+                            resolve(ws);
+                        });
+
+                        ws.on('error', (error) => {
+                            clearTimeout(timeout);
+                            reject(error);
+                        });
+                    });
+
+                } catch (error) {
+                    console.log(`Connection attempt ${retryCount + 1} failed:`, error.message);
+                    retryCount++;
+                    if (retryCount === maxRetries) {
+                        throw error;
+                    }
+                    await new Promise(resolve => 
+                        setTimeout(resolve, Math.min(2000 * Math.pow(2, retryCount), 20000))
+                    );
+                }
+            }
+        } catch (error) {
+            throw new Error(`Failed to establish connection: ${error.message}`);
+        }
+    }
+
+    async authenticateWithWebSocket(email, password) {
+        try {
+            const authToken = this.generateAuthToken();
+            const wsUrl = `wss://proxy.progressme.ru/websocket?token=${authToken}`;
+            
+            const ws = await this.createWebSocketConnection(wsUrl);
+            console.log('WebSocket connected successfully');
+
+            return new Promise((resolve, reject) => {
+                ws.on('message', async (data) => {
+                    const response = JSON.parse(data.toString());
+                    console.log('Received:', response);
+
+                    if (response.Method === "GetAccountRoles") {
+                        // Send login message after getting roles
+                        const loginMessage = {
+                            Controller: "AccountWsController",
+                            Method: "Login",
+                            ProjectName: "Users",
+                            RequestId: this.generateAuthToken(),
+                            Value: JSON.stringify({
+                                Email: email,
+                                Password: password,
+                                RememberMe: true,
+                                UserRole: 4, // From first response
+                                AuthToken: authToken,
+                                CurrentDomain: "progressme.ru",
+                                AccountRole: 1 // From first response
+                            })
+                        };
+
+                        ws.send(JSON.stringify(loginMessage));
+                    }
+
+                    if (response.Method === "Login") {
+                        if (response.Success) {
+                            ws.close();
+                            resolve({
+                                token: authToken,
+                                data: response
+                            });
+                        } else {
+                            ws.close();
+                            reject(new Error('Login failed: ' + response.Message));
+                        }
+                    }
+                });
+
+                ws.on('error', (error) => {
+                    console.error('WebSocket error:', error);
+                    reject(error);
+                });
+
+                // Add timeout
+                setTimeout(() => {
+                    ws.close();
+                    reject(new Error('WebSocket authentication timeout'));
+                }, 30000);
+            });
+        } catch (error) {
+            throw new Error('WebSocket authentication failed: ' + error.message);
+        }
+    }
+    
     generateMousePath(start, end) {
         const points = [];
         const numPoints = Math.floor(Math.random() * 10) + 10; // 10-20 points
@@ -227,6 +483,52 @@ class CourseScraperService {
         return points;
     }
 
+    async handleApiLogin(page){
+        try {
+            // Create the login request payload
+            const loginData = {
+                Email: this.email,
+                Password: this.password,
+                RememberMe: true,
+                ReturnUrl: null
+            };
+
+            // Make direct API request to login endpoint
+            const response = await page.evaluate(async (data) => {
+                const response = await fetch('https://progressme.ru/Account/Login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(data),
+                    credentials: 'include'
+                });
+                
+                return {
+                    status: response.status,
+                    ok: response.ok,
+                    url: response.url
+                };
+            }, loginData);
+
+            if (response.ok) {
+                // Wait for redirect/navigation after successful login
+                await page.waitForNavigation({
+                    waitUntil: ['networkidle0', 'load', 'domcontentloaded'],
+                    timeout: 60000
+                });
+                return true;
+            }
+
+            return false;
+
+        } catch (error) {
+            console.error('API login failed:', error);
+            return false;
+        }
+    }
+
     async authenticateWithProgressMe(email, password) {
         try {
             await this.initBrowser();
@@ -237,19 +539,39 @@ class CourseScraperService {
                 timeout: 60000
             });
 
-            console.log("Page is loaded");
+                
+            // Navigate using keyboard instead of goto
+            // await this.navigateWithKeyboard(this.page, 'https://progressme.ru/Account/Login');
 
-            // await this.monitorEndpoint(this.page, "POST","https://progressme.ru/Account/Login")
-            // Handle any initial captcha
-            await this.handleCaptcha(this.page);
+            console.log("Page is loaded", this.page.url());
+
+            // Monitor the login endpoint for response
+            // this.currentXHR = {};
+            // const monitor = await this.monitorEndpoint(this.page, "POST","https://progressme.ru/Account/Login");
+            // const monitorComplete = await monitor;
+            
+            const pageHasCaptchaInUrl = this.page.url().startsWith('https://progressme.ru/showcaptcha?');
+            const pageIsLandingPage = this.page.url() === 'https://progressme.ru';
+            if (pageIsLandingPage){
+                await this.handleNavigateToLogin(this.page)
+            }
+            
+            if (pageHasCaptchaInUrl){
+                // Handle any initial captcha
+                await this.handleCaptcha(this.page);
+            };
+
+
+            const currentUrl = this.page.url();
+            const newPage = this.page;//await this.createNewTabWithUrl(currentUrl);
 
             // Find the form
-            const fieldsFound = await this.page.evaluate(() => {
-                console.log("email:", document.querySelector('input[name="Email"]').tagName);
-                console.log("pw:", document.querySelector('input[name="Password"]').tagName);
-                console.log("btn:", document.querySelector('button[data-bind="click:GetRoles"]').tagName);
+            const fieldsFound = await newPage.evaluate(() => {
+                console.log("email:", document.querySelector('input[name="Email"]')?.tagName);
+                console.log("pw:", document.querySelector('input[name="Password"]')?.tagName);
+                console.log("btn:", document.querySelector('button[data-bind="click:GetRoles"]')?.tagName);
                 
-                return (document.querySelector('input[name="Email"]').type !== null) && (document.querySelector('input[name="Password"]') !== null) && (document.querySelector('button[data-bind="click:GetRoles"]') !== null);
+                return (document.querySelector('input[name="Email"]')?.type !== null) && (document.querySelector('input[name="Password"]')?.type !== null) && (document.querySelector('button[data-bind="click:GetRoles"]') !== null);
             });
             
 
@@ -257,18 +579,30 @@ class CourseScraperService {
             console.log("creds", email, password);
             
             console.log("fields found:? ", fieldsFound);
+
+            if(!fieldsFound){
+                throw new Error('Authentication failed: No auth fields found');
+                // const oldpage = this.page;
+                // this.page = await this.browser.newPage();
+                // await oldpage.close();
+                // return this.authenticateWithProgressMe(email, password)
+            }
+
+
+
+
             
-            await this.page.type('input[name="Email"]', email);
-            await this.page.type('input[name="Password"]', password);
-            await this.page.click('button[data-bind="click:GetRoles"]'),
+            await newPage.type('input[name="Email"]', email);
+            await newPage.type('input[name="Password"]', password);
+            await newPage.click('button[data-bind="click:GetRoles"]'),
             
-            // Click login button and wait for navigation with multiple conditions
+            // Wait for either navigation or network idle
             await Promise.race([
-                this.page.waitForNavigation({
+                newPage.waitForNavigation({
                     timeout: 60000,
                     waitUntil: ['networkidle0', 'load', 'domcontentloaded']
                 }),
-                this.page.waitForNetworkIdle({
+                newPage.waitForNetworkIdle({
                     timeout: 60000,
                     idleTime: 500
                 })
@@ -276,10 +610,11 @@ class CourseScraperService {
             
             console.log("XHR::", this.currentXHR);
             
-            const response = this.currentXHR[`${this.page.title.toString()}`].res;
+            
+            const response = this.currentXHR[`${newPage.title.toString()}`].res;
 
             // Handle any post-login captcha
-            await this.handleCaptcha(this.page);
+            await this.handleCaptcha(newPage);
 
             // Get cookies for WebSocket connection
             const cookies = await this.browser.cookies();
@@ -292,15 +627,16 @@ class CourseScraperService {
 
             console.log("debugInfo", response);
             
+
         
 
-            if ( !authToken?.value) {
+            if (!authToken?.value) {
                 throw new Error('Authentication failed: No auth cookie found');
             }
 
             return {
                 token: authToken.value,
-                data: this.currentXHR[`${this.page.title.toString()}`]
+                data: this.currentXHR[`${newPage.title.toString()}`]
                 // cookies: cookies
             };
         } catch (error) {
@@ -382,8 +718,8 @@ class CourseScraperService {
 
     async monitorEndpoint(page, targetMethod, endpointUrl) {
         return new Promise((resolve, reject) => {
-            const responseHandler = async response => {
 
+            const responseHandler = async response => {
                 const url = response.url();
                 const method = response.request().method()
                 if (url.includes(endpointUrl) && method === targetMethod) {
@@ -399,12 +735,6 @@ class CourseScraperService {
             };
 
             page.on('response', responseHandler);
-
-            // Optional timeout
-            // setTimeout(() => {
-            //     page.removeListener('response', responseHandler);
-            //     reject(new Error('Endpoint monitoring timed out'));
-            // }, 30000);
         });
     }
 
@@ -415,6 +745,170 @@ class CourseScraperService {
             return v.toString(16);
         });
     }
+
+    async createNewTabWithUrl(originalUrl) {
+        try {
+            // Create a new page/tab
+            const newPage = await this.browser.newPage();
+            
+            // Apply the same settings as the original page
+            await this.page.setViewport({
+                width: 1920 + Math.floor(Math.random() * 100),
+                height: 3000 + Math.floor(Math.random() * 100),
+                deviceScaleFactor: 1,
+                hasTouch: false,
+                isLandscape: false,
+                isMobile: false,
+            });
+
+            // Set random user agent
+            const userAgent = randomUseragent.getRandom();
+            await this.page.setUserAgent(userAgent);
+
+            // Navigate to the URL
+            await this.page.goto(originalUrl, {
+                waitUntil: ['networkidle0', 'load', 'domcontentloaded'],
+                timeout: 60000
+            });
+
+            // Close the old page
+            if (this.page) {
+                await this.page.close();
+            }
+
+            // Set the new page as the current page
+            this.page = newPage;
+            
+            return newPage;
+        } catch (error) {
+            console.error('Error creating new tab:', error);
+            throw error;
+        }
+    }
+
+    async navigateWithKeyboard(page=this.page, url) {
+        try {
+            console.log("navigate with keyboard");
+            
+            // Small delay before typing
+            await new Promise(resolve => setTimeout(resolve, Math.random() * 2000 + 500));
+            console.log("toggling address bar...");
+            
+
+            // Focus the address bar (Cmd/Ctrl + L)
+            await page.keyboard.down(process.platform === 'darwin' ? 'MetaLeft' : 'ControlLeft');
+            await page.keyboard.press('KeyL');
+            await page.keyboard.up(process.platform === 'darwin' ? 'MetaLeft' : 'ControlLeft');
+
+            // Small delay before typing
+            await new Promise(resolve => setTimeout(resolve, Math.random() * 200 + 100));
+            
+            console.log("emptying adressbar...");
+            
+            // Clear existing URL using proper key definitions
+            await page.keyboard.down('ControlLeft');
+            await page.keyboard.press('KeyA');
+            await page.keyboard.up('ControlLeft');
+            await page.keyboard.press('Backspace');
+
+            console.log("typing address...");
+            
+            // Type URL with random delays between characters
+            // for (const char of url) {
+                await page.keyboard.type(url, {
+                    delay: Math.random() * 100 + 30 // 30-130ms delay between keystrokes
+                });
+            // }
+
+            // Small delay before pressing enter
+            await new Promise(resolve => setTimeout(resolve, Math.random() * 200 + 100));
+
+            console.log("navigating...");
+            
+            // Press enter and wait for navigation
+            await Promise.all([
+                page.keyboard.press('Enter'),
+                page.waitForNavigation({
+                    waitUntil: ['networkidle0', 'load', 'domcontentloaded'],
+                    timeout: 60000
+                })
+            ]);
+
+            return true;
+        } catch (error) {
+            console.error('Navigation failed:', error);
+            return false;
+        }
+    }
+    // async handleCaptcha(page) {
+    //     try {
+    //         // Wait for network to be idle first
+    //         await page.waitForNetworkIdle({ 
+    //             timeout: 60000,
+    //             idleTime: 500
+    //         });
+
+    //         // Check if we're on a captcha page
+    //         const pageHasCaptchaInUrl = page.url().startsWith('https://progressme.ru/showcaptcha?');
+            
+    //         if (!pageHasCaptchaInUrl) return true;
+            
+    //         console.log("Page is captcha page");
+            
+    //         // Create new tab with same URL if components seem disabled
+    //         const currentUrl = page.url();
+    //         // await this.createNewTabWithUrl(currentUrl);
+            
+    //         // Wait for iframe to load in new tab
+    //         const frameHandle = await this.page.waitForSelector('iframe[title="SmartCaptcha checkbox widget"]');
+    //         const frame = await frameHandle.contentFrame();
+            
+    //         // Get the button dimensions and position within the iframe
+    //         const button = await frame.$('.CheckboxCaptcha-Button');
+    //         const box = await button.boundingBox();
+
+    //         console.log("IMNR Button is found at coordinates", box);
+
+    //         // Generate "human-like" mouse movement
+    //         const points = this.generateMousePath(
+    //             { x: 0, y: 0 }, 
+    //             { x: box.x + box.width/2, y: box.y + box.height/2 }
+    //         );
+
+    //         // Simulate mouse movement
+    //         for (const point of points) {
+    //             await this.page.mouse.move(point.x, point.y, {
+    //                 steps: 10 // Make movement smoother
+    //             });
+    //         }
+
+    //         // Random delay before clicking (between 100ms and 300ms)
+    //         await new Promise(resolve => setTimeout(resolve, Math.random() * 200 + 100));
+
+
+    //         // Click the button
+    //         await button.click({ delay: 50 }); // Small click delay
+
+    //         // Wait for navigation or success with multiple conditions
+    //         await Promise.race([
+    //             this.page.waitForNetworkIdle({
+    //                 timeout: 60000,
+    //                 idleTime: 500
+    //             }),
+    //             this.page.waitForNavigation({
+    //                 timeout: 60000,
+    //                 waitUntil: ['networkidle0', 'load', 'domcontentloaded']
+    //             })
+    //         ]).catch(() => {}); // Ignore timeout
+
+    //         console.log("Captcha is solved");
+            
+    //         return true;
+    //     } catch (error) {
+    //         console.error('Captcha handling failed:', error);
+    //         return false;
+    //     }
+    // }
 }
 
 
