@@ -234,6 +234,8 @@ router.post('/copy-course', [
 router.get('/token', auth, async (req, res) => {
     try {
         const token = courseScraperService.generateAuthToken();
+        res.header('Access-Control-Allow-Origin', '*');
+        res.header('Access-Control-Allow-Credentials', 'true');
         res.json({ token });
     } catch (err) {
         console.error(err.message);
