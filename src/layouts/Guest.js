@@ -1,21 +1,4 @@
-/*!
 
-=========================================================
-* Paper Dashboard React - v1.3.2
-=========================================================
-
-* Product Page: https://www.creative-tim.com/product/paper-dashboard-react
-* Copyright 2023 Creative Tim (https://www.creative-tim.com)
-
-* Licensed under MIT (https://github.com/creativetimofficial/paper-dashboard-react/blob/main/LICENSE.md)
-
-* Coded by Creative Tim
-
-=========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-*/
 import React from "react";
 // javascript plugin used to create scrollbars on windows
 import PerfectScrollbar from "perfect-scrollbar";
@@ -59,7 +42,7 @@ function GuestComponent(props) {
   };
   return (
     <div className="wrapper">
-      <div className="main-panel" ref={mainPanel} data-sidebar-disabled="true">
+      <div className="main-panel w-100" ref={mainPanel} data-sidebar-disabled="true">
         <Routes>
           {routes.map((prop, key) => {
             return (

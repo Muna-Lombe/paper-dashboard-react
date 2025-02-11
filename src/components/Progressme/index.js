@@ -26,12 +26,12 @@ const Progressme = () => {
   return (
     // build a component with switchable tabs for course builder and course scraper
     // add a button to switch between the two
+
     <Row className="my-4" style={{ height: "800px", maxHeight: "1000px" }}>
+
       <Col>
         <h1>Progressme</h1>
-        {/* <Button onClick={() => setActivetab(<CourseScraper />)}>Course Scraper</Button>
-        <Button onClick={() => setActivetab(<CourseBuilder />)}>Course Builder</Button>
-        {activeTab} */}
+        {/*  */}
         <div>
           <ul
             role="tablist"
