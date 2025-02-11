@@ -18,14 +18,7 @@ import {
   Input,
   Label,
 } from "reactstrap";
-import ScheduleBuilderV1 from "./ScheduleBuilderV1";
-import ScheduleBuilderV2 from "./ScheduleBuilderV2";
-import ScheduleBuilderV3 from "./ScheduleBuilderV3";
-import ScheduleBuilderV4 from "./ScheduleBuilderV4";
-import ScheduleBuilderV5 from "./ScheduleBuilderV5";
-import ScheduleBuilderV6 from "./ScheduleBuilderV6";
-import ScheduleBuilderV7 from "./ScheduleBuilderV7";
-import ScheduleBuilderV8 from "./ScheduleBuilderV8";
+
 import ScheduleBuilderV9 from "./ScheduleBuilderV9";
 
 const Progressme = () => {
