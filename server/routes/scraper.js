@@ -139,13 +139,71 @@ router.post('/auth', [
         const { email, password } = req.body;
         const authResult = await courseScraperService.authenticateWithWebSocket(email, password);
         res.json(authResult);
-        courseScraperService.cleanup();
+        // courseScraperService.cleanup();
         
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Authentication failed');
     }
 });
+
+/**
+ * @swagger
+ * /api/scraper/getbook?code:
+ *   get:
+ *     summary: Get a book by code
+ *     tags: [Scraper]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: code
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The book code
+ *     responses:
+ *       200:
+ *         description: Book found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 book:
+ *                   $ref: '#/components/schemas/ScrapedCourse'
+ *       400:
+ *         description: Invalid book code
+ *       500:
+ *         description: Server error
+ *       503:
+ *         description: Book not found
+ *       504:
+ *         description: Book not found
+ *     components:
+ *       schemas:
+ *         ScrapedCourse:
+ *           type: object
+ *           properties:
+ *             bookId:
+ *               type: string
+ *               description: The ID of the book in ProgressMe
+ *             bookName:
+ *               type: string
+ *               description: The name of the book
+ *   
+ */
+
+router.get('/getbook',[],async(req, res)=>{
+    try {
+        const { code } = req.query;
+        const book = await courseScraperService.getBook(code);
+        res.json({...book});
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+})
 
 /**
  * @swagger

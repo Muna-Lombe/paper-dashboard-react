@@ -23,7 +23,7 @@ const API_URL =
   "https://de885a4b-d886-4a17-9372-6791449191cc-00-sk4u39m5xe4b.picard.replit.dev:5000/api";
 
 const CourseScraper = () => {
-  const [targetUrl, setTargetUrl] = useState("https://progressme.ru/");
+  const [targetUrl, setTargetUrl] = useState(null);
   const [isAuthed, setIsAuthed] = useState(false);
   const [testUrl, setTestUrl] = useState(
     "https://progressme.ru/SharingMaterial/c172ca5c-2488-4a14-843f-8caf7c993c79",
@@ -31,7 +31,29 @@ const CourseScraper = () => {
   const sess = sessionStorage;
   const dispatch = useDispatch();
 
-  const handleClick = async (e, setLinkLoading) => {
+  const handleGetBook = async (e, tUrl) => {
+    e.preventDefault();
+    try {
+      const response = await axios.get(
+        `${API_URL}/scraper/getbook?code=${(targetUrl ?? tUrl).split("SharingMaterial/")[1] || ""}`,
+      );
+      // console.log("book response", response);
+      if (response?.data) {
+        sess.setItem("bookId", response.data?.bookId || "nil");
+        sess.setItem("bookName", response.data?.bookName || "nil");
+      } else {
+        dispatch(addError("Book not loaded correctly. Please try again."));
+        sess.setItem("bookId", "");
+        sess.setItem("bookName", "");
+      }
+    } catch (error) {
+      // console.log(error);
+      dispatch(addError(error.response?.data?.msg || "Failed to get  book"));
+      sess.setItem("bookId", "");
+      sess.setItem("bookName", "");
+    }
+  };
+  const handleLoadLink = async (e, setLinkLoading) => {
     e.preventDefault();
     setLinkLoading(true);
 
@@ -41,6 +63,7 @@ const CourseScraper = () => {
       });
 
       if (response.data.url) {
+        await handleGetBook(e, response.data.url);
         setTargetUrl(response.data.url);
       } else {
         dispatch(addError("Book link is not correct. Please check."));
@@ -101,7 +124,9 @@ const CourseScraper = () => {
         password,
       });
 
-      sess.setItem("userId", response.data.Value.Id);
+      // console.log("response from auth", response);
+
+      sess.setItem("userId", response.data.data.Value.Id);
 
       setIsAuthed(true);
     } catch (error) {
@@ -221,7 +246,7 @@ const CourseScraper = () => {
     <Form
       id="load-link"
       className="w-75"
-      onSubmit={(e) => handleClick(e, setLinkLoading)}
+      onSubmit={(e) => handleLoadLink(e, setLinkLoading)}
     >
       <FormGroup className="w-100">
         <Input
@@ -321,7 +346,7 @@ const CourseScraper = () => {
           src={targetUrl}
           frameBorder="0"
           allowFullScreen={true}
-          className="iframe_iframe w-100 h-100"
+          className="iframe_iframe w-100 h-100 min-h-[500px]"
           title="course preview"
         />
       ) : (
