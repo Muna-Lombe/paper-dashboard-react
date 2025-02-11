@@ -32,7 +32,7 @@
     "predeploy": "npm run add-basename && npm run build && npm run remove-basename",
     "deploy": "npm run predeploy && gh-pages -d build",
     "start": "npm run install:clean-slate && concurrently \"react-scripts start\" \"node server/index.js\"",
-    "build": "npm run install:clear-slate && concurrently \"react-scripts build\" \"node server/index.js\"",
+    "build": "npm run install:clean-slate && concurrently \"react-scripts build\" \"node server/index.js\"",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "server-dev": "nodemon -p 5000 server/index.js",
