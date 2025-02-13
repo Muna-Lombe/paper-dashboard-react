@@ -168,18 +168,18 @@ class CourseScraperService {
                 // this.page.on('response', async response => {
                 //     const url = response.url();
                 //     const method = response.request().method()
-                //     // console.log("tick points", url, method);
+                //     // // console.log("tick points", url, method);
 
                 //     // You can check for specific endpoints
                 //     if (url.includes('https://progressme.ru/Account/Login') && method === "POST") {
                 //         try {
                 //             const responseData = await response.json();
-                //             console.log('Response data:', responseData);
+                //             // console.log('Response data:', responseData);
                 //             this.currentXHR[`${this.page.title.toString()}`].res = responseData;
 
                 //         } catch (e) {
                 //             // Handle non-JSON responses
-                //             console.log('Non-JSON response:', await response.text());
+                //             // console.log('Non-JSON response:', await response.text());
                 //         }
                 //     }
                 // });
@@ -243,7 +243,7 @@ class CourseScraperService {
                 idleTime: 500,
             });
 
-            console.log("page is landing page");
+            // console.log("page is landing page");
 
             const loginBtn = await page.evaluate(() => {
                 return document.querySelector('button[text="start_b_login"]');
@@ -293,7 +293,7 @@ class CourseScraperService {
                 pageContainsCaptchaButton,
             );
 
-            // console.log("Page is captcha page");
+            // // console.log("Page is captcha page");
 
             // Wait for iframe to load
             // if the iframe doesn't appear after 3sec, reload the page
@@ -311,7 +311,7 @@ class CourseScraperService {
             const button = await frame.$(".CheckboxCaptcha-Button");
             const box = await button.boundingBox();
 
-            console.log("IMNR Button is found at coordinates", box);
+            // console.log("IMNR Button is found at coordinates", box);
 
             // Generate "human-like" mouse movement
             const points = this.generateMousePath(
@@ -411,9 +411,9 @@ class CourseScraperService {
                         }
                     });
                 });
-                console.log("System DNS lookup succeeded:", address);
+                // console.log("System DNS lookup succeeded:", address);
             } catch (error) {
-                console.log("System DNS lookup failed:", error.message);
+                // console.log("System DNS lookup failed:", error.message);
                 // If system DNS fails, try our custom DNS resolvers
                 await this.resolveHostname(urlObj.hostname);
             }
@@ -489,7 +489,7 @@ class CourseScraperService {
             const wsUrl = `wss://proxy.progressme.ru/websocket?token=${authToken}`;
 
             const ws = await this.createWebSocketConnection(wsUrl);
-            console.log("WebSocket connected successfully");
+            // console.log("WebSocket connected successfully");
             //
 
             return new Promise((resolve, reject) => {
@@ -512,7 +512,7 @@ class CourseScraperService {
                 ws.send(JSON.stringify(loginMessage));
                 ws.on("message", async (data) => {
                     const response = JSON.parse(data.toString());
-                    console.log("Received:", response);
+                    // console.log("Received:", response);
 
                     if (response.Method === "GetAccountRoles") {
                         // Send login message after getting roles
@@ -653,7 +653,7 @@ class CourseScraperService {
             // Navigate using keyboard instead of goto
             // await this.navigateWithKeyboard(this.page, 'https://progressme.ru/Account/Login');
 
-            console.log("Page is loaded", this.page.url());
+            // console.log("Page is loaded", this.page.url());
 
             // Monitor the login endpoint for response
             // this.currentXHR = {};
@@ -674,7 +674,7 @@ class CourseScraperService {
                 await this.handleCaptcha(this.page);
             }
 
-            const currentUrl = this.page.url();
+            // const currentUrl = this.page.url();
             const newPage = this.page; //await this.createNewTabWithUrl(currentUrl);
 
             // Find the form
@@ -705,9 +705,9 @@ class CourseScraperService {
             });
 
             //// Fill in login form
-            console.log("creds", email, password);
+            // console.log("creds", email, password);
 
-            console.log("fields found:? ", fieldsFound);
+            // console.log("fields found:? ", fieldsFound);
 
             if (!fieldsFound) {
                 throw new Error("Authentication failed: No auth fields found");
@@ -732,7 +732,7 @@ class CourseScraperService {
                     }),
                 ]);
 
-            console.log("XHR::", this.currentXHR);
+            // console.log("XHR::", this.currentXHR);
 
             const response = this.currentXHR[`${newPage.title.toString()}`].res;
 
@@ -741,15 +741,15 @@ class CourseScraperService {
 
             // Get cookies for WebSocket connection
             const cookies = await this.browser.cookies();
-            const debugInfo = this.browser.debugInfo;
+            // const debugInfo = this.browser.debugInfo;
 
             // const authCookie = cookies.find(cookie => cookie.name === '.ASPXAUTH');
             const authToken = cookies.find(
                 (cookie) => cookie.name === "Auth-Token",
             );
-            console.log("cookies", authToken);
+            // console.log("cookies", authToken);
 
-            console.log("debugInfo", response);
+            // console.log("debugInfo", response);
 
             if (!authToken?.value) {
                 throw new Error("Authentication failed: No auth cookie found");
@@ -821,7 +821,7 @@ class CourseScraperService {
     async getBook(bookCode) {
         try {
             const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken}`;
-            console.log(wsUrl);
+            // console.log(wsUrl);
             const ws = await this.createWebSocketConnection(wsUrl);
             const bookInfo = {
                 bookId: "",
@@ -833,17 +833,17 @@ class CourseScraperService {
                         `\"${bookCode}\"`
                     ),
                 );
-                console.log("getBookIdStringed", getBookIdStringed);
+                // console.log("getBookIdStringed", getBookIdStringed);
                 ws.send(getBookIdStringed);
 
                 ws.on("message", async (data) => {
                     const response = JSON.parse(data.toString());
-                    console.log("Received:", response);
+                    // console.log("Received:", response);
                     if (
                         response.Class === "SharingMaterialWsController" &&
                         response.Method === "GetIdMaterial"
                     ) {
-                        // console.log("book", response);
+                        // // console.log("book", response);
                         // const bookId = response.Value.;
                         bookInfo.bookId = response.Value.BookId;
                         ws.send(
@@ -860,7 +860,7 @@ class CourseScraperService {
                         response.Class === "SharingMaterialWsController" &&
                         response.Method === "GetBook"
                     ) {
-                        console.log("book", response);
+                        // console.log("book", response);
                         bookInfo.bookName = response.Value.Name;
                         resolve({ ...bookInfo });
                     }
@@ -888,7 +888,7 @@ class CourseScraperService {
     async copyCourse(bookId, userId) {
         try {
             const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken}`;
-            console.log(wsUrl);
+            // console.log(wsUrl);
             const ws = await this.createWebSocketConnection(wsUrl);
             
             return new Promise((resolve, reject) => {
@@ -897,18 +897,18 @@ class CourseScraperService {
                         bookId
                     ),
                 );
-                console.log("copyBookStringed", copyBookStringed);
+                // console.log("copyBookStringed", copyBookStringed);
                 ws.send(copyBookStringed);
 
                 ws.on("message", async (data) => {
                     const response = JSON.parse(data.toString());
-                    console.log("Received:", response);
+                    // console.log("Received:", response);
 
                     if (
                         response.Class === "BookWsController" &&
                         response.Method === "CopyBook"
                     ) {
-                        console.log("book", response);
+                        // console.log("book", response);
                         
                         resolve({ success: response.IsSuccess, message: "Book Saved!" });
                     }
@@ -1009,13 +1009,13 @@ class CourseScraperService {
 
     async navigateWithKeyboard(page = this.page, url) {
         try {
-            console.log("navigate with keyboard");
+            // console.log("navigate with keyboard");
 
             // Small delay before typing
             await new Promise((resolve) =>
                 setTimeout(resolve, Math.random() * 2000 + 500),
             );
-            console.log("toggling address bar...");
+            // console.log("toggling address bar...");
 
             // Focus the address bar (Cmd/Ctrl + L)
             await page.keyboard.down(
@@ -1031,7 +1031,7 @@ class CourseScraperService {
                 setTimeout(resolve, Math.random() * 200 + 100),
             );
 
-            console.log("emptying adressbar...");
+            // console.log("emptying adressbar...");
 
             // Clear existing URL using proper key definitions
             await page.keyboard.down("ControlLeft");
@@ -1039,7 +1039,7 @@ class CourseScraperService {
             await page.keyboard.up("ControlLeft");
             await page.keyboard.press("Backspace");
 
-            console.log("typing address...");
+            // console.log("typing address...");
 
             // Type URL with random delays between characters
             // for (const char of url) {
@@ -1053,7 +1053,7 @@ class CourseScraperService {
                 setTimeout(resolve, Math.random() * 200 + 100),
             );
 
-            console.log("navigating...");
+            // console.log("navigating...");
 
             // Press enter and wait for navigation
             await Promise.all([
@@ -1083,7 +1083,7 @@ class CourseScraperService {
 
     //         if (!pageHasCaptchaInUrl) return true;
 
-    //         console.log("Page is captcha page");
+    //         // console.log("Page is captcha page");
 
     //         // Create new tab with same URL if components seem disabled
     //         const currentUrl = page.url();
@@ -1097,7 +1097,7 @@ class CourseScraperService {
     //         const button = await frame.$('.CheckboxCaptcha-Button');
     //         const box = await button.boundingBox();
 
-    //         console.log("IMNR Button is found at coordinates", box);
+    //         // console.log("IMNR Button is found at coordinates", box);
 
     //         // Generate "human-like" mouse movement
     //         const points = this.generateMousePath(
@@ -1130,7 +1130,7 @@ class CourseScraperService {
     //             })
     //         ]).catch(() => {}); // Ignore timeout
 
-    //         console.log("Captcha is solved");
+    //         // console.log("Captcha is solved");
 
     //         return true;
     //     } catch (error) {

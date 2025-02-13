@@ -12,7 +12,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
     cors: {
-        origin: process.env.CLIENT_URL || 'http://localhost:3000',
+        origin: process.env.CLIENT_URL || "https://0.0.0.0:$1",
         methods: ['GET', 'POST']
     }
 });
@@ -54,10 +54,10 @@ app.use('/api/scraper', require('./routes/scraper'));
 
 // WebSocket connection
 io.on('connection', (socket) => {
-    console.log('New client connected');
+    // console.log('New client connected');
     
     socket.on('disconnect', () => {
-        console.log('Client disconnected');
+        // console.log('Client disconnected');
     });
     
     // Handle course updates
@@ -69,6 +69,6 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
+    // console.log(`Server running on port ${PORT}`);
+    // console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
 }); 

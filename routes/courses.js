@@ -4,7 +4,7 @@ const auth = require('../middleware/auth');
 const multer = require('multer');
 const { check, validationResult } = require('express-validator');
 const Course = require('../models/Course');
-const User = require('../models/User');
+// const User = require('../models/User');
 
 /**
  * @swagger
