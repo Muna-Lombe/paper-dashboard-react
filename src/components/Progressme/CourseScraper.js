@@ -13,7 +13,7 @@ import {
   Input,
   Label,
 } from "reactstrap";
-import axiosCache from "../../utils/axiosCache";
+import axios from "axios";
 import { addError } from "../../variables/slices/errorSlice";
 import { useDispatch } from "react-redux";
 import spirow from "../../assets/img/spriral-arrow.png";
