@@ -6,6 +6,7 @@
     "@reduxjs/toolkit": "^2.2.7",
     "array-move": "^4.0.0",
     "axios": "^1.7.5",
+    "axios-cache-adapter": "^2.7.3",
     "bootstrap": "4.6.2",
     "browser-cookie": "^1.2.1",
     "chart.js": "3.9.1",
