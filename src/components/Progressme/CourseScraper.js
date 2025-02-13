@@ -17,10 +17,8 @@ import axios from "axios";
 import { addError } from "../../variables/slices/errorSlice";
 import { useDispatch } from "react-redux";
 import spirow from "../../assets/img/spriral-arrow.png";
+import endpoints from "../../../config";
 
-const API_URL =
-  process.env.REACT_APP_API_URL ||
-  "https://de885a4b-d886-4a17-9372-6791449191cc-00-sk4u39m5xe4b.picard.replit.dev:5000/api";
 
 const CourseScraper = () => {
   const [targetUrl, setTargetUrl] = useState(null);
@@ -35,7 +33,7 @@ const CourseScraper = () => {
     e.preventDefault();
     try {
       const response = await axios.get(
-        `${API_URL}/scraper/getbook?code=${(targetUrl ?? tUrl).split("SharingMaterial/")[1] || ""}`,
+        `${endpoints.paperDashApi.getBook.url}?code=${(targetUrl ?? tUrl).split("SharingMaterial/")[1] || ""}`,
       );
       // console.log("book response", response);
       if (response?.data) {
@@ -58,7 +56,7 @@ const CourseScraper = () => {
     setLinkLoading(true);
 
     try {
-      const response = await axios.post(`${API_URL}/scraper/validate-url`, {
+      const response = await axios.post(endpoints.paperDashApi.validateUrl.url, {
         url: e.target?.[0]?.value.trim() || "",
       });
 
@@ -89,7 +87,7 @@ const CourseScraper = () => {
     }
 
     try {
-      await axios.post(`${API_URL}/scraper/copy-course`, {
+      await axios.post(endpoints.paperDashApi.copyCourse.url, {
         bookId,
         userId,
         token,
@@ -114,12 +112,12 @@ const CourseScraper = () => {
     try {
       // Get a new token if not already set
       if (!sess.getItem("Auth-Token")) {
-        const tokenResponse = await axios.get(`${API_URL}/scraper/token`);
+        const tokenResponse = await axios.get(endpoints.paperDashApi.getToken.url);
         sess.setItem("Auth-Token", tokenResponse.data.token);
       }
 
       // Authenticate with the token
-      const response = await axios.post(`${API_URL}/scraper/auth`, {
+      const response = await axios.post(endpoints.paperDashApi.authenticate.url, {
         email,
         password,
       });
