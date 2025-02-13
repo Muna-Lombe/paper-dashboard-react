@@ -25,6 +25,7 @@ const CourseScraper = () => {
   const [testUrl, setTestUrl] = useState(
     "https://progressme.ru/SharingMaterial/c172ca5c-2488-4a14-843f-8caf7c993c79",
   );
+  const [showLogin, setShowLogin] = useState(false);
   const sess = sessionStorage;
   const dispatch = useDispatch();
 
@@ -65,6 +66,7 @@ const CourseScraper = () => {
       if (response.data.url) {
         await handleGetBook(e, response.data.url);
         setTargetUrl(response.data.url);
+        setShowLogin(false);
       } else {
         dispatch(addError("Book link is not correct. Please check."));
         setTargetUrl(testUrl);
@@ -134,6 +136,7 @@ const CourseScraper = () => {
       sess.setItem("userId", response.data.data.Value.Id);
 
       setIsAuthed(true);
+      setShowLogin(false);
     } catch (error) {
       dispatch(addError(error.response?.data?.msg || "Authentication failed"));
     } finally {
@@ -146,6 +149,7 @@ const CourseScraper = () => {
     sess.removeItem("bookId");
     sess.removeItem("bookName");
     setTargetUrl("https://progressme.ru");
+    setShowLogin(true);
   };
 
   const hasNoBookUserId = () =>
@@ -358,24 +362,54 @@ const CourseScraper = () => {
             <span>Page is loading...</span>
           </div>
         ) : (
-          <iframe
-            id="iframe_iframe"
-            src={targetUrl}
-            frameBorder="0"
-            allowFullScreen={true}
-            style={{
-              minWidth: "100%",
-              minHeight: "100%",
-            }}
-            className="iframe_iframe w-100 h-100 min-h-[500px]"
-            title="course preview"
-          />
+          <div className="w-100 position-relative">
+            {!authedIn ? (
+              <div
+                className="no-auth-view-book"
+                style={{
+                  position: "absolute",
+                  width: "100%",
+                  height: "100%",
+                  background: "rgba(0,0,0,0.5)",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <Button
+                  className="btn-semi-round"
+                  color="primary"
+                  type="button"
+                  disabled={false}
+                  onClick={() => setShowLogin(true)}
+                >
+                  Login
+                </Button>
+              </div>
+            ) : (
+              <></>
+            )}
+            <iframe
+              id="iframe_iframe"
+              src={targetUrl}
+              frameBorder="0"
+              allowFullScreen={true}
+              style={{
+                minWidth: "100%",
+                minHeight: "100%",
+              }}
+              className="iframe_iframe w-100 h-100 min-h-[500px]"
+              title="course preview"
+            />
+          </div>
         )
       ) : (
         <IntermediateComponent linkLoading={linkLoading} />
       )
-    ) : (
+    ) : showLogin ? (
       <AuthIn />
+    ) : (
+      <IntermediateComponent linkLoading={linkLoading} />
     ),
   );
 
@@ -389,7 +423,7 @@ const CourseScraper = () => {
         <Row lg="10" className="h-100">
           <div
             className="iframe_wrapper w-100 h-100"
-            style={{ height: "500px" }}
+            style={{ minheight: "500px" }}
           >
             <MemoizedIframe
               authedIn={authedIn}
