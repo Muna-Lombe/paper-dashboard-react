@@ -420,6 +420,7 @@ class CourseScraperService {
 
             while (retryCount < maxRetries) {
                 try {
+                    console.log("Creating WebSocket connection..." + url)
                     // Create WebSocket connection with additional options
                     const ws = new WebSocket(url, {
                         headers: {
@@ -450,6 +451,7 @@ class CourseScraperService {
 
                         ws.on("open", () => {
                             clearTimeout(timeout);
+                            console.log("WebSocket connection opened")
                             resolve(ws);
                         });
 
@@ -820,7 +822,8 @@ class CourseScraperService {
 
     async getBook(bookCode) {
         try {
-            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken}`;
+            const fallbackAuthToken = this.generateAuthToken()
+            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || fallbackAuthToken }`;
             // console.log(wsUrl);
             const ws = await this.createWebSocketConnection(wsUrl);
             const bookInfo = {

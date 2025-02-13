@@ -3,7 +3,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const multer = require('multer');
 const { check, validationResult } = require('express-validator');
-const Course = require('../models/Course');
+// const Course = require('../models/Course');
 // const User = require('../models/User');
 
 /**
@@ -126,14 +126,15 @@ router.post('/', [
     }
 
     try {
-        const course = await Course.create({
-            title: req.body.title,
-            description: req.body.description,
-            pdfUrl: req.file.path,
-            userId: req.user.id
-        });
+        const course = null;
+        //     await Course.create({
+        //     title: req.body.title,
+        //     description: req.body.description,
+        //     pdfUrl: req.file.path,
+        //     userId: req.user.id
+        // });
 
-        res.json(course);
+        res.json(course||{});
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');
@@ -164,11 +165,12 @@ router.post('/', [
  */
 router.get('/', auth, async (req, res) => {
     try {
-        const courses = await Course.findAll({
-            where: { userId: req.user.id },
-            order: [['createdAt', 'DESC']]
-        });
-        res.json(courses);
+        const courses = null; 
+        //await Course.findAll({
+        //     where: { userId: req.user.id },
+        //     order: [['createdAt', 'DESC']]
+        // });
+        res.json(courses || {});
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');
@@ -206,12 +208,13 @@ router.get('/', auth, async (req, res) => {
  */
 router.get('/:id', auth, async (req, res) => {
     try {
-        const course = await Course.findOne({
-            where: {
-                id: req.params.id,
-                userId: req.user.id
-            }
-        });
+        const course = {}
+        //     await Course.findOne({
+        //     where: {
+        //         id: req.params.id,
+        //         userId: req.user.id
+        //     }
+        // });
         
         if (!course) {
             return res.status(404).json({ msg: 'Course not found' });
@@ -278,12 +281,13 @@ router.put('/:id', [
     }
 
     try {
-        const course = await Course.findOne({
-            where: {
-                id: req.params.id,
-                userId: req.user.id
-            }
-        });
+        const course = null;
+        //     await Course.findOne({
+        //     where: {
+        //         id: req.params.id,
+        //         userId: req.user.id
+        //     }
+        // });
         
         if (!course) {
             return res.status(404).json({ msg: 'Course not found' });
@@ -334,12 +338,13 @@ router.put('/:id', [
  */
 router.delete('/:id', auth, async (req, res) => {
     try {
-        const course = await Course.findOne({
-            where: {
-                id: req.params.id,
-                userId: req.user.id
-            }
-        });
+        const course = null;
+        //     await Course.findOne({
+        //     where: {
+        //         id: req.params.id,
+        //         userId: req.user.id
+        //     }
+        // });
         
         if (!course) {
             return res.status(404).json({ msg: 'Course not found' });
