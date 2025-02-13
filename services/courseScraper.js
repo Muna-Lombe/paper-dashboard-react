@@ -411,9 +411,9 @@ class CourseScraperService {
                         }
                     });
                 });
-                // console.log("System DNS lookup succeeded:", address);
+                console.log("System DNS lookup succeeded:", address);
             } catch (error) {
-                // console.log("System DNS lookup failed:", error.message);
+                console.log("System DNS lookup failed:", error.message);
                 // If system DNS fails, try our custom DNS resolvers
                 await this.resolveHostname(urlObj.hostname);
             }
@@ -489,7 +489,7 @@ class CourseScraperService {
             const wsUrl = `wss://proxy.progressme.ru/websocket?token=${authToken}`;
 
             const ws = await this.createWebSocketConnection(wsUrl);
-            // console.log("WebSocket connected successfully");
+            console.log("WebSocket connected successfully");
             //
 
             return new Promise((resolve, reject) => {
