@@ -1,7 +1,8 @@
 {
   "files": {
-    "main.css": "/paper-dashboard-react/static/css/main.4c9d96f4.css",
-    "main.js": "/paper-dashboard-react/static/js/main.3a919128.js",
+    "main.css": "/paper-dashboard-react/static/css/main.76b6ab8b.css",
+    "main.js": "/paper-dashboard-react/static/js/main.444bcd9b.js",
+    "static/media/bg-home.png": "/paper-dashboard-react/static/media/bg-home.9bc2c2bcd25d8b53b16e.png",
     "static/media/bot-landing.png": "/paper-dashboard-react/static/media/bot-landing.223555f49a204f712aa1.png",
     "static/media/damir-bosnjak.jpg": "/paper-dashboard-react/static/media/damir-bosnjak.efcaca50b633c2ba2ba9.jpg",
     "static/media/daniel-olahh.jpg": "/paper-dashboard-react/static/media/daniel-olahh.77c0ffac60f9218de675.jpg",
@@ -10,19 +11,16 @@
     "static/media/spriral-arrow.png": "/paper-dashboard-react/static/media/spriral-arrow.768cd11609f28719ee69.png",
     "static/media/mike.jpg": "/paper-dashboard-react/static/media/mike.d34d0690a264ad046861.jpg",
     "static/media/joe-gardner-2.jpg": "/paper-dashboard-react/static/media/joe-gardner-2.09841708956117e93a7b.jpg",
-    "static/media/clem-onojeghuo-3.jpg": "/paper-dashboard-react/static/media/clem-onojeghuo-3.83003f446b7372176b72.jpg",
-    "static/media/erik-lucatero-2.jpg": "/paper-dashboard-react/static/media/erik-lucatero-2.d09715abe0463c58d6be.jpg",
     "static/media/nucleo-icons.eot": "/paper-dashboard-react/static/media/nucleo-icons.bd42d77b9672555647d1.eot",
     "static/media/nucleo-icons.ttf": "/paper-dashboard-react/static/media/nucleo-icons.4466aeec3386b965a232.ttf",
     "static/media/nucleo-icons.woff": "/paper-dashboard-react/static/media/nucleo-icons.8e954b749f951b654fc6.woff",
     "static/media/nucleo-icons.woff2": "/paper-dashboard-react/static/media/nucleo-icons.ec16bc4cc4526801004d.woff2",
-    "static/media/logo.svg": "/paper-dashboard-react/static/media/logo.103b5fa18196d5665a7e12318285c916.svg",
     "index.html": "/paper-dashboard-react/index.html",
-    "main.4c9d96f4.css.map": "/paper-dashboard-react/static/css/main.4c9d96f4.css.map",
-    "main.3a919128.js.map": "/paper-dashboard-react/static/js/main.3a919128.js.map"
+    "main.76b6ab8b.css.map": "/paper-dashboard-react/static/css/main.76b6ab8b.css.map",
+    "main.444bcd9b.js.map": "/paper-dashboard-react/static/js/main.444bcd9b.js.map"
   },
   "entrypoints": [
-    "static/css/main.4c9d96f4.css",
-    "static/js/main.3a919128.js"
+    "static/css/main.76b6ab8b.css",
+    "static/js/main.444bcd9b.js"
   ]
 }
