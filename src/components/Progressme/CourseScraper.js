@@ -17,8 +17,7 @@ import axios from "axios";
 import { addError } from "../../variables/slices/errorSlice";
 import { useDispatch } from "react-redux";
 import spirow from "../../assets/img/spriral-arrow.png";
-import endpoints from "../../../config";
-
+import { endpoints } from "config";
 
 const CourseScraper = () => {
   const [targetUrl, setTargetUrl] = useState(null);
@@ -56,9 +55,12 @@ const CourseScraper = () => {
     setLinkLoading(true);
 
     try {
-      const response = await axios.post(endpoints.paperDashApi.validateUrl.url, {
-        url: e.target?.[0]?.value.trim() || "",
-      });
+      const response = await axios.post(
+        endpoints.paperDashApi.validateUrl.url,
+        {
+          url: e.target?.[0]?.value.trim() || "",
+        },
+      );
 
       if (response.data.url) {
         await handleGetBook(e, response.data.url);
@@ -112,15 +114,20 @@ const CourseScraper = () => {
     try {
       // Get a new token if not already set
       if (!sess.getItem("Auth-Token")) {
-        const tokenResponse = await axios.get(endpoints.paperDashApi.getToken.url);
+        const tokenResponse = await axios.get(
+          endpoints.paperDashApi.getToken.url,
+        );
         sess.setItem("Auth-Token", tokenResponse.data.token);
       }
 
       // Authenticate with the token
-      const response = await axios.post(endpoints.paperDashApi.authenticate.url, {
-        email,
-        password,
-      });
+      const response = await axios.post(
+        endpoints.paperDashApi.authenticate.url,
+        {
+          email,
+          password,
+        },
+      );
 
       // console.log("response from auth", response);
 
@@ -339,14 +346,31 @@ const CourseScraper = () => {
   const MemoizedIframe = memo(({ authedIn, targetUrlSet, linkLoading }) =>
     authedIn ? (
       targetUrlSet ? (
-        <iframe
-          id="iframe_iframe"
-          src={targetUrl}
-          frameBorder="0"
-          allowFullScreen={true}
-          className="iframe_iframe w-100 h-100 min-h-[500px]"
-          title="course preview"
-        />
+        linkLoading ? (
+          <div className="iframe-loading w-100 h-100 d-flex flex-column justify-content-center align-items-center">
+            <img
+              src={spirow}
+              alt="ProgressMe Logo"
+              className="mb-3"
+              style={{ width: "50px" }}
+            />
+            <Spinner size="sm" className="mb-2" />
+            <span>Page is loading...</span>
+          </div>
+        ) : (
+          <iframe
+            id="iframe_iframe"
+            src={targetUrl}
+            frameBorder="0"
+            allowFullScreen={true}
+            style={{
+              minWidth: "100%",
+              minHeight: "100%",
+            }}
+            className="iframe_iframe w-100 h-100 min-h-[500px]"
+            title="course preview"
+          />
+        )
       ) : (
         <IntermediateComponent linkLoading={linkLoading} />
       )
@@ -363,7 +387,10 @@ const CourseScraper = () => {
           <LoadLink setLinkLoading={setLinkLoading} />
         </Row>
         <Row lg="10" className="h-100">
-          <div className="iframe_wrapper w-100 h-100">
+          <div
+            className="iframe_wrapper w-100 h-100"
+            style={{ height: "500px" }}
+          >
             <MemoizedIframe
               authedIn={authedIn}
               targetUrlSet={targetUrlSet}

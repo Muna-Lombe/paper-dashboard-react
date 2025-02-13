@@ -33,7 +33,7 @@ function Dashboard() {
           <Row>
             <Col lg="3" md="6" sm="6">
               <Card className="card-stats">
-                <CardBody>
+                {/* <CardBody>
                   <Row>
                     <Col md="4" xs="5">
                       <div className="icon-big text-center icon-warning">
@@ -54,12 +54,12 @@ function Dashboard() {
                   <div className="stats">
                     <i className="fas fa-sync-alt" /> Update Now
                   </div>
-                </CardFooter>
+                </CardFooter> */}
               </Card>
             
             </Col>
             <Col lg="3" md="6" sm="6">
-              <Whatsbot  />
+              {/* <Whatsbot  /> */}
             </Col>
             
           </Row>

@@ -1,4 +1,4 @@
-const endpoints = {
+export const endpoints = {
     paperDashApi:{
         getBook:{
             url: 'https://paper-dash-api.onrender.com/api/scraper/getbook',
@@ -44,4 +44,3 @@ const endpoints = {
     // add more endpoints as needed
 };
 
-module.exports = endpoints;
