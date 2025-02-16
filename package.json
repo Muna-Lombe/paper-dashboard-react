@@ -64,8 +64,8 @@
     "chokidar": "3.5.3",
     "@babel/core": "7.18.6"
   },
+  "homepage": "https://muna-lombe.github.io/paper-dashboard-react",
   "devDependencies": {
-    "gh-pages": "^6.1.1"
-  },
-  "homepage": "https://muna-lombe.github.io/paper-dashboard-react"
+    "gh-pages": "^6.3.0"
+  }
 }
