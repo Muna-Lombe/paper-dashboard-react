@@ -847,8 +847,13 @@ class CourseScraperService {
                         response.Method === "GetBook"
                     ) {
                         // console.log("book", response);
-                        bookInfo.bookName = response.Value.Name;
-                        resolve({ ...bookInfo });
+                        if(response.ErrorMessage){
+                           resolve({error: response.ErrorMessage})
+                        }else{
+                            
+                            bookInfo.bookName = response.Value.Name;
+                            resolve({ ...bookInfo });
+                        }
                     }
                 });
 
@@ -897,8 +902,12 @@ class CourseScraperService {
                         response.Class === "SharingMaterialWsController" &&
                         response.Method === "GetIdMaterial"
                     ) {
-                        // // console.log("book", response);
+                        console.log("book", response);
                         // const bookId = response.Value.;
+                        
+                        if(response.ErrorMessage){
+                           return resolve({error: response.ErrorMessage})
+                        }
                         bookInfo.bookId = response.Value.BookId;
                         ws.send(
                             JSON.stringify(
@@ -963,8 +972,12 @@ class CourseScraperService {
                         response.Method === "CopyBook"
                     ) {
                         // console.log("book", response);
-                        
-                        resolve({ success: response.IsSuccess, message: "Book Saved!" });
+                        if(response.ErrorMessage){
+                            resolve({error:response.ErrorMessage})
+                        }else{
+                            resolve({ success: response.IsSuccess, message: "Book Saved!" });
+                            
+                        }
                     }
                 });
                 

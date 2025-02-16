@@ -1,8 +1,8 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { check, validationResult } = require('express-validator');
-const auth = require('../middleware/auth');
-const courseScraperService = require('../services/courseScraper');
+const { check, validationResult } = require("express-validator");
+const auth = require("../middleware/auth");
+const courseScraperService = require("../services/courseScraper");
 
 /**
  * @swagger
@@ -64,26 +64,27 @@ const courseScraperService = require('../services/courseScraper');
  *       500:
  *         description: Server error
  */
-router.post('/validate-url', [
-    auth,
-    check('url', 'URL is required').not().isEmpty()
-], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
-
-    try {
-        const validUrl = courseScraperService.validateUrl(req.body.url);
-        if (!validUrl) {
-            return res.status(400).json({ msg: 'Invalid course URL' });
+router.post(
+    "/validate-url",
+    [auth, check("url", "URL is required").not().isEmpty()],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
         }
-        res.json({ url: validUrl });
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
-    }
-});
+
+        try {
+            const validUrl = courseScraperService.validateUrl(req.body.url);
+            if (!validUrl) {
+                return res.status(400).json({ msg: "Invalid course URL" });
+            }
+            res.json({ url: validUrl });
+        } catch (err) {
+            console.error(err.message);
+            res.status(500).send("Server Error");
+        }
+    },
+);
 
 /**
  * @swagger
@@ -125,27 +126,34 @@ router.post('/validate-url', [
  *       500:
  *         description: Authentication failed
  */
-router.post('/auth', [
-    auth,
-    check('email', 'Please include a valid email').isEmail(),
-    check('password', 'Password is required').exists()
-], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
+router.post(
+    "/auth",
+    [
+        auth,
+        check("email", "Please include a valid email").isEmail(),
+        check("password", "Password is required").exists(),
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
 
-    try {
-        const { email, password } = req.body;
-        const authResult = await courseScraperService.authenticateWithWebSocket(email, password);
-        res.json(authResult);
-        // courseScraperService.cleanup();
-        
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Authentication failed');
-    }
-});
+        try {
+            const { email, password } = req.body;
+            const authResult =
+                await courseScraperService.authenticateWithWebSocket(
+                    email,
+                    password,
+                );
+            res.json(authResult);
+            // courseScraperService.cleanup();
+        } catch (err) {
+            console.error(err.message);
+            res.status(500).send("Authentication failed");
+        }
+    },
+);
 
 /**
  * @swagger
@@ -191,47 +199,45 @@ router.post('/auth', [
  *             bookName:
  *               type: string
  *               description: The name of the book
- *   
+ *
  */
 
-router.get('/getbook',[],async(req, res)=>{
+router.get("/getbook", [], async (req, res) => {
     try {
         const { url } = req.query;
-        
-        let book = {}; 
+
+        let book = {};
         // lets say that the url is encoded
-        const decodedUrl = Base58.decode(url)
+        const decodedUrl = atob(url);
         //check if code is book code or book id
         // lets say that we get a url like this
         // "https://progressme.ru/cabinet/school/materials/book/363945/content
-            
-        // we should extract the book id from the url and then use that to get the book 
+
+        // we should extract the book id from the url and then use that to get the book
         // we can use the getBookById function from the scraper service
         // we can also use the getBookByCode function from the scraper service
-        if(decodedUrl.includes("book/")){
+        if (decodedUrl.includes("book/")) {
             const bookIdRegex = /\/book\/(\d+)/;
-                          
+
             const bookId = code.match(bookIdRegex)[1].split("/")[0];
             book = await courseScraperService.getBookById(bookId);
         }
         // if we get a url like this
         // "https://progressme.ru/sharing-material/4a9e8f6f-ba3e-4e97-93a3-9c74ca56a660"
         // we should extract the book id from the url and then use that to get the book
-        if(decodedUrl.includes("sharing-material/")){
+        if (decodedUrl.includes("sharing-material/")) {
             // the regex should match the entire code like "4a9e8f6f-ba3e-4e97-93a3-9c74ca56a660"
-            
-            const bookCode = code.split("sharing-material/")[1];
+
+            const bookCode = decodedUrl.split("sharing-material/")[1];
             book = await courseScraperService.getBookByCode(bookCode);
-                        
         }
 
-    
-        res.json({...book});
+        res.json({ ...book });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(500).send("Server Error");
     }
-})
+});
 
 /**
  * @swagger
@@ -275,26 +281,34 @@ router.get('/getbook',[],async(req, res)=>{
  *       500:
  *         description: Failed to copy course
  */
-router.post('/copy-course', [
-    auth,
-    check('bookId', 'Book ID is required').not().isEmpty(),
-    check('userId', 'User ID is required').not().isEmpty(),
-    check('token', 'Token is required').not().isEmpty()
-], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
+router.post(
+    "/copy-course",
+    [
+        auth,
+        check("bookId", "Book ID is required").not().isEmpty(),
+        check("userId", "User ID is required").not().isEmpty(),
+        check("token", "Token is required").not().isEmpty(),
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
 
-    try {
-        const { bookId, userId, token } = req.body;
-        const result = await courseScraperService.copyCourse(bookId, userId, token);
-        res.json(result);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Failed to copy course');
-    }
-});
+        try {
+            const { bookId, userId, token } = req.body;
+            const result = await courseScraperService.copyCourse(
+                bookId,
+                userId,
+                token,
+            );
+            res.json(result);
+        } catch (err) {
+            console.error(err.message);
+            res.status(500).send("Failed to copy course");
+        }
+    },
+);
 
 /**
  * @swagger
@@ -317,16 +331,16 @@ router.post('/copy-course', [
  *       500:
  *         description: Server error
  */
-router.get('/token', auth, async (req, res) => {
+router.get("/token", auth, async (req, res) => {
     try {
         const token = courseScraperService.generateAuthToken();
-        res.header('Access-Control-Allow-Origin', '*');
-        res.header('Access-Control-Allow-Credentials', 'true');
+        res.header("Access-Control-Allow-Origin", "*");
+        res.header("Access-Control-Allow-Credentials", "true");
         res.json({ token });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(500).send("Server Error");
     }
 });
 
-module.exports = router; 
+module.exports = router;
