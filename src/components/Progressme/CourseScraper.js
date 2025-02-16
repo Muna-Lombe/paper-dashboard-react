@@ -406,11 +406,14 @@ const CourseScraper = () => {
       ) : (
         <IntermediateComponent linkLoading={linkLoading} />
       )
-    ) : showLogin ? (
-      <AuthIn />
     ) : (
-      <IntermediateComponent linkLoading={linkLoading} />
+      <AuthIn />
     ),
+    //     showLogin ? (
+    // <AuthIn />
+    //     ) : (
+    //       <IntermediateComponent linkLoading={linkLoading} />
+    //     ),
   );
 
   const LeftComponent = ({ authedIn, targetUrlSet }) => {
@@ -443,7 +446,7 @@ const CourseScraper = () => {
           <CardTitle tag="h5">Add the progressme link</CardTitle>
         </CardHeader>
         <CardBody className="p-4 h-100">
-          <Row className="h-100 w-100 overflow-hidden">
+          <Row className="h-100 w-100 overflow-hidden flex-row">
             <LeftComponent authedIn={isAuthed} targetUrlSet={!!targetUrl} />
             <Col sm="3">
               <BookInfo disabled={!isAuthed} />
