@@ -196,8 +196,36 @@ router.post('/auth', [
 
 router.get('/getbook',[],async(req, res)=>{
     try {
-        const { code } = req.query;
-        const book = await courseScraperService.getBook(code);
+        const { url } = req.query;
+        
+        let book = {}; 
+        // lets say that the url is encoded
+        const decodedUrl = Base58.decode(url)
+        //check if code is book code or book id
+        // lets say that we get a url like this
+        // "https://progressme.ru/cabinet/school/materials/book/363945/content
+            
+        // we should extract the book id from the url and then use that to get the book 
+        // we can use the getBookById function from the scraper service
+        // we can also use the getBookByCode function from the scraper service
+        if(decodedUrl.includes("book/")){
+            const bookIdRegex = /\/book\/(\d+)/;
+                          
+            const bookId = code.match(bookIdRegex)[1].split("/")[0];
+            book = await courseScraperService.getBookById(bookId);
+        }
+        // if we get a url like this
+        // "https://progressme.ru/sharing-material/4a9e8f6f-ba3e-4e97-93a3-9c74ca56a660"
+        // we should extract the book id from the url and then use that to get the book
+        if(decodedUrl.includes("sharing-material/")){
+            // the regex should match the entire code like "4a9e8f6f-ba3e-4e97-93a3-9c74ca56a660"
+            
+            const bookCode = code.split("sharing-material/")[1];
+            book = await courseScraperService.getBookByCode(bookCode);
+                        
+        }
+
+    
         res.json({...book});
     } catch (err) {
         console.error(err.message);

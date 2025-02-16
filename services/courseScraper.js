@@ -819,8 +819,59 @@ class CourseScraperService {
             });
         });
     }
+    async getBookById(bookId) {
+        try {
+            const fallbackAuthToken = this.generateAuthToken()
+            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || fallbackAuthToken }`;
+            // console.log(wsUrl);
+            const ws = await this.createWebSocketConnection(wsUrl);
+            const bookInfo = {
+                bookId: bookId,
+                bookName: "",
+            };
+            return new Promise((resolve, reject) => {
+               
+                ws.send(
+                    JSON.stringify(
+                        this.controllerTemplates.GetBookMessage(
+                            `\"${bookId}\"`,
+                        ),
+                    ),
+                );
+                ws.on("message", async (data) => {
+                    const response = JSON.parse(data.toString());
+                    
 
-    async getBook(bookCode) {
+                    if (
+                        response.Class === "SharingMaterialWsController" &&
+                        response.Method === "GetBook"
+                    ) {
+                        // console.log("book", response);
+                        bookInfo.bookName = response.Value.Name;
+                        resolve({ ...bookInfo });
+                    }
+                });
+
+                ws.on("error", (error) => {
+                    console.error("WebSocket error:", error);
+                    reject(error);
+                });
+
+                this.activeWs.setNewActive(ws);
+                // Add timeout
+                setTimeout(() => {
+                    this.activeWs.clear();
+                    ws.close();
+                    reject(new Error("WebSocket authentication timeout"));
+                }, 300000);
+            });
+        } catch (error) {
+            console.error("Error getting book:", error);
+            throw error;
+        }
+    }
+    
+    async getBookByCode(bookCode) {
         try {
             const fallbackAuthToken = this.generateAuthToken()
             const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || fallbackAuthToken }`;
