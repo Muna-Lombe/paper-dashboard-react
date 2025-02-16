@@ -228,7 +228,7 @@ router.get("/getbook", [], async (req, res) => {
         if (decodedUrl.includes("sharing-material/") || decodedUrl.includes('SharingMaterial/')) {
             // the regex should match the entire code like "4a9e8f6f-ba3e-4e97-93a3-9c74ca56a660"
 
-            const bookCode = decodedUrl.split("sharing-material/")[1];
+            const bookCode = decodedUrl.split("sharing-material/")[1] ?? decodedUrl.split("SharingMaterial/")[1];
             book = await courseScraperService.getBookByCode(bookCode);
         }
 
