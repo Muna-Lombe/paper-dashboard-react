@@ -33,7 +33,7 @@ const CourseScraper = () => {
     e.preventDefault();
     try {
       const response = await axios.get(
-        `${endpoints.paperDashApi.getBook.url}?url=${(targetUrl ?? tUrl) || ""}`,
+        `${endpoints.paperDashApi.getBook.url}?url=${btoa(targetUrl ?? tUrl) || ""}`,
       );
       // console.log("book response", response);
       if (response?.data) {
