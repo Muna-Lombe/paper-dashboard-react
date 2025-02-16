@@ -225,7 +225,7 @@ router.get("/getbook", [], async (req, res) => {
         // if we get a url like this
         // "https://progressme.ru/sharing-material/4a9e8f6f-ba3e-4e97-93a3-9c74ca56a660"
         // we should extract the book id from the url and then use that to get the book
-        if (decodedUrl.includes("sharing-material/")) {
+        if (decodedUrl.includes("sharing-material/") || decodedUrl.includes('SharingMaterial/')) {
             // the regex should match the entire code like "4a9e8f6f-ba3e-4e97-93a3-9c74ca56a660"
 
             const bookCode = decodedUrl.split("sharing-material/")[1];
