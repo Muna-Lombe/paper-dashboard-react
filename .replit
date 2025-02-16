@@ -14,3 +14,22 @@ externalPort = 80
 [[ports]]
 localPort = 5000
 externalPort = 5000
+
+[workflows]
+
+[[workflows.workflow]]
+name = "gh-deploy"
+mode = "sequential"
+author = 28327555
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"deploy starting\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm run deploy"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"deploy complete\""
