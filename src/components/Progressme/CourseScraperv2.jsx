@@ -200,7 +200,7 @@ const CourseScraperV2 = () => {
             src={url}
             title="Course Content"
             className="w-100"
-            style={{ height: "500px", maxHeight: "500px" }}
+            style={{ height: "380px", maxHeight: "380px" }}
           />
         </div>
       );
@@ -214,7 +214,7 @@ const CourseScraperV2 = () => {
             src={url}
             title="Course Content"
             className="w-100"
-            style={{ height: "500px", maxHeight: "500px", opacity: "0.5" }}
+            style={{ height: "380px", maxHeight: "380px", opacity: "0.5" }}
           />
           <div className="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center" 
                style={{ background: "rgba(0,0,0,0.7)" }}>
