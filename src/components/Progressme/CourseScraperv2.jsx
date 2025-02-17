@@ -1,14 +1,11 @@
-import React, { memo, useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardHeader,
   CardBody,
   CardTitle,
-  Row,
-  Col,
   Button,
   Spinner,
-  FormGroup,
   Form,
   Input,
   Label,
@@ -18,445 +15,192 @@ import { addError } from "../../variables/slices/errorSlice";
 import { useDispatch } from "react-redux";
 import spirow from "../../assets/img/spriral-arrow.png";
 import { endpoints } from "config";
-import { addToast } from "variables/slices/toastSlice";
 
 const CourseScraperV2 = () => {
-  const [targetUrl, setTargetUrl] = useState(null);
-  const [isAuthed, setIsAuthed] = useState(false);
-  const [testUrl, setTestUrl] = useState(
-    "https://progressme.ru/SharingMaterial/c172ca5c-2488-4a14-843f-8caf7c993c79",
-  );
-  const [showLogin, setShowLogin] = useState(false);
+  const [url, setUrl] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [bookDetails, setBookDetails] = useState({
+    bookId: "",
+    bookName: "",
+    userId: "",
+  });
   const sess = sessionStorage;
   const dispatch = useDispatch();
 
-  const handleGetBook = async (e, tUrl) => {
-    e.preventDefault();
-    try {
-      const response = await axios.get(
-        `${endpoints.paperDashApi.getBook.url}?url=${btoa(targetUrl ?? tUrl) || ""}`,
-      );
-      // console.log("book response", response);
-      if (response?.data) {
-        sess.setItem("bookId", response.data?.bookId || "nil");
-        sess.setItem("bookName", response.data?.bookName || "nil");
-      } else {
-        dispatch(addError("Book not loaded correctly. Please try again."));
-        sess.setItem("bookId", "");
-        sess.setItem("bookName", "");
-      }
-    } catch (error) {
-      // console.log(error);
-      dispatch(addError(error.response?.data?.msg || "Failed to get  book"));
-      sess.setItem("bookId", "");
-      sess.setItem("bookName", "");
+  useEffect(() => {
+    const token = sess.getItem("Auth-Token");
+    if (token) {
+      setIsAuthenticated(true);
     }
-  };
-  const handleLoadLink = async (e, setLinkLoading) => {
+  }, []);
+
+  const handleLoadLink = async (e) => {
     e.preventDefault();
-    setLinkLoading(true);
+    setIsLoading(true);
 
     try {
-      const response = await axios.post(
-        endpoints.paperDashApi.validateUrl.url,
-        {
-          url: e.target?.[0]?.value.trim() || "",
-        },
-      );
+      const response = await axios.post(endpoints.paperDashApi.validateUrl.url, {
+        url: url.trim(),
+      });
 
       if (response.data.url) {
-        await handleGetBook(e, response.data.url);
-        setTargetUrl(response.data.url);
-        setShowLogin(false);
+        const bookResponse = await axios.get(
+          `${endpoints.paperDashApi.getBook.url}?url=${btoa(response.data.url)}`
+        );
+        setBookDetails({
+          bookId: bookResponse.data?.bookId || "",
+          bookName: bookResponse.data?.bookName || "",
+          userId: sess.getItem("userId") || "",
+        });
       } else {
-        dispatch(addError("Book link is not correct. Please check."));
-        setTargetUrl(testUrl);
+        dispatch(addError("Invalid URL"));
       }
     } catch (error) {
-      dispatch(addError(error.response?.data?.msg || "Failed to validate URL"));
-      setTargetUrl(testUrl);
+      dispatch(addError(error.response?.data?.msg || "Failed to load URL"));
     } finally {
-      setTimeout(() => setLinkLoading(false), 300);
+      setIsLoading(false);
     }
   };
 
-  const handleSave = async (e) => {
+  const handleAuth = async (e) => {
     e.preventDefault();
-    const bookId = sess.getItem("bookId");
-    const userId = sess.getItem("userId");
-    const token = sess.getItem("Auth-Token");
+    setIsLoading(true);
 
-    if (!bookId || !userId || !token) {
-      dispatch(addError("Missing required information"));
-      return;
-    }
-
+    const formData = new FormData(e.target);
     try {
-      await axios.post(endpoints.paperDashApi.copyCourse.url, {
-        bookId,
-        userId,
-        token,
-      });
-      dispatch(addToast( "Book saved, go to your dashboard to see it"))
-      setTimeout(() => {
-        setTargetUrl("https://progressme.ru/TeacherAccount/materials/personal");
-      }, 10000);
-    } catch (error) {
-      dispatch(addError(error.response?.data?.msg || "Failed to copy course"));
-    }
-  };
-
-  const handleAuth = async (e, setAuthing) => {
-    e.preventDefault();
-    setAuthing(true);
-
-    const formData = new FormData(document.forms["auth-in"]);
-    const email = formData.get("email");
-    const password = formData.get("password");
-
-    try {
-      // Get a new token if not already set
       if (!sess.getItem("Auth-Token")) {
-        const tokenResponse = await axios.get(
-          endpoints.paperDashApi.getToken.url,
-        );
+        const tokenResponse = await axios.get(endpoints.paperDashApi.getToken.url);
         sess.setItem("Auth-Token", tokenResponse.data.token);
       }
 
-      // Authenticate with the token
-      const response = await axios.post(
-        endpoints.paperDashApi.authenticate.url,
-        {
-          email,
-          password,
-        },
-      );
-
-      // console.log("response from auth", response);
+      const response = await axios.post(endpoints.paperDashApi.authenticate.url, {
+        email: formData.get("email"),
+        password: formData.get("password"),
+      });
 
       sess.setItem("userId", response.data.data.Value.Id);
-
-      setIsAuthed(true);
-      setShowLogin(false);
+      setIsAuthenticated(true);
     } catch (error) {
       dispatch(addError(error.response?.data?.msg || "Authentication failed"));
     } finally {
-      setAuthing(false);
+      setIsLoading(false);
     }
   };
 
-  const handleReset = (e) => {
-    e.preventDefault();
-    sess.removeItem("bookId");
-    sess.removeItem("bookName");
-    setTargetUrl("https://progressme.ru");
-    setShowLogin(true);
+  const handleReset = () => {
+    setUrl("");
+    setBookDetails({ bookId: "", bookName: "", userId: "" });
   };
 
-  const hasNoBookUserId = () =>
-    !(sess.getItem("bookId")?.length > 0 && sess.getItem("userId")?.length > 0);
-
-  // Components
-  const LoadingButton = () => (
-    <Button color="primary" disabled>
-      <Spinner size="sm">Loading...</Spinner>
-      <span> Loading</span>
-    </Button>
-  );
-
-  const AuthIn = () => {
-    const [authing, setAuthing] = useState(false);
-    return (
-      <div className="auth-in-wrapper w-75 h-100">
-        <div className="auth-in-header">
-          <h3 className="auth-in-header-title">Temporary Login</h3>
-          <p className="auth-in-header-subtitle">
-            <span>
-              Enter your actual email and password to access your account to
-              save your userId
-            </span>
-            <br />
-            <em>- This is necessary to save the book to your account</em>
-            <br />
-            <em>
-              - Please remember to change them after, if you feel insecure.
-              <strong> We do not keep any login credentials</strong>
-            </em>
-          </p>
-        </div>
-        <Form id="auth-in" onSubmit={(e) => handleAuth(e, setAuthing)}>
-          <FormGroup id="formBasicEmail">
-            <Label>Email address</Label>
-            <Input
-              form="auth-in"
-              name="email"
-              type="email"
-              placeholder="Enter email"
-              disabled={authing}
-            />
-          </FormGroup>
-          <FormGroup id="formBasicPassword">
-            <Label>Password</Label>
-            <Input
-              form="auth-in"
-              name="password"
-              type="password"
-              placeholder="Password"
-              disabled={authing}
-            />
-          </FormGroup>
-          {authing ? (
-            <LoadingButton />
-          ) : (
-            <Button color="primary" type="submit">
-              Submit
-            </Button>
-          )}
-        </Form>
-      </div>
-    );
+  const handleSave = () => {
+    // Just console.log for now as per requirements
+    console.log("Saving book details:", bookDetails);
   };
 
-  const NoTargetUrlSet = () => (
-    <div
-      className="position-absolute top-100 start-50 translate-middle w-100 overlayer d-flex flex-column justify-content-center align-items-center px-2"
-      style={{ inset: 0 }}
-    >
-      <img src={spirow} className="w-25 scale-x-[-1] rotate-90" alt="arrow" />
-      <h4 className="w-75">
-        Add the link to your book up here and see the magic
-      </h4>
-    </div>
-  );
-
-  const BookCopied = () => (
-    <div
-      className="position-absolute top-100 start-50 translate-middle w-100 overlayer d-flex flex-column justify-content-center align-items-center my-5 px-2"
-      style={{ inset: 0 }}
-    >
-      <div className="w-100 h-100">
-        <h3>Book Copied!</h3>
-        <h5>
-          Log in to
-          <a
-            href="https://progressme.ru/Account/Login"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {" progressme.ru "}
-            <i className="fas fa-external-link" aria-hidden="true"></i>
-          </a>
-          to see the book in your personal library
-        </h5>
-      </div>
-    </div>
-  );
-
-  const LoadLink = ({ setLinkLoading }) => (
-    <Form
-      id="load-link"
-      className="w-75"
-      onSubmit={(e) => handleLoadLink(e, setLinkLoading)}
-    >
-      <FormGroup className="w-100">
-        <Input
-          type="text"
-          placeholder="progressme link"
-          defaultValue={targetUrl || ""}
-          className="form-control"
-        />
-        <div className="invalid-feedback">
-          Please check the link and make sure there are no spaces.
+  const AuthForm = () => (
+    <div className="auth-form p-4">
+      <h3>Temporary Login</h3>
+      <p className="text-muted mb-4">
+        This login is temporary and only used to access your account.
+        Your credentials are not stored.
+      </p>
+      <Form onSubmit={handleAuth}>
+        <div className="mb-3">
+          <Label>Email</Label>
+          <Input type="email" name="email" required />
         </div>
-        <Col>
-          <Button className="btn-semi-round" color="primary" type="submit">
-            connect
-          </Button>
-          <Button
-            className="btn-semi-round"
-            color="danger"
-            type="button"
-            onClick={handleReset}
-          >
-            reset
-          </Button>
-        </Col>
-      </FormGroup>
-    </Form>
-  );
-
-  const BookInfo = ({ disabled = false }) => (
-    <Form id={disabled ? "disabled-save-book" : "save-book"}>
-      <FormGroup className="w-100">
-        <Input
-          className="mb-1"
-          type="text"
-          id={disabled ? "disabled-book-id" : "book-id"}
-          readOnly
-          defaultValue={
-            disabled ? "book id" : sess.getItem("bookId") || "book id"
-          }
-        />
-        <Input
-          className="my-1"
-          type="text"
-          id={disabled ? "disabled-book-name" : "book-name"}
-          readOnly
-          defaultValue={
-            disabled ? "book name" : sess.getItem("bookName") || "book name"
-          }
-        />
-        <Input
-          className="mt-1"
-          type="text"
-          id={disabled ? "disabled-user-id" : "user-id"}
-          readOnly
-          defaultValue={
-            disabled ? "user name" : sess.getItem("userId") || "user name"
-          }
-        />
-        <Button
-          className="btn-semi-round"
-          color="primary"
-          type="button"
-          disabled={disabled || hasNoBookUserId()}
-          onClick={handleSave}
-        >
-          save
+        <div className="mb-3">
+          <Label>Password</Label>
+          <Input type="password" name="password" required />
+        </div>
+        <Button color="primary" disabled={isLoading}>
+          {isLoading ? <Spinner size="sm" /> : "Login"}
         </Button>
-      </FormGroup>
-    </Form>
-  );
-
-  const IntermediateComponent = ({ linkLoading }) => (
-    <div className="w-100 position-relative">
-      <div className="w-100 h-100 bg-img">
-        <img
-          src="https://static.tildacdn.com/tild3633-3338-4961-b237-633361646262/Footer_Bg.svg"
-          alt="background"
-        />
-      </div>
-      {hasNoBookUserId() ? (
-        linkLoading ? (
-          <LoadingButton />
-        ) : (
-          <NoTargetUrlSet />
-        )
-      ) : (
-        <BookCopied />
-      )}
+      </Form>
     </div>
   );
 
-  const MemoizedIframe = memo(({ authedIn, targetUrlSet, linkLoading }) =>
-    authedIn ? (
-      targetUrlSet ? (
-        linkLoading ? (
-          <div className="iframe-loading w-100 h-100 d-flex flex-column justify-content-center align-items-center">
-            <img
-              src={spirow}
-              alt="ProgressMe Logo"
-              className="mb-3"
-              style={{ width: "50px" }}
-            />
-            <Spinner size="sm" className="mb-2" />
-            <span>Page is loading...</span>
-          </div>
-        ) : (
-          <div className="w-100 position-relative">
-            {!authedIn ? (
-              <div
-                className="no-auth-view-book"
-                style={{
-                  position: "absolute",
-                  width: "100%",
-                  height: "100%",
-                  background: "rgba(0,0,0,0.5)",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <Button
-                  className="btn-semi-round"
-                  color="primary"
-                  type="button"
-                  disabled={false}
-                  onClick={() => setShowLogin(true)}
-                >
-                  Login
-                </Button>
-              </div>
-            ) : (
-              <></>
-            )}
-            <iframe
-              id="iframe_iframe"
-              src={targetUrl}
-              frameBorder="0"
-              allowFullScreen={true}
-              style={{
-                minWidth: "100%",
-                minHeight: "100%",
-              }}
-              className="iframe_iframe w-100 h-100 min-h-[500px]"
-              title="course preview"
-            />
-          </div>
-        )
-      ) : (
-        <IntermediateComponent linkLoading={linkLoading} />
-      )
-    ) : (
-      <AuthIn />
-    ),
-    //     showLogin ? (
-    // <AuthIn />
-    //     ) : (
-    //       <IntermediateComponent linkLoading={linkLoading} />
-    //     ),
+  const BookDetails = () => (
+    <div className="book-details p-3">
+      <Input
+        value={bookDetails.bookId}
+        readOnly
+        placeholder="Book ID"
+        className="mb-2"
+      />
+      <Input
+        value={bookDetails.bookName}
+        readOnly
+        placeholder="Book Name"
+        className="mb-2"
+      />
+      <Input
+        value={bookDetails.userId}
+        readOnly
+        placeholder="User ID"
+        className="d-none d-md-block mb-2"
+      />
+      <Button
+        color="primary"
+        onClick={handleSave}
+        disabled={!bookDetails.bookId || !bookDetails.userId}
+      >
+        Save
+      </Button>
+    </div>
   );
-
-  const LeftComponent = ({ authedIn, targetUrlSet }) => {
-    const [linkLoading, setLinkLoading] = useState(false);
-    return (
-      <Col>
-        <Row lg="10">
-          <LoadLink setLinkLoading={setLinkLoading} />
-        </Row>
-        <Row lg="10" className="h-100">
-          <div
-            className="iframe_wrapper w-100 h-100"
-            style={{ minheight: "500px" }}
-          >
-            <MemoizedIframe
-              authedIn={authedIn}
-              targetUrlSet={targetUrlSet}
-              linkLoading={linkLoading}
-            />
-          </div>
-        </Row>
-      </Col>
-    );
-  };
 
   return (
-    <Col lg="12" className="h-100">
-      <Card className="h-100">
-        <CardHeader>
-          <CardTitle tag="h5">Add the progressme link</CardTitle>
-        </CardHeader>
-        <CardBody className="p-4 h-100">
-          <Row className="h-100 w-100 overflow-hidden flex-row">
-            <LeftComponent authedIn={isAuthed} targetUrlSet={!!targetUrl} />
-            <Col sm="3">
-              <BookInfo disabled={!isAuthed} />
-            </Col>
-          </Row>
-        </CardBody>
-      </Card>
-    </Col>
+    <Card className="h-100">
+      <CardHeader className="d-flex justify-content-between align-items-center">
+        <CardTitle tag="h4">Course Scraper</CardTitle>
+        <div className="d-flex gap-2">
+          <Input
+            placeholder="Enter URL"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            style={{ width: "300px" }}
+          />
+          <Button color="primary" onClick={handleLoadLink} disabled={isLoading}>
+            Connect
+          </Button>
+          <Button color="secondary" onClick={handleReset}>
+            Reset
+          </Button>
+        </div>
+      </CardHeader>
+      <CardBody>
+        <BookDetails />
+        <div className="content-area mt-3 position-relative" style={{ minHeight: "400px" }}>
+          {!isAuthenticated ? (
+            <AuthForm />
+          ) : !url ? (
+            <div className="text-center">
+              <img src={spirow} alt="arrow" style={{ width: "50px" }} />
+              <p>Add your link above</p>
+            </div>
+          ) : (
+            <div className="iframe-container">
+              {isLoading ? (
+                <div className="text-center">
+                  <Spinner />
+                  <p>Loading content...</p>
+                </div>
+              ) : (
+                <iframe
+                  src={url}
+                  title="Course Content"
+                  className="w-100 h-100"
+                  style={{ minHeight: "500px" }}
+                />
+              )}
+            </div>
+          )}
+        </div>
+      </CardBody>
+    </Card>
   );
 };
 
-export default memo(CourseScraperV2);
+export default CourseScraperV2;
