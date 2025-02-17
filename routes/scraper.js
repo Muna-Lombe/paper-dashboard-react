@@ -219,7 +219,7 @@ router.get("/getbook", [], async (req, res) => {
         if (decodedUrl.includes("book/")) {
             const bookIdRegex = /\/book\/(\d+)/;
 
-            const bookId = code.match(bookIdRegex)[1].split("/")[0];
+            const bookId = decodedUrl.match(bookIdRegex)[1].split("/")[0];
             book = await courseScraperService.getBookById(bookId);
         }
         // if we get a url like this
