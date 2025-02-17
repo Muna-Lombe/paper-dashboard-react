@@ -183,27 +183,72 @@ const CourseScraperV2 = () => {
   );
 
   const renderContent = () => {
+    // Link loading state
     if (isLoading) {
-      return <LoadingComponent />;
+      return (
+        <div className="d-flex flex-column align-items-center justify-content-center" style={{ minHeight: "400px" }}>
+          <Spinner style={{ width: '3rem', height: '3rem' }} className="mb-3" />
+          <p className="text-primary">Loading your content...</p>
+        </div>
+      );
     }
-
-    if (!isAuthenticated) {
-      return <AuthForm />;
+    
+    // Link loaded and authenticated
+    if (url && isAuthenticated) {
+      return (
+        <div className="iframe-container">
+          <iframe
+            src={url}
+            title="Course Content"
+            className="w-100"
+            style={{ minHeight: "500px" }}
+          />
+        </div>
+      );
     }
-
-    if (!url) {
-      return <NoLinkComponent />;
+    
+    // Link loaded but not authenticated
+    if (url && !isAuthenticated) {
+      return (
+        <div className="iframe-container position-relative">
+          <iframe
+            src={url}
+            title="Course Content"
+            className="w-100"
+            style={{ minHeight: "500px", opacity: "0.5" }}
+          />
+          <div className="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center" 
+               style={{ background: "rgba(0,0,0,0.7)" }}>
+            <h4 className="text-white mb-4">Please authenticate to view the content</h4>
+            <AuthForm />
+          </div>
+        </div>
+      );
     }
-
+    
+    // No link but authenticated
+    if (!url && isAuthenticated) {
+      return (
+        <div className="text-center p-4">
+          <img 
+            src={spirow} 
+            alt="arrow" 
+            style={{ width: "80px", transform: "rotate(-90deg)" }} 
+            className="mb-3"
+          />
+          <p className="h5">Add your link above to get started</p>
+        </div>
+      );
+    }
+    
+    // No link and not authenticated (initial state)
     return (
-      <div className="iframe-container position-relative">
-        <iframe
-          src={url}
-          title="Course Content"
-          className="w-100"
-          style={{ minHeight: "500px" }}
-        />
-        {!isAuthenticated && <AuthOverlay />}
+      <div className="d-flex flex-column align-items-center p-4">
+        <p className="text-center mb-4">
+          Welcome! To access and save course content, please log in first.
+          Then you can add a course link above to view its contents.
+        </p>
+        <AuthForm />
       </div>
     );
   };
