@@ -44,3 +44,34 @@
 /* .bg-pattern-effect { */
   /* Add any decorative patterns or SVGs */
 /* } */
+
+/* Add your custom styles here */
+.loading-bar {
+  width: 200px;
+  height: 4px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 1rem;
+}
+
+.loading-progress {
+  width: 100%;
+  height: 100%;
+  background: #51cbce;
+  animation: loading 1.5s infinite ease-in-out;
+  transform-origin: 0% 50%;
+}
+
+@keyframes loading {
+  0% {
+    transform: scaleX(0);
+  }
+  50% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0);
+    transform-origin: 100% 50%;
+  }
+}

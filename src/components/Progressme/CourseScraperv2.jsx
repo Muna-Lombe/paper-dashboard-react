@@ -183,9 +183,12 @@ const CourseScraperV2 = () => {
           ) : (
             <div className="iframe-container">
               {isLoading ? (
-                <div className="text-center">
-                  <Spinner />
-                  <p>Loading content...</p>
+                <div className="text-center d-flex flex-column align-items-center justify-content-center" style={{ minHeight: "500px" }}>
+                  <Spinner style={{ width: '3rem', height: '3rem' }} />
+                  <p className="mt-3 text-primary">Loading your content...</p>
+                  <div className="loading-bar">
+                    <div className="loading-progress"></div>
+                  </div>
                 </div>
               ) : (
                 <iframe
