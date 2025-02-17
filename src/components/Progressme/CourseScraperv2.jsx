@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Card,
@@ -94,7 +95,6 @@ const CourseScraperV2 = () => {
   };
 
   const handleSave = () => {
-    // Just console.log for now as per requirements
     console.log("Saving book details:", bookDetails);
   };
 
@@ -102,8 +102,8 @@ const CourseScraperV2 = () => {
     <div className="auth-form p-4">
       <h3>Temporary Login</h3>
       <p className="text-muted mb-4">
-        This login is temporary and only used to access your account.
-        Your credentials are not stored.
+        To access and save books, please log in with your credentials.
+        This login is temporary and your credentials are not stored.
       </p>
       <Form onSubmit={handleAuth}>
         <div className="mb-3">
@@ -118,6 +118,37 @@ const CourseScraperV2 = () => {
           {isLoading ? <Spinner size="sm" /> : "Login"}
         </Button>
       </Form>
+    </div>
+  );
+
+  const LoadingComponent = () => (
+    <div className="d-flex flex-column align-items-center justify-content-center" style={{ minHeight: "400px" }}>
+      <Spinner style={{ width: '3rem', height: '3rem' }} />
+      <p className="mt-3 text-primary">Loading your content...</p>
+      <div className="loading-bar">
+        <div className="loading-progress"></div>
+      </div>
+    </div>
+  );
+
+  const NoLinkComponent = () => (
+    <div className="text-center p-4">
+      <img src={spirow} alt="arrow" style={{ width: "50px" }} />
+      <p className="mt-3">Add your link above</p>
+    </div>
+  );
+
+  const AuthOverlay = () => (
+    <div
+      className="auth-overlay position-absolute w-100 h-100 d-flex justify-content-center align-items-center"
+      style={{
+        top: 0,
+        left: 0,
+        background: "rgba(0,0,0,0.7)",
+        zIndex: 1000,
+      }}
+    >
+      <AuthForm />
     </div>
   );
 
@@ -151,6 +182,32 @@ const CourseScraperV2 = () => {
     </div>
   );
 
+  const renderContent = () => {
+    if (isLoading) {
+      return <LoadingComponent />;
+    }
+
+    if (!isAuthenticated) {
+      return <AuthForm />;
+    }
+
+    if (!url) {
+      return <NoLinkComponent />;
+    }
+
+    return (
+      <div className="iframe-container position-relative">
+        <iframe
+          src={url}
+          title="Course Content"
+          className="w-100"
+          style={{ minHeight: "500px" }}
+        />
+        {!isAuthenticated && <AuthOverlay />}
+      </div>
+    );
+  };
+
   return (
     <Card className="h-100">
       <CardHeader className="d-flex justify-content-between align-items-center">
@@ -172,34 +229,8 @@ const CourseScraperV2 = () => {
       </CardHeader>
       <CardBody>
         <BookDetails />
-        <div className="content-area mt-3 position-relative" style={{ minHeight: "400px" }}>
-          {!isAuthenticated ? (
-            <AuthForm />
-          ) : !url ? (
-            <div className="text-center">
-              <img src={spirow} alt="arrow" style={{ width: "50px" }} />
-              <p>Add your link above</p>
-            </div>
-          ) : (
-            <div className="iframe-container">
-              {isLoading ? (
-                <div className="text-center d-flex flex-column align-items-center justify-content-center" style={{ minHeight: "500px" }}>
-                  <Spinner style={{ width: '3rem', height: '3rem' }} />
-                  <p className="mt-3 text-primary">Loading your content...</p>
-                  <div className="loading-bar">
-                    <div className="loading-progress"></div>
-                  </div>
-                </div>
-              ) : (
-                <iframe
-                  src={url}
-                  title="Course Content"
-                  className="w-100 h-100"
-                  style={{ minHeight: "500px" }}
-                />
-              )}
-            </div>
-          )}
+        <div className="content-area mt-3" style={{ minHeight: "400px" }}>
+          {renderContent()}
         </div>
       </CardBody>
     </Card>
