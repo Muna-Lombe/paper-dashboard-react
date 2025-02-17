@@ -1,0 +1,37 @@
+Create a React component called "CourseScraper" with the following features and states:
+
+1. A card layout with a header containing an input field for a URL, a "Connect" button, and a "Reset" button.
+2. A main content area that changes based on the following states:
+a. Initial state (no link, not authenticated): Show an auth form with brief instructions.
+b. Loading state: Display a loading spinner when a link is being processed.
+c. Authenticated without link: Show an upward-pointing arrow animation with text "Add your link there".
+d. Link loaded and authenticated: Display an iframe with the loaded content.
+e. Link loaded but not authenticated: Show the iframe with a semi-transparent auth overlay.
+3. A persistent "BookDetails" section at the top of the content area, containing read-only inputs for Book ID, Book Name, and User ID (hidden on mobile), and a Save button.
+4. The auth form should include:
+
+1. Email and password inputs
+2. A submit button that shows a loading spinner when authenticating
+3. Explanatory text about the temporary nature of the login
+
+
+
+5. Use React hooks for state management (useState, useEffect).
+6. Implement the following functions:
+
+1. handleLoadLink: Process the entered URL and update the state
+2. handleReset: Clear the current state and return to initial view
+3. handleAuth: Process the login and update authentication state
+4. handleSave: Save the current book details (just console.log for now)
+
+
+
+7. Use Tailwind CSS for styling, including responsive design.
+8. Incorporate icons from Lucide React for visual enhancements.
+9. Ensure the component is responsive, with special consideration for mobile view (e.g., hiding certain elements, adjusting layouts).
+10. Use shadcn/ui components where applicable for a modern, consistent UI.
+11. Implement proper loading and disabled states for buttons.
+12. Use session storage to persist some data across page reloads.
+
+
+The component should provide a seamless user experience for loading course content, authenticating users, and saving book details, with clear visual feedback for each state and action

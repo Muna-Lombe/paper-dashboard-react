@@ -20,7 +20,7 @@ import spirow from "../../assets/img/spriral-arrow.png";
 import { endpoints } from "config";
 import { addToast } from "variables/slices/toastSlice";
 
-const CourseScraper = () => {
+const CourseScraperV2 = () => {
   const [targetUrl, setTargetUrl] = useState(null);
   const [isAuthed, setIsAuthed] = useState(false);
   const [testUrl, setTestUrl] = useState(
@@ -459,4 +459,4 @@ const CourseScraper = () => {
   );
 };
 
-export default memo(CourseScraper);
+export default memo(CourseScraperV2);

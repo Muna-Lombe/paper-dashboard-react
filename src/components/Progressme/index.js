@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import CourseScraper from "./CourseScraper";
+import CourseScraperV2 from "./CourseScraperv2";
+
 import CourseBuilder from "./CourseBuilder";
 import {
   Card,
@@ -100,7 +102,7 @@ const Progressme = () => {
               }
               style={{ display: "auto;" }}
             >
-              <CourseScraper />
+              <CourseScraperV2 />
             </div>
             <div
               id="course-builder"
