@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Card,
@@ -192,7 +191,7 @@ const CourseScraperV2 = () => {
         </div>
       );
     }
-    
+
     // Link loaded and authenticated
     if (url && isAuthenticated) {
       return (
@@ -201,12 +200,12 @@ const CourseScraperV2 = () => {
             src={url}
             title="Course Content"
             className="w-100"
-            style={{ minHeight: "500px" }}
+            style={{ height: "500px", maxHeight: "500px" }}
           />
         </div>
       );
     }
-    
+
     // Link loaded but not authenticated
     if (url && !isAuthenticated) {
       return (
@@ -215,7 +214,7 @@ const CourseScraperV2 = () => {
             src={url}
             title="Course Content"
             className="w-100"
-            style={{ minHeight: "500px", opacity: "0.5" }}
+            style={{ height: "500px", maxHeight: "500px", opacity: "0.5" }}
           />
           <div className="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center" 
                style={{ background: "rgba(0,0,0,0.7)" }}>
@@ -225,7 +224,7 @@ const CourseScraperV2 = () => {
         </div>
       );
     }
-    
+
     // No link but authenticated
     if (!url && isAuthenticated) {
       return (
@@ -240,7 +239,7 @@ const CourseScraperV2 = () => {
         </div>
       );
     }
-    
+
     // No link and not authenticated (initial state)
     return (
       <div className="d-flex flex-column align-items-center p-4">
