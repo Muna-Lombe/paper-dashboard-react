@@ -40,13 +40,16 @@ const CourseScraperV2 = () => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(endpoints.paperDashApi.validateUrl.url, {
-        url: url.trim(),
-      });
+      const response = await axios.post(
+        endpoints.paperDashApi.validateUrl.url,
+        {
+          url: url.trim(),
+        },
+      );
 
       if (response.data.url) {
         const bookResponse = await axios.get(
-          `${endpoints.paperDashApi.getBook.url}?url=${btoa(response.data.url)}`
+          `${endpoints.paperDashApi.getBook.url}?url=${btoa(response.data.url)}`,
         );
         setBookDetails({
           bookId: bookResponse.data?.bookId || "",
@@ -70,14 +73,19 @@ const CourseScraperV2 = () => {
     const formData = new FormData(e.target);
     try {
       if (!sess.getItem("Auth-Token")) {
-        const tokenResponse = await axios.get(endpoints.paperDashApi.getToken.url);
+        const tokenResponse = await axios.get(
+          endpoints.paperDashApi.getToken.url,
+        );
         sess.setItem("Auth-Token", tokenResponse.data.token);
       }
 
-      const response = await axios.post(endpoints.paperDashApi.authenticate.url, {
-        email: formData.get("email"),
-        password: formData.get("password"),
-      });
+      const response = await axios.post(
+        endpoints.paperDashApi.authenticate.url,
+        {
+          email: formData.get("email"),
+          password: formData.get("password"),
+        },
+      );
 
       sess.setItem("userId", response.data.data.Value.Id);
       setIsAuthenticated(true);
@@ -99,11 +107,6 @@ const CourseScraperV2 = () => {
 
   const AuthForm = () => (
     <div className="auth-form p-4">
-      <h3>Temporary Login</h3>
-      <p className="text-muted mb-4">
-        To access and save books, please log in with your credentials.
-        This login is temporary and your credentials are not stored.
-      </p>
       <Form onSubmit={handleAuth}>
         <div className="mb-3">
           <Label>Email</Label>
@@ -121,8 +124,11 @@ const CourseScraperV2 = () => {
   );
 
   const LoadingComponent = () => (
-    <div className="d-flex flex-column align-items-center justify-content-center" style={{ minHeight: "400px" }}>
-      <Spinner style={{ width: '3rem', height: '3rem' }} />
+    <div
+      className="d-flex flex-column align-items-center justify-content-center"
+      style={{ minHeight: "400px" }}
+    >
+      <Spinner style={{ width: "3rem", height: "3rem" }} />
       <p className="mt-3 text-primary">Loading your content...</p>
       <div className="loading-bar">
         <div className="loading-progress"></div>
@@ -152,25 +158,28 @@ const CourseScraperV2 = () => {
   );
 
   const BookDetails = () => (
-    <div className="book-details p-3">
-      <Input
-        value={bookDetails.bookId}
-        readOnly
-        placeholder="Book ID"
-        className="mb-2"
-      />
-      <Input
-        value={bookDetails.bookName}
-        readOnly
-        placeholder="Book Name"
-        className="mb-2"
-      />
-      <Input
-        value={bookDetails.userId}
-        readOnly
-        placeholder="User ID"
-        className="d-none d-md-block mb-2"
-      />
+    <div className="book-details p-3 w-75 d-flex flex-wrap align-items-baseline gap-4">
+      <div className="book-id">
+        <Input
+          value={bookDetails.bookId}
+          readOnly
+          placeholder="Book ID"
+          className="mb-2"
+        />
+        <Input
+          value={bookDetails.bookName}
+          readOnly
+          placeholder="Book Name"
+          className="mb-2"
+        />
+        <Input
+          value={bookDetails.userId}
+          readOnly
+          placeholder="User ID"
+          className="d-none d-md-block mb-2"
+        />
+      
+      </div>
       <Button
         color="primary"
         onClick={handleSave}
@@ -185,8 +194,11 @@ const CourseScraperV2 = () => {
     // Link loading state
     if (isLoading) {
       return (
-        <div className="d-flex flex-column align-items-center justify-content-center" style={{ minHeight: "400px" }}>
-          <Spinner style={{ width: '3rem', height: '3rem' }} className="mb-3" />
+        <div
+          className="d-flex flex-column align-items-center justify-content-center"
+          style={{ minHeight: "400px" }}
+        >
+          <Spinner style={{ width: "3rem", height: "3rem" }} className="mb-3" />
           <p className="text-primary">Loading your content...</p>
         </div>
       );
@@ -209,16 +221,26 @@ const CourseScraperV2 = () => {
     // Link loaded but not authenticated
     if (url && !isAuthenticated) {
       return (
-        <div className="iframe-container position-relative">
-          <iframe
-            src={url}
-            title="Course Content"
-            className="w-100"
-            style={{ height: "500px", maxHeight: "500px", opacity: "0.5" }}
-          />
-          <div className="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center" 
-               style={{ background: "rgba(0,0,0,0.7)" }}>
-            <h4 className="text-white mb-4">Please authenticate to view the content</h4>
+        <div
+          className="iframe-container position-relative"
+          style={{maxWidth: "600px", maxHeight: "400px" }}
+        >
+          <div className="w-100 h-100">
+            <iframe
+              src={url}
+              title="Course Content"
+              className="w-100 h-100"
+              style={{opacity: "0.5" }}
+            />
+          
+          </div>
+          <div
+            className=" w-100 h-100 position-absolute top-0 left-0 d-flex flex-column justify-content-center align-items-center"
+            style={{ background: "rgba(0,0,0,0.7)" }}
+          >
+            <h4 className="text-white mb-1">
+              Please authenticate to view the content
+            </h4>
             <AuthForm />
           </div>
         </div>
@@ -229,10 +251,10 @@ const CourseScraperV2 = () => {
     if (!url && isAuthenticated) {
       return (
         <div className="text-center p-4">
-          <img 
-            src={spirow} 
-            alt="arrow" 
-            style={{ width: "80px", transform: "rotate(-90deg)" }} 
+          <img
+            src={spirow}
+            alt="arrow"
+            style={{ width: "80px", transform: "rotate(-90deg)" }}
             className="mb-3"
           />
           <p className="h5">Add your link above to get started</p>
@@ -244,9 +266,11 @@ const CourseScraperV2 = () => {
     return (
       <div className="d-flex flex-column align-items-center p-4">
         <p className="text-center mb-4">
-          Welcome! To access and save course content, please log in first.
-          Then you can add a course link above to view its contents.
+          Welcome! To access and save course content, please log in first. Then
+          you can add a course link above to view its contents.
         </p>
+        <h3>Temporary Login</h3>
+        
         <AuthForm />
       </div>
     );
@@ -254,24 +278,29 @@ const CourseScraperV2 = () => {
 
   return (
     <Card className="h-100">
-      <CardHeader className="d-flex justify-content-between align-items-center">
+      <CardHeader className="d-flex flex-column justify-content-between align-items-center">
         <CardTitle tag="h4">Course Scraper</CardTitle>
-        <div className="d-flex gap-2">
+        <div className="d-flex justify-content-start align-items-baseline gap-3">
           <Input
             placeholder="Enter URL"
+            defaultValue={url}
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
             style={{ width: "300px" }}
           />
           <Button color="primary" onClick={handleLoadLink} disabled={isLoading}>
-            Connect
+            {/* link icon */}
+            
+            <span className="d-none d-md-inline">Connect</span>
+            <span className="d-inline d-md-none">
+              <i className="fas fa-link"></i>
+            </span>
           </Button>
           <Button color="secondary" onClick={handleReset}>
             Reset
           </Button>
         </div>
       </CardHeader>
-      <CardBody>
+      <CardBody className="d-flex flex-wrap justify-content-between align-items-center">
         <BookDetails />
         <div className="content-area mt-3" style={{ minHeight: "400px" }}>
           {renderContent()}
