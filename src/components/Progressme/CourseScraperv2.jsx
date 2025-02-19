@@ -224,7 +224,7 @@ const CourseScraperV2 = () => {
     </div>
   );
 
-  const renderContent = () => {
+  const BookContent = () => {
     // Link loaded but not authenticated
     useEffect(() => {
       const iframe = document.querySelector("iframe");
@@ -376,7 +376,7 @@ const CourseScraperV2 = () => {
       </CardHeader>
       <CardBody className="d-flex flex-wrap justify-content-between align-items-center">
         <BookDetails />
-        <div className="content-area mt-3 w-100">{renderContent()}</div>
+        <div className="content-area mt-3 w-100">{BookContent()}</div>
       </CardBody>
     </Card>
   );
