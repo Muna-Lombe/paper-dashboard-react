@@ -12,6 +12,7 @@ import {
   Label,
   Row,
   Col,
+  
 } from "reactstrap";
 import axios from "axios";
 import { addError } from "../../variables/slices/errorSlice";
@@ -38,6 +39,9 @@ const CourseScraperV2 = () => {
       setIsAuthenticated(true);
     }
   }, []);
+
+  // on page load, check if there is a bookId in session storage and remove it
+  useEffect(() => {});
 
   const handleLoadLink = async (e) => {
     e.preventDefault();
@@ -104,13 +108,13 @@ const CourseScraperV2 = () => {
 
   const handleReset = () => {
     setUrl("");
-    setBookDetails({ bookId: "", bookName: "", userId: "" });
+    setBookDetails({ bookId: "", bookName: ""});
   };
 
-  const handleSave = async(e) => {
+  const handleSave = async (e) => {
     console.log("Saving book details:", bookDetails);
     e.preventDefault();
-    const {bookId,userId} = bookDetails;
+    const { bookId, userId } = bookDetails;
     const token = sess.getItem("Auth-Token");
 
     if (!bookId || !userId || !token) {
@@ -124,7 +128,7 @@ const CourseScraperV2 = () => {
         userId,
         token,
       });
-      dispatch(addToast( "Book saved, go to your dashboard to see it"))
+      dispatch(addToast("Book saved, go to your dashboard to see it"));
       setTimeout(() => {
         setUrl("https://progressme.ru/TeacherAccount/materials/personal");
       }, 10000);
@@ -185,6 +189,10 @@ const CourseScraperV2 = () => {
     </div>
   );
 
+  const handleResetId=()=>{
+    sess.removeItem("userId");
+    setBookDetails(ps=>({...ps, userId:""}));
+  }
   const BookDetails = () => (
     <div className="book-details p-3 w-75 d-flex flex-wrap justify-content-between align-items-baseline gap-4">
       <div className="w-75 d-flex">
@@ -200,17 +208,31 @@ const CourseScraperV2 = () => {
           placeholder="Book Name"
           className="m-2"
         />
-        <Input
-          color={isAuthenticated ? "success" : "danger"}
-          value={bookDetails.userId || sess.getItem("userId")}
-          readOnly
-          placeholder="User ID"
-          className={
-            (isAuthenticated
-              ? "border border-success"
-              : " border border-danger ") + " m-2 "
-          }
-        />
+        <div className="position-relative">
+          <Input
+            color={"danger"}
+            value={bookDetails.userId || sess.getItem("userId")}
+            readOnly
+            placeholder="User ID"
+            className={
+              (isAuthenticated
+                ? "border border-success"
+                : " border border-danger ") + " m-2 "
+            }
+          />
+          <span
+            color={isAuthenticated ? "success" : "danger"}
+            className=" w-25 h-50 border border-danger text-sm-center"
+            style={
+              isAuthenticated
+                ? { position:"absolute", top: 0, right: 0, zIndex: 1 }
+                : { display:"none"}
+            }
+            onClick={handleResetId}
+          >
+            x
+          </span>
+        </div>
       </div>
       <Button
         color="primary"
