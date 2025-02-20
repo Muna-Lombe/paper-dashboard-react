@@ -113,6 +113,11 @@ const CourseScraperV2 = () => {
     setBookDetails({ bookId: "", bookName: ""});
   };
 
+  const handleResetId=()=>{
+    sess.removeItem("userId");
+    setIsAuthenticated(false);
+    setBookDetails(ps=>({...ps, userId:""}));
+  }
   const handleSave = async (e) => {
     console.log("Saving book details:", bookDetails);
     e.preventDefault();
@@ -191,62 +196,91 @@ const CourseScraperV2 = () => {
     </div>
   );
 
-  const handleResetId=()=>{
-    sess.removeItem("userId");
-    setBookDetails(ps=>({...ps, userId:""}));
-  }
-  const BookDetails = () => (
-    <div className="book-details p-3 w-75 d-flex flex-wrap justify-content-between align-items-baseline gap-4">
-      <div className="w-75 d-flex">
-        <Input
-          value={bookDetails.bookId}
-          readOnly
-          placeholder="Book ID"
-          className="m-2"
-        />
-        <Input
-          value={bookDetails.bookName}
-          readOnly
-          placeholder="Book Name"
-          className="m-2"
-        />
-        <div className="position-relative">
+
+  const BookDetails = () =>{ 
+    const Details = () => (
+      <>
+        
           <Input
-            color={"danger"}
-            value={bookDetails.userId || sess.getItem("userId")}
+            value={bookDetails.bookId}
             readOnly
-            placeholder="User ID"
-            className={
-              (isAuthenticated
-                ? "border border-success"
-                : " border border-danger ") + " m-2 "
-            }
+            placeholder="Book ID"
+            className="m-2"
+            style={{
+              maxWidth: "200px",
+            }}
           />
-          <span
-            color={isAuthenticated ? "success" : "danger"}
-            className=" w-25 h-50 border border-danger text-sm-center"
-            style={
-              isAuthenticated
-                ? { position:"absolute", top: 0, right: 0, zIndex: 1 }
-                : { display:"none"}
+          <Input
+            value={bookDetails.bookName}
+            readOnly
+            placeholder="Book Name"
+            className="m-2"
+            style={{
+              maxWidth: "200px",
+            }}
+          />
+          <div className="position-relative w-auto">
+            <Input
+              
+              color={"danger"}
+              value={bookDetails.userId || sess.getItem("userId")}
+              readOnly
+              placeholder="User ID"
+              className={
+                (isAuthenticated
+                  ? "border border-success"
+                  : " border border-danger ") + " m-2 "
+              }
+              style={{
+                maxWidth: "200px",
+              }}
+            />
+            <span
+              color={isAuthenticated ? "success" : "danger"}
+              className={isAuthenticated
+              ?("position-absolute top-50 end-0") : "d-none "+ " w-25 h-50 border border-danger text-sm-center"}
+              style={{top: "25%", right: "15%", zIndex: 1 }}
+              onClick={handleResetId}
+            >
+              x
+            </span>
+          </div>
+        
+        
+      </>
+    )
+    return(
+      <>
+        <Col md="3" className="book-details  p-3 d-xs-none d-sm-none d-md-none d-lg-flex flex-column justify-content-between align-items-baseline gap-4 ">
+          <div className="w-100 d-flex flex-column justify-content-evenly ">
+            <Details/>
+          </div>
+          <Button
+            color="primary"
+            onClick={handleSave}
+            disabled={
+              !isAuthenticated || !bookDetails.bookId || !bookDetails.userId
             }
-            onClick={handleResetId}
           >
-            x
-          </span>
-        </div>
-      </div>
-      <Button
-        color="primary"
-        onClick={handleSave}
-        disabled={
-          !isAuthenticated || !bookDetails.bookId || !bookDetails.userId
-        }
-      >
-        Save
-      </Button>
-    </div>
-  );
+            Save
+          </Button>
+        </Col>
+        <Row md="2" className="book-details p-3 w-100 d-lg-none d-xl-none d-2xl-none d-md-flex flex-wrap justify-content-end align-items-baseline gap-4">
+          <div className="w-100 d-flex justify-content-end ">
+            <Details/>
+          </div>
+          <Button
+            color="primary"
+            onClick={handleSave}
+            disabled={
+              !isAuthenticated || !bookDetails.bookId || !bookDetails.userId
+            }
+          >
+            Save
+          </Button>
+        </Row>
+      </>
+  )};
 
   const BookContent = () => {
     // Link loaded but not authenticated
@@ -398,9 +432,15 @@ const CourseScraperV2 = () => {
           </Button> */}
         </div>
       </CardHeader>
-      <CardBody className="d-flex flex-wrap justify-content-between align-items-center">
-        <BookDetails />
-        <div className="content-area mt-3 w-100">{BookContent()}</div>
+      <CardBody className="d-flex flex-col flex-row-reverse justify-content-between align-items-center">
+        <Col md={"auto"}  className="book-details p-3 w-100 d-lg-none d-xl-none d-2xl-none d-md-flex flex-wrap justify-content-between align-items-baseline gap-4">
+          <BookDetails />
+          <div className="content-area mt-3 w-100">{BookContent()}</div>
+        </Col>
+        <Row md={2} className="book-details  p-3 w-100 d-xs-none d-sm-none d-md-none d-lg-flex flex-row-reverse justify-content-between align-items-baseline gap-4">
+          <BookDetails />
+          <div className="content-area mt-3 w-100">{BookContent()}</div>
+        </Row>
       </CardBody>
     </Card>
   );
