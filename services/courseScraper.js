@@ -948,9 +948,9 @@ class CourseScraperService {
         }
     }
 
-    async copyCourse(bookId, userId) {
+    async copyCourse(bookId, userId, token) {
         try {
-            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken}`;
+            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || token}`;
             // console.log(wsUrl);
             const ws = await this.createWebSocketConnection(wsUrl);
             
