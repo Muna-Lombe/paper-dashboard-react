@@ -101,7 +101,7 @@ const Progressme = () => {
               }
               style={{ display: "auto;" }}
             >
-              <CourseScraper />
+              <CourseScraperV2 />
             </div>
             <div
               id="course-builder"

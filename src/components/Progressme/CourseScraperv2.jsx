@@ -95,7 +95,9 @@ const CourseScraperV2 = () => {
           password: formData.get("password"),
         },
       );
-
+      if (response.data.token){
+        sess.setItem("Auth-Token", response.data.token);
+      }
       sess.setItem("userId", response.data.data.Value.Id);
       setBookDetails((ps) => ({ ...ps, userId: response.data.data.Value.Id }));
       setIsAuthenticated(true);
