@@ -9,8 +9,7 @@ puppeteer.default.use(StealthPlugin());
 
 class CourseScraperService {
     constructor() {
-        this.urlRegex =
-            /^https?:\/\/(?:www\.)?(?:new\.)?(?:progressme\.ru|edvibe\.com)\/(?:sharing-material|SharingMaterial)\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}(\/book\/\d+)?$|https:\/\/progressme\.ru\/cabinet\/school\/materials\/book\/[0-9]{6}\/content$/
+        this.urlRegex = /^https?:\/\/(?:www\.)?(?:new\.)?(?:progressme\.ru|edvibe\.com)\/(?:sharing-material|SharingMaterial)\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}(\/book\/\d+)?$|https:\/\/progressme\.ru\/cabinet\/school\/materials\/book\/\d+\/content$/
         this.socketUrls = {
             books: "wss://proxy.progressme.ru/websocket",
             socket: "wss://progressme.ru/ws/WebSockets/SocketHandler.ashx",

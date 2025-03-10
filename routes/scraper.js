@@ -205,7 +205,8 @@ router.post(
 router.get("/getbook", [], async (req, res) => {
     try {
         const { url } = req.query;
-
+        const bookContentRegex = /https:\/\/progressme\.ru\/cabinet\/school\/materials\/book\/\d+\/content/;
+        const bookIdRegex = /\/book\/(\d+)/;
         let book = {};
         // lets say that the url is encoded
         const decodedUrl = atob(url);
@@ -217,7 +218,6 @@ router.get("/getbook", [], async (req, res) => {
         // we can use the getBookById function from the scraper service
         // we can also use the getBookByCode function from the scraper service
         if (decodedUrl.includes("book/")) {
-            const bookIdRegex = /\/book\/(\d+)/;
 
             const bookId = decodedUrl.match(bookIdRegex)[1].split("/")[0];
             book = await courseScraperService.getBookById(bookId);
