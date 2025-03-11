@@ -217,10 +217,14 @@ router.get("/getbook", [], async (req, res) => {
         // we should extract the book id from the url and then use that to get the book
         // we can use the getBookById function from the scraper service
         // we can also use the getBookByCode function from the scraper service
+        // !IMPORTANT!
+        // we cannot use the getBookById function for now because we need the sharingMaterialId which is only available in the getBookByCode function.
+        // So if only bookId is given, ask for a sharing link 
         if (decodedUrl.includes("book/")) {
 
             const bookId = decodedUrl.match(bookIdRegex)[1].split("/")[0];
             book = await courseScraperService.getBookById(bookId);
+            return res.json(book);
         }
         // if we get a url like this
         // "https://progressme.ru/sharing-material/4a9e8f6f-ba3e-4e97-93a3-9c74ca56a660"
@@ -230,6 +234,7 @@ router.get("/getbook", [], async (req, res) => {
 
             const bookCode = decodedUrl.split("sharing-material/")[1] ?? decodedUrl.split("SharingMaterial/")[1];
             book = await courseScraperService.getBookByCode(bookCode);
+            return res.json(book);
         }
 
         res.json({ ...book });
@@ -296,13 +301,15 @@ router.post(
         }
 
         try {
+            //  we are getting the sharingmaterialId from the existing getBookByCode. You just need to pass that to the copyCourse function
             const { bookId, userId, token } = req.body;
+            console.log("saving book:\nid: " + bookId + "\nuserId: " + userId + "\ntoken " + token)
             const result = await courseScraperService.copyCourse(
                 bookId,
                 userId,
                 token,
             );
-            res.json(result);
+            return res.json(result);
         } catch (err) {
             console.error(err.message);
             res.status(500).send("Failed to copy course");

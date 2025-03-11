@@ -45,6 +45,7 @@ class CourseScraperService {
                 return this.list.map((ws) => ws.socket);
             },
         };
+        this.currentBook = {};
         this.currentAuthToken = null;
         this.controllerTemplates = {
             GetIdMaterialMessage: (code) => ({
@@ -61,12 +62,12 @@ class CourseScraperService {
                 RequestId: this.generateAuthToken(),
                 Value: `{"BookId":${bookId}}`,
             }),
-            CopySharedBookMessage: (bookId) => ({
+            CopySharedBookMessage: (bookId, sharingMaterialId) => ({
                 Controller: "BookWsController",
                 Method: "CopyBook",
                 ProjectName: "Books",
                 RequestId: this.generateAuthToken(),
-                Value:JSON.stringify({"BookId":bookId,"IsVisible":false,"IsProtectedCopyright":false}),
+                Value:JSON.stringify({"BookId":bookId,"IsVisible":false,"IsProtectedCopyright":false, "SharingMaterialId":sharingMaterialId}),
             }),
             GetCurrentUserMessage: {
                 controller: "Auth",
@@ -818,6 +819,65 @@ class CourseScraperService {
             });
         });
     }
+
+
+    async getIdMaterial(code){
+        try {
+            const fallbackAuthToken = this.generateAuthToken()
+            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || fallbackAuthToken }`;
+            // console.log(wsUrl);
+            const ws = await this.createWebSocketConnection(wsUrl);
+            const bookInfo = {
+                bookId: bookId,
+                bookName: "",
+            };
+
+            return new Promise((resolve, reject) => {
+
+                ws.send(
+                    JSON.stringify(
+                        this.controllerTemplates.GetIdMaterialMessage(
+                            code,
+                        ),
+                    ),
+                );
+                ws.on("message", async (data) => {
+                    const response = JSON.parse(data.toString());
+
+
+                    if (
+                        response.Class === "SharingMaterialWsController" &&
+                        response.Method === "GetIdMaterial"
+                    ) {
+                        console.log("book", response);
+                        if(response.ErrorMessage){
+                           resolve({error: response.ErrorMessage})
+                        }else{
+
+                            bookInfo.bookName = response.Value.Name;
+                            resolve({ ...bookInfo });
+                        }
+                    }
+                });
+
+                ws.on("error", (error) => {
+                    console.error("WebSocket error:", error);
+                    reject(error);
+                });
+
+                this.activeWs.setNewActive(ws);
+                // Add timeout
+                setTimeout(() => {
+                    this.activeWs.clear();
+                    ws.close();
+                    reject(new Error("WebSocket authentication timeout"));
+                }, 300000);
+            });
+        } catch (error) {
+            console.error("Error getting id material:", error);
+            throw error;
+        }
+    }
     async getBookById(bookId) {
         try {
             const fallbackAuthToken = this.generateAuthToken()
@@ -828,6 +888,7 @@ class CourseScraperService {
                 bookId: bookId,
                 bookName: "",
             };
+            
             return new Promise((resolve, reject) => {
                
                 ws.send(
@@ -845,7 +906,7 @@ class CourseScraperService {
                         response.Class === "SharingMaterialWsController" &&
                         response.Method === "GetBook"
                     ) {
-                        // console.log("book", response);
+                        console.log("book", response);
                         if(response.ErrorMessage){
                            resolve({error: response.ErrorMessage})
                         }else{
@@ -885,6 +946,7 @@ class CourseScraperService {
                 bookId: "",
                 bookName: "",
             };
+            
             return new Promise((resolve, reject) => {
                 const getBookIdStringed = JSON.stringify(
                     this.controllerTemplates.GetIdMaterialMessage(
@@ -907,6 +969,7 @@ class CourseScraperService {
                         if(response.ErrorMessage){
                            return resolve({error: response.ErrorMessage})
                         }
+                        this.currentBook.sharingMaterialId = response.Value.SharingMaterialId;
                         bookInfo.bookId = response.Value.BookId;
                         ws.send(
                             JSON.stringify(
@@ -924,6 +987,7 @@ class CourseScraperService {
                     ) {
                         // console.log("book", response);
                         bookInfo.bookName = response.Value.Name;
+                        // this.currentBook.sharingMaterialId = response.Value.SharingMaterialId;
                         resolve({ ...bookInfo });
                     }
                 });
@@ -956,10 +1020,11 @@ class CourseScraperService {
             return new Promise((resolve, reject) => {
                 const copyBookStringed = JSON.stringify(
                     this.controllerTemplates.CopySharedBookMessage(
-                        bookId
+                        bookId,
+                        this.currentBook.sharingMaterialId,
                     ),
                 );
-                // console.log("copyBookStringed", copyBookStringed);
+                console.log("copyBookStringed", copyBookStringed);
                 ws.send(copyBookStringed);
 
                 ws.on("message", async (data) => {
@@ -972,6 +1037,7 @@ class CourseScraperService {
                     ) {
                         // console.log("book", response);
                         if(response.ErrorMessage){
+                            console.log(response)
                             resolve({error:response.ErrorMessage})
                         }else{
                             resolve({ success: response.IsSuccess, message: "Book Saved!" });
@@ -987,6 +1053,7 @@ class CourseScraperService {
                 });
 
                 this.activeWs.setNewActive(ws);
+                this.currentBook={};
                 // Add timeout
                 setTimeout(() => {
                     this.activeWs.clear();
