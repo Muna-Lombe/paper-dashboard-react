@@ -303,7 +303,24 @@ router.post(
         try {
             //  we are getting the sharingmaterialId from the existing getBookByCode. You just need to pass that to the copyCourse function
             const { bookId, userId, token } = req.body;
-            console.log("saving book:\nid: " + bookId + "\nuserId: " + userId + "\ntoken " + token)
+            console.log("\nsaving book:\nid: " + bookId + "\nuserId: " + userId + "\ntoken " + token)
+            if(!courseScraperService.currentBook.sharingMaterialId){    
+                console.log("\nsharingMaterialId not found. Checking if can share...")
+                
+                const canBookBeShared = await courseScraperService.isCanSharingMaterial(bookId, userId, token);
+                
+                if(canBookBeShared){
+                    console.log("\ncan share. Setting sharingMaterialId...")
+                    const sharingMaterialId = await courseScraperService.setSharingMaterialId(bookId, token);
+                        courseScraperService.currentBook.sharingMaterialId = sharingMaterialId;
+                    console.log("\nsharingMaterialId: " + courseScraperService.currentBook.sharingMaterialId)
+                }else{
+                    console.log("\ncannot share... won't try to copy")
+                    return res.status(400).json({ msg: "Book cannot be shared" });
+                }
+                    
+            }
+            
             const result = await courseScraperService.copyCourse(
                 bookId,
                 userId,

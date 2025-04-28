@@ -9,7 +9,8 @@ puppeteer.default.use(StealthPlugin());
 
 class CourseScraperService {
     constructor() {
-        this.urlRegex = /^https?:\/\/(?:www\.)?(?:new\.)?(?:progressme\.ru|edvibe\.com)\/(?:sharing-material|SharingMaterial)\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}(\/book\/\d+)?$|https:\/\/progressme\.ru\/cabinet\/school\/materials\/book\/\d+\/content$/
+        this.urlRegex =
+            /^https?:\/\/(?:www\.)?(?:new\.)?(?:progressme\.ru|edvibe\.com)\/(?:sharing-material|SharingMaterial)\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}(\/book\/\d+)?$|https:\/\/progressme\.ru\/cabinet\/school\/materials\/book\/\d+\/content$/;
         this.socketUrls = {
             books: "wss://proxy.progressme.ru/websocket",
             socket: "wss://progressme.ru/ws/WebSockets/SocketHandler.ashx",
@@ -48,6 +49,20 @@ class CourseScraperService {
         this.currentBook = {};
         this.currentAuthToken = null;
         this.controllerTemplates = {
+            IsCanSharingMaterialMessage: (bookId, userId) => ({
+                Controller: "BookWsController",
+                Method: "IsCanSharingMaterial",
+                ProjectName: "Books",
+                RequestId: this.generateAuthToken(),
+                Value: `{"BookId":${bookId}, "UserId":${userId}, "SchoolId":null}`,
+            }),
+            GetSharingMaterialMessage: (bookId) => ({
+                Controller: "SharingMaterialWsController",
+                Method: "GetSharingMaterial",
+                ProjectName: "Books",
+                RequestId: this.generateAuthToken(),
+                Value: `{"BookId":${bookId}, "IsInitIfEmpty":true}`,
+            }),
             GetIdMaterialMessage: (code) => ({
                 Controller: "SharingMaterialWsController",
                 Method: "GetIdMaterial",
@@ -67,7 +82,12 @@ class CourseScraperService {
                 Method: "CopyBook",
                 ProjectName: "Books",
                 RequestId: this.generateAuthToken(),
-                Value:JSON.stringify({"BookId":bookId,"IsVisible":false,"IsProtectedCopyright":false, "SharingMaterialId":sharingMaterialId}),
+                Value:
+                    '{"BookId":' +
+                    bookId +
+                    ',"IsVisible":false,"IsProtectedCopyright":false, "SharingMaterialId":"' +
+                    sharingMaterialId +
+                    '"}',
             }),
             GetCurrentUserMessage: {
                 controller: "Auth",
@@ -87,14 +107,801 @@ class CourseScraperService {
         };
     }
 
+    async resolveHostname(hostname) {
+        for (const dnsServer of this.dnsServers) {
+            try {
+                const resolver = new dns.Resolver();
+                resolver.setServers([dnsServer]);
+                const resolve4 = promisify(resolver.resolve4.bind(resolver));
+                const addresses = await resolve4(hostname);
+                console.log(
+                    `Successfully resolved ${hostname} to ${addresses[0]} using ${dnsServer}`,
+                );
+                return addresses[0];
+            } catch (error) {
+                console.log(
+                    `DNS resolution failed with ${dnsServer}:`,
+                    error.message,
+                );
+                continue;
+            }
+        }
+        throw new Error("Failed to resolve hostname with all DNS servers");
+    }
+
+    async createWebSocketConnection(url, maxRetries = 3) {
+        const urlObj = new URL(url);
+        let retryCount = 0;
+
+        // First try to resolve the hostname
+        try {
+            // Use system DNS first
+            try {
+                const address = await new Promise((resolve, reject) => {
+                    dns.lookup(urlObj.hostname, (err, address) => {
+                        if (err) reject(err);
+                        else {
+                            console.log(
+                                `Resolved ${urlObj.hostname} to ${address}`,
+                            );
+                            resolve(address);
+                        }
+                    });
+                });
+                console.log("System DNS lookup succeeded:", address);
+            } catch (error) {
+                console.log("System DNS lookup failed:", error.message);
+                // If system DNS fails, try our custom DNS resolvers
+                await this.resolveHostname(urlObj.hostname);
+            }
+
+            while (retryCount < maxRetries) {
+                try {
+                    console.log("Creating WebSocket connection..." + url);
+                    // Create WebSocket connection with additional options
+                    const ws = new WebSocket(url, {
+                        headers: {
+                            Host: urlObj.hostname,
+                            Origin: "https://progressme.ru",
+                            "User-Agent":
+                                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124 Safari/537.36",
+                            "Accept-Language": "en-US,en;q=0.9",
+                            "Accept-Encoding": "gzip, deflate, br",
+                            "Cache-Control": "no-cache",
+                            Pragma: "no-cache",
+                            Connection: "Upgrade",
+                            Upgrade: "websocket",
+                        },
+                        timeout: 30000,
+                        followRedirects: true,
+                        handshakeTimeout: 30000,
+                        rejectUnauthorized: false,
+                        family: 4,
+                        perMessageDeflate: false,
+                    });
+
+                    return await new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => {
+                            ws.close();
+                            reject(new Error("Connection timeout"));
+                        }, 30000);
+
+                        ws.on("open", () => {
+                            clearTimeout(timeout);
+                            console.log("WebSocket connection opened");
+                            resolve(ws);
+                        });
+
+                        ws.on("error", (error) => {
+                            clearTimeout(timeout);
+                            reject(error);
+                        });
+                    });
+                } catch (error) {
+                    console.log(
+                        `Connection attempt ${retryCount + 1} failed:`,
+                        error.message,
+                    );
+                    retryCount++;
+                    if (retryCount === maxRetries) {
+                        throw error;
+                    }
+                    await new Promise((resolve) =>
+                        setTimeout(
+                            resolve,
+                            Math.min(2000 * Math.pow(2, retryCount), 20000),
+                        ),
+                    );
+                }
+            }
+        } catch (error) {
+            throw new Error(`Failed to establish connection: ${error.message}`);
+        }
+    }
+
+    async authenticateWithWebSocket(email, password) {
+        try {
+            const authToken = this.generateAuthToken();
+            this.currentAuthToken = authToken;
+
+            const wsUrl = `wss://proxy.progressme.ru/websocket?token=${authToken}`;
+
+            const ws = await this.createWebSocketConnection(wsUrl);
+            console.log("WebSocket connected successfully");
+            //
+
+            return new Promise((resolve, reject) => {
+                const loginMessage = {
+                    Controller: "AccountWsController",
+                    Method: "Login",
+                    ProjectName: "Users",
+                    RequestId: this.generateAuthToken(),
+                    Value: JSON.stringify({
+                        Email: email,
+                        Password: password,
+                        RememberMe: true,
+                        UserRole: 4, // From first response
+                        AuthToken: authToken,
+                        CurrentDomain: "progressme.ru",
+                        AccountRole: 1, // From first response
+                    }),
+                };
+
+                ws.send(JSON.stringify(loginMessage));
+                ws.on("message", async (data) => {
+                    const response = JSON.parse(data.toString());
+                    // console.log("Received:", response);
+
+                    if (response.Method === "GetAccountRoles") {
+                        // Send login message after getting roles
+                    }
+
+                    if (response.Method === "Login") {
+                        if (response.IsSuccess) {
+                            this.currentAuthToken = authToken;
+                            resolve({
+                                token: authToken,
+                                data: {
+                                    Value: {
+                                        Id: response.Value.Id,
+                                        AccountRole: response.Value.Role,
+                                    },
+                                },
+                            });
+                        } else {
+                            reject(
+                                new Error("Login failed: " + response.Message),
+                            );
+                        }
+                    }
+                });
+
+                ws.on("error", (error) => {
+                    console.error("WebSocket error:", error);
+                    reject(error);
+                });
+
+                this.activeWs.setNewActive(ws);
+                // Add timeout
+                setTimeout(() => {
+                    this.activeWs.clear();
+                    ws.close();
+                    reject(new Error("WebSocket authentication timeout"));
+                }, 300000);
+            });
+        } catch (error) {
+            throw new Error(
+                "WebSocket authentication failed: " + error.message,
+            );
+        }
+    }
+
+    generateSocketMessages(targetUrl, bookId, userId) {
+        return {
+            GetIdMaterial: {
+                controller: "SharingMaterialWsController",
+                method: "GetIdMaterial",
+                value: JSON.stringify({
+                    Code: targetUrl.split("SharingMaterial/")[1] || "",
+                }),
+            },
+            GetBook: {
+                controller: "SharingMaterialWsController",
+                method: "GetBook",
+                value: JSON.stringify({ BookId: bookId, UserId: null }),
+            },
+            CopyBook: {
+                controller: "BookWsController",
+                method: "CopyBook",
+                value: JSON.stringify({ BookId: bookId, UserId: userId }),
+            },
+        };
+    }
+
+    async connectToWebSocket(url, token, messageHandler) {
+        return new Promise((resolve, reject) => {
+            const ws = new WebSocket(
+                `${url}?Page=TeacherProfile&isSharing=True&token=${token}`,
+            );
+
+            ws.on("open", () => {
+                resolve(ws);
+            });
+
+            ws.on("message", (data) => {
+                messageHandler(data);
+            });
+
+            ws.on("error", (error) => {
+                reject(error);
+            });
+        });
+    }
+
+    async getIdMaterial(code) {
+        try {
+            const fallbackAuthToken = this.generateAuthToken();
+            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || fallbackAuthToken}`;
+            // console.log(wsUrl);
+            const ws = await this.createWebSocketConnection(wsUrl);
+            const bookInfo = {
+                bookId: bookId,
+                bookName: "",
+            };
+
+            return new Promise((resolve, reject) => {
+                ws.send(
+                    JSON.stringify(
+                        this.controllerTemplates.GetIdMaterialMessage(code),
+                    ),
+                );
+                ws.on("message", async (data) => {
+                    const response = JSON.parse(data.toString());
+
+                    if (
+                        response.Class === "SharingMaterialWsController" &&
+                        response.Method === "GetIdMaterial"
+                    ) {
+                        console.log("book", response);
+                        if (response.ErrorMessage) {
+                            resolve({ error: response.ErrorMessage });
+                        } else {
+                            bookInfo.bookName = response.Value.Name;
+                            resolve({ ...bookInfo });
+                        }
+                    }
+                });
+
+                ws.on("error", (error) => {
+                    console.error("WebSocket error:", error);
+                    reject(error);
+                });
+
+                this.activeWs.setNewActive(ws);
+                // Add timeout
+                setTimeout(() => {
+                    this.activeWs.clear();
+                    ws.close();
+                    reject(new Error("WebSocket authentication timeout"));
+                }, 300000);
+            });
+        } catch (error) {
+            console.error("Error getting id material:", error);
+            throw error;
+        }
+    }
+
+    async getBookById(bookId) {
+        try {
+            const fallbackAuthToken = this.generateAuthToken();
+            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || fallbackAuthToken}`;
+            // console.log(wsUrl);
+            const ws = await this.createWebSocketConnection(wsUrl);
+            const bookInfo = {
+                bookId: bookId,
+                bookName: "",
+            };
+
+            return new Promise((resolve, reject) => {
+                ws.send(
+                    JSON.stringify(
+                        this.controllerTemplates.GetBookMessage(
+                            `\"${bookId}\"`,
+                        ),
+                    ),
+                );
+                ws.on("message", async (data) => {
+                    const response = JSON.parse(data.toString());
+
+                    if (
+                        response.Class === "SharingMaterialWsController" &&
+                        response.Method === "GetBook"
+                    ) {
+                        console.log("book", response);
+                        if (response.ErrorMessage) {
+                            resolve({ error: response.ErrorMessage });
+                        } else {
+                            bookInfo.bookName = response.Value.Name;
+                            resolve({ ...bookInfo });
+                        }
+                    }
+                });
+
+                ws.on("error", (error) => {
+                    console.error("WebSocket error:", error);
+                    reject(error);
+                });
+
+                this.activeWs.setNewActive(ws);
+                // Add timeout
+                setTimeout(() => {
+                    this.activeWs.clear();
+                    ws.close();
+                    reject(new Error("WebSocket authentication timeout"));
+                }, 300000);
+            });
+        } catch (error) {
+            console.error("Error getting book:", error);
+            throw error;
+        }
+    }
+
+    async getBookByCode(bookCode) {
+        try {
+            const fallbackAuthToken = this.generateAuthToken();
+            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || fallbackAuthToken}`;
+            // console.log(wsUrl);
+            const ws = await this.createWebSocketConnection(wsUrl);
+            const bookInfo = {
+                bookId: "",
+                bookName: "",
+            };
+
+            return new Promise((resolve, reject) => {
+                const getBookIdStringed = JSON.stringify(
+                    this.controllerTemplates.GetIdMaterialMessage(
+                        `\"${bookCode}\"`,
+                    ),
+                );
+                // console.log("getBookIdStringed", getBookIdStringed);
+                ws.send(getBookIdStringed);
+
+                ws.on("message", async (data) => {
+                    const response = JSON.parse(data.toString());
+                    // console.log("Received:", response);
+                    if (
+                        response.Class === "SharingMaterialWsController" &&
+                        response.Method === "GetIdMaterial"
+                    ) {
+                        console.log("book", response);
+                        // const bookId = response.Value.;
+
+                        if (response.ErrorMessage) {
+                            return resolve({ error: response.ErrorMessage });
+                        }
+                        this.currentBook.sharingMaterialId =
+                            response.Value.SharingMaterialId;
+                        bookInfo.bookId = response.Value.BookId;
+                        ws.send(
+                            JSON.stringify(
+                                this.controllerTemplates.GetBookMessage(
+                                    `\"${bookInfo.bookId}\"`,
+                                ),
+                            ),
+                        );
+                        // resolve({bookId:response.data.Value.BookId, bookName:""})
+                    }
+
+                    if (
+                        response.Class === "SharingMaterialWsController" &&
+                        response.Method === "GetBook"
+                    ) {
+                        // console.log("book", response);
+                        bookInfo.bookName = response.Value.Name;
+                        // this.currentBook.sharingMaterialId = response.Value.SharingMaterialId;
+                        resolve({ ...bookInfo });
+                    }
+                });
+
+                ws.on("error", (error) => {
+                    console.error("WebSocket error:", error);
+                    reject(error);
+                });
+
+                this.activeWs.setNewActive(ws);
+                // Add timeout
+                setTimeout(() => {
+                    this.activeWs.clear();
+                    ws.close();
+                    reject(new Error("WebSocket authentication timeout"));
+                }, 300000);
+            });
+        } catch (error) {
+            console.error("Error getting book:", error);
+            throw error;
+        }
+    }
+
+    async isCanSharingMaterial(bookId, userId, token) {
+        try {
+            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || token}`;
+            const ws = await this.createWebSocketConnection(wsUrl);
+
+            return new Promise((resolve, reject) => {
+                const checkIfCanShareMessage = JSON.stringify(
+                    this.controllerTemplates.IsCanSharingMaterialMessage(
+                        bookId,
+                        userId,
+                    ),
+                );
+
+                console.log("checkIfCanShareMessage", checkIfCanShareMessage);
+
+                ws.send(checkIfCanShareMessage);
+
+                ws.on("message", async (data) => {
+                    const response = JSON.parse(data.toString());
+
+                    if (
+                        response.Class === "BookWsController" &&
+                        response.Method === "IsCanSharingMaterial"
+                    ) {
+                        console.log("isCanSharingMaterial", response);
+                        resolve(response.Value);
+                    }
+                });
+
+                ws.on("error", (error) => {
+                    console.error("WebSocket error:", error);
+                    reject(error);
+                });
+
+                this.activeWs.setNewActive(ws);
+                this.currentBook = {};
+                // Add timeout
+                setTimeout(() => {
+                    this.activeWs.clear();
+                    ws.close();
+                    reject(new Error("WebSocket authentication timeout"));
+                }, 300000);
+            });
+        } catch (error) {
+            console.error("Error checking if can share:", error);
+        }
+    }
+
+    async setSharingMaterialId(bookId, token) {
+        try {
+            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || token}`;
+            // console.log(wsUrl);
+            const ws = await this.createWebSocketConnection(wsUrl);
+
+            return new Promise((resolve, reject) => {
+                const getSharingMaterialIdMessage = JSON.stringify(
+                    this.controllerTemplates.GetSharingMaterialMessage(bookId),
+                );
+
+                console.log(
+                    "getSharingMaterialIdMessage",
+                    getSharingMaterialIdMessage,
+                );
+
+                ws.send(getSharingMaterialIdMessage);
+
+                ws.on("message", async (data) => {
+                    const response = JSON.parse(data.toString());
+
+                    if (
+                        response.Class === "SharingMaterialWsController" &&
+                        response.Method === "GetSharingMaterial"
+                    ) {
+                        resolve(response.Value.Id);
+                    }
+                });
+
+                ws.on("error", (error) => {
+                    console.error("WebSocket error:", error);
+                    reject(error);
+                });
+
+                this.activeWs.setNewActive(ws);
+                this.currentBook = {};
+                // Add timeout
+                setTimeout(() => {
+                    this.activeWs.clear();
+                    ws.close();
+                    reject(new Error("WebSocket authentication timeout"));
+                }, 300000);
+            });
+        } catch (error) {
+            console.error("Error setting sharing material id:", error);
+            throw error;
+        }
+    }
+
+    async copyCourse(bookId, userId, token) {
+        try {
+            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || token}`;
+            // console.log(wsUrl);
+            const ws = await this.createWebSocketConnection(wsUrl);
+
+            return new Promise((resolve, reject) => {
+                const copyBookStringed = JSON.stringify(
+                    this.controllerTemplates.CopySharedBookMessage(
+                        bookId,
+                        this.currentBook.sharingMaterialId,
+                    ),
+                );
+                console.log("copyBookStringed", copyBookStringed);
+                ws.send(copyBookStringed);
+
+                ws.on("message", async (data) => {
+                    const response = JSON.parse(data.toString());
+                    // console.log("Received:", response);
+
+                    if (
+                        response.Class === "BookWsController" &&
+                        response.Method === "CopyBook"
+                    ) {
+                        // console.log("book", response);
+                        if (response.ErrorMessage) {
+                            console.log(response);
+                            resolve({ error: response.ErrorMessage });
+                        } else {
+                            resolve({
+                                success: response.IsSuccess,
+                                message: "Book Saved!",
+                            });
+                        }
+                    }
+                });
+
+                ws.on("error", (error) => {
+                    console.error("WebSocket error:", error);
+                    reject(error);
+                });
+
+                this.activeWs.setNewActive(ws);
+                this.currentBook = {};
+                // Add timeout
+                setTimeout(() => {
+                    this.activeWs.clear();
+                    ws.close();
+                    reject(new Error("WebSocket authentication timeout"));
+                }, 300000);
+            });
+        } catch (error) {
+            console.error("Error copying book:", error);
+            throw error;
+        }
+    }
+
+    generateMousePath(start, end) {
+        const points = [];
+        const numPoints = Math.floor(Math.random() * 10) + 10; // 10-20 points
+
+        // Generate control points for bezier curve
+        const cp1 = {
+            x: start.x + (Math.random() - 0.5) * 100,
+            y: start.y + (Math.random() - 0.5) * 100,
+        };
+        const cp2 = {
+            x: end.x + (Math.random() - 0.5) * 100,
+            y: end.y + (Math.random() - 0.5) * 100,
+        };
+
+        // Generate points along a bezier curve
+        for (let i = 0; i <= numPoints; i++) {
+            const t = i / numPoints;
+            points.push({
+                x:
+                    Math.pow(1 - t, 3) * start.x +
+                    3 * Math.pow(1 - t, 2) * t * cp1.x +
+                    3 * (1 - t) * Math.pow(t, 2) * cp2.x +
+                    Math.pow(t, 3) * end.x,
+                y:
+                    Math.pow(1 - t, 3) * start.y +
+                    3 * Math.pow(1 - t, 2) * t * cp1.y +
+                    3 * (1 - t) * Math.pow(t, 2) * cp2.y +
+                    Math.pow(t, 3) * end.y,
+            });
+        }
+
+        return points;
+    }
+
+    async handleApiLogin(page) {
+        try {
+            // Create the login request payload
+            const loginData = {
+                Email: this.email,
+                Password: this.password,
+                RememberMe: true,
+                ReturnUrl: null,
+            };
+
+            // Make direct API request to login endpoint
+            const response = await page.evaluate(async (data) => {
+                const response = await fetch(
+                    "https://progressme.ru/Account/Login",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Accept: "application/json",
+                        },
+                        body: JSON.stringify(data),
+                        credentials: "include",
+                    },
+                );
+
+                return {
+                    status: response.status,
+                    ok: response.ok,
+                    url: response.url,
+                };
+            }, loginData);
+
+            if (response.ok) {
+                // Wait for redirect/navigation after successful login
+                await page.waitForNavigation({
+                    waitUntil: ["networkidle0", "load", "domcontentloaded"],
+                    timeout: 60000,
+                });
+                return true;
+            }
+
+            return false;
+        } catch (error) {
+            console.error("API login failed:", error);
+            return false;
+        }
+    }
+
+    async authenticateWithProgressMe(email, password) {
+        try {
+            await this.initBrowser();
+
+            // Navigate to login page with increased timeout
+            await this.page.goto("https://progressme.ru/Account/Login", {
+                waitUntil: ["networkidle0", "load", "domcontentloaded"],
+                timeout: 60000,
+            });
+
+            // Navigate using keyboard instead of goto
+            // await this.navigateWithKeyboard(this.page, 'https://progressme.ru/Account/Login');
+
+            // console.log("Page is loaded", this.page.url());
+
+            // Monitor the login endpoint for response
+            // this.currentXHR = {};
+            // const monitor = await this.monitorEndpoint(this.page, "POST","https://progressme.ru/Account/Login");
+            // const monitorComplete = await monitor;
+
+            const pageHasCaptchaInUrl = this.page
+                .url()
+                .startsWith("https://progressme.ru/showcaptcha?");
+            const pageIsLandingPage =
+                this.page.url() === "https://progressme.ru";
+            if (pageIsLandingPage) {
+                await this.handleNavigateToLogin(this.page);
+            }
+
+            if (pageHasCaptchaInUrl) {
+                // Handle any initial captcha
+                await this.handleCaptcha(this.page);
+            }
+
+            // const currentUrl = this.page.url();
+            const newPage = this.page; //await this.createNewTabWithUrl(currentUrl);
+
+            // Find the form
+            const fieldsFound = await newPage.evaluate(() => {
+                console.log(
+                    "email:",
+                    document.querySelector('input[name="Email"]')?.tagName,
+                );
+                console.log(
+                    "pw:",
+                    document.querySelector('input[name="Password"]')?.tagName,
+                );
+                console.log(
+                    "btn:",
+                    document.querySelector('button[data-bind="click:GetRoles"]')
+                        ?.tagName,
+                );
+
+                return (
+                    document.querySelector('input[name="Email"]')?.type !==
+                        null &&
+                    document.querySelector('input[name="Password"]')?.type !==
+                        null &&
+                    document.querySelector(
+                        'button[data-bind="click:GetRoles"]',
+                    ) !== null
+                );
+            });
+
+            //// Fill in login form
+            // console.log("creds", email, password);
+
+            // console.log("fields found:? ", fieldsFound);
+
+            if (!fieldsFound) {
+                throw new Error("Authentication failed: No auth fields found");
+                // const oldpage = this.page;
+                // this.page = await this.browser.newPage();
+                // await oldpage.close();
+                // return this.authenticateWithProgressMe(email, password)
+            }
+
+            await newPage.type('input[name="Email"]', email);
+            await newPage.type('input[name="Password"]', password);
+            await newPage.click('button[data-bind="click:GetRoles"]'),
+                // Wait for either navigation or network idle
+                await Promise.race([
+                    newPage.waitForNavigation({
+                        timeout: 60000,
+                        waitUntil: ["networkidle0", "load", "domcontentloaded"],
+                    }),
+                    newPage.waitForNetworkIdle({
+                        timeout: 60000,
+                        idleTime: 500,
+                    }),
+                ]);
+
+            // console.log("XHR::", this.currentXHR);
+
+            const response = this.currentXHR[`${newPage.title.toString()}`].res;
+
+            // Handle any post-login captcha
+            await this.handleCaptcha(newPage);
+
+            // Get cookies for WebSocket connection
+            const cookies = await this.browser.cookies();
+            // const debugInfo = this.browser.debugInfo;
+
+            // const authCookie = cookies.find(cookie => cookie.name === '.ASPXAUTH');
+            const authToken = cookies.find(
+                (cookie) => cookie.name === "Auth-Token",
+            );
+            // console.log("cookies", authToken);
+
+            // console.log("debugInfo", response);
+
+            if (!authToken?.value) {
+                throw new Error("Authentication failed: No auth cookie found");
+            }
+
+            return {
+                token: authToken.value,
+                data: this.currentXHR[`${newPage.title.toString()}`],
+                // cookies: cookies
+            };
+        } catch (error) {
+            throw new Error("Authentication failed: " + error.message);
+        }
+    }
+
+    async cleanup() {
+        if (this.page) {
+            await this.page.close();
+            this.page = null;
+        }
+        if (this.browser) {
+            await this.browser.close();
+            this.browser = null;
+        }
+    }
+
     validateUrl(url) {
         const cleanUrl = url
             .trim()
             .replace("new.", "")
             .replace("edvibe.com", "progressme.ru")
             .replace("sharing-material", "SharingMaterial")
-            .replace("course", "SharingMaterial")
-            // .replace(/\/book\/[0-9]{6}/, "");
+            .replace("course", "SharingMaterial");
+        // .replace(/\/book\/[0-9]{6}/, "");
 
         return this.urlRegex.test(cleanUrl) ? cleanUrl : null;
     }
@@ -367,703 +1174,6 @@ class CourseScraperService {
         } catch (error) {
             console.error("Captcha handling failed:", error);
             return false;
-        }
-    }
-
-    async resolveHostname(hostname) {
-        for (const dnsServer of this.dnsServers) {
-            try {
-                const resolver = new dns.Resolver();
-                resolver.setServers([dnsServer]);
-                const resolve4 = promisify(resolver.resolve4.bind(resolver));
-                const addresses = await resolve4(hostname);
-                console.log(
-                    `Successfully resolved ${hostname} to ${addresses[0]} using ${dnsServer}`,
-                );
-                return addresses[0];
-            } catch (error) {
-                console.log(
-                    `DNS resolution failed with ${dnsServer}:`,
-                    error.message,
-                );
-                continue;
-            }
-        }
-        throw new Error("Failed to resolve hostname with all DNS servers");
-    }
-
-    async createWebSocketConnection(url, maxRetries = 3) {
-        const urlObj = new URL(url);
-        let retryCount = 0;
-
-        // First try to resolve the hostname
-        try {
-            // Use system DNS first
-            try {
-                const address = await new Promise((resolve, reject) => {
-                    dns.lookup(urlObj.hostname, (err, address) => {
-                        if (err) reject(err);
-                        else {
-                            console.log(
-                                `Resolved ${urlObj.hostname} to ${address}`,
-                            );
-                            resolve(address);
-                        }
-                    });
-                });
-                console.log("System DNS lookup succeeded:", address);
-            } catch (error) {
-                console.log("System DNS lookup failed:", error.message);
-                // If system DNS fails, try our custom DNS resolvers
-                await this.resolveHostname(urlObj.hostname);
-            }
-
-            while (retryCount < maxRetries) {
-                try {
-                    console.log("Creating WebSocket connection..." + url)
-                    // Create WebSocket connection with additional options
-                    const ws = new WebSocket(url, {
-                        headers: {
-                            Host: urlObj.hostname,
-                            Origin: "https://progressme.ru",
-                            "User-Agent":
-                                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124 Safari/537.36",
-                            "Accept-Language": "en-US,en;q=0.9",
-                            "Accept-Encoding": "gzip, deflate, br",
-                            "Cache-Control": "no-cache",
-                            Pragma: "no-cache",
-                            Connection: "Upgrade",
-                            Upgrade: "websocket",
-                        },
-                        timeout: 30000,
-                        followRedirects: true,
-                        handshakeTimeout: 30000,
-                        rejectUnauthorized: false,
-                        family: 4,
-                        perMessageDeflate: false,
-                    });
-
-                    return await new Promise((resolve, reject) => {
-                        const timeout = setTimeout(() => {
-                            ws.close();
-                            reject(new Error("Connection timeout"));
-                        }, 30000);
-
-                        ws.on("open", () => {
-                            clearTimeout(timeout);
-                            console.log("WebSocket connection opened")
-                            resolve(ws);
-                        });
-
-                        ws.on("error", (error) => {
-                            clearTimeout(timeout);
-                            reject(error);
-                        });
-                    });
-                } catch (error) {
-                    console.log(
-                        `Connection attempt ${retryCount + 1} failed:`,
-                        error.message,
-                    );
-                    retryCount++;
-                    if (retryCount === maxRetries) {
-                        throw error;
-                    }
-                    await new Promise((resolve) =>
-                        setTimeout(
-                            resolve,
-                            Math.min(2000 * Math.pow(2, retryCount), 20000),
-                        ),
-                    );
-                }
-            }
-        } catch (error) {
-            throw new Error(`Failed to establish connection: ${error.message}`);
-        }
-    }
-
-    async authenticateWithWebSocket(email, password) {
-        try {
-            const authToken = this.generateAuthToken();
-            this.currentAuthToken = authToken;
-            
-            
-            const wsUrl = `wss://proxy.progressme.ru/websocket?token=${authToken}`;
-
-            const ws = await this.createWebSocketConnection(wsUrl);
-            console.log("WebSocket connected successfully");
-            //
-
-            return new Promise((resolve, reject) => {
-                const loginMessage = {
-                    Controller: "AccountWsController",
-                    Method: "Login",
-                    ProjectName: "Users",
-                    RequestId: this.generateAuthToken(),
-                    Value: JSON.stringify({
-                        Email: email,
-                        Password: password,
-                        RememberMe: true,
-                        UserRole: 4, // From first response
-                        AuthToken: authToken,
-                        CurrentDomain: "progressme.ru",
-                        AccountRole: 1, // From first response
-                    }),
-                };
-
-                ws.send(JSON.stringify(loginMessage));
-                ws.on("message", async (data) => {
-                    const response = JSON.parse(data.toString());
-                    // console.log("Received:", response);
-
-                    if (response.Method === "GetAccountRoles") {
-                        // Send login message after getting roles
-                    }
-
-                    if (response.Method === "Login") {
-                        if (response.IsSuccess) {
-                            this.currentAuthToken = authToken;
-                            resolve({
-                                token: authToken,
-                                data: {
-                                    Value: {
-                                        Id: response.Value.Id,
-                                        AccountRole: response.Value.Role,
-                                    },
-                                },
-                            });
-                        } else {
-                            reject(
-                                new Error("Login failed: " + response.Message),
-                            );
-                        }
-                    }
-                });
-
-                ws.on("error", (error) => {
-                    console.error("WebSocket error:", error);
-                    reject(error);
-                });
-
-                this.activeWs.setNewActive(ws);
-                // Add timeout
-                setTimeout(() => {
-                    this.activeWs.clear();
-                    ws.close();
-                    reject(new Error("WebSocket authentication timeout"));
-                }, 300000);
-            });
-        } catch (error) {
-            throw new Error(
-                "WebSocket authentication failed: " + error.message,
-            );
-        }
-    }
-
-    generateMousePath(start, end) {
-        const points = [];
-        const numPoints = Math.floor(Math.random() * 10) + 10; // 10-20 points
-
-        // Generate control points for bezier curve
-        const cp1 = {
-            x: start.x + (Math.random() - 0.5) * 100,
-            y: start.y + (Math.random() - 0.5) * 100,
-        };
-        const cp2 = {
-            x: end.x + (Math.random() - 0.5) * 100,
-            y: end.y + (Math.random() - 0.5) * 100,
-        };
-
-        // Generate points along a bezier curve
-        for (let i = 0; i <= numPoints; i++) {
-            const t = i / numPoints;
-            points.push({
-                x:
-                    Math.pow(1 - t, 3) * start.x +
-                    3 * Math.pow(1 - t, 2) * t * cp1.x +
-                    3 * (1 - t) * Math.pow(t, 2) * cp2.x +
-                    Math.pow(t, 3) * end.x,
-                y:
-                    Math.pow(1 - t, 3) * start.y +
-                    3 * Math.pow(1 - t, 2) * t * cp1.y +
-                    3 * (1 - t) * Math.pow(t, 2) * cp2.y +
-                    Math.pow(t, 3) * end.y,
-            });
-        }
-
-        return points;
-    }
-
-    async handleApiLogin(page) {
-        try {
-            // Create the login request payload
-            const loginData = {
-                Email: this.email,
-                Password: this.password,
-                RememberMe: true,
-                ReturnUrl: null,
-            };
-
-            // Make direct API request to login endpoint
-            const response = await page.evaluate(async (data) => {
-                const response = await fetch(
-                    "https://progressme.ru/Account/Login",
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            Accept: "application/json",
-                        },
-                        body: JSON.stringify(data),
-                        credentials: "include",
-                    },
-                );
-
-                return {
-                    status: response.status,
-                    ok: response.ok,
-                    url: response.url,
-                };
-            }, loginData);
-
-            if (response.ok) {
-                // Wait for redirect/navigation after successful login
-                await page.waitForNavigation({
-                    waitUntil: ["networkidle0", "load", "domcontentloaded"],
-                    timeout: 60000,
-                });
-                return true;
-            }
-
-            return false;
-        } catch (error) {
-            console.error("API login failed:", error);
-            return false;
-        }
-    }
-
-    async authenticateWithProgressMe(email, password) {
-        try {
-            await this.initBrowser();
-
-            // Navigate to login page with increased timeout
-            await this.page.goto("https://progressme.ru/Account/Login", {
-                waitUntil: ["networkidle0", "load", "domcontentloaded"],
-                timeout: 60000,
-            });
-
-            // Navigate using keyboard instead of goto
-            // await this.navigateWithKeyboard(this.page, 'https://progressme.ru/Account/Login');
-
-            // console.log("Page is loaded", this.page.url());
-
-            // Monitor the login endpoint for response
-            // this.currentXHR = {};
-            // const monitor = await this.monitorEndpoint(this.page, "POST","https://progressme.ru/Account/Login");
-            // const monitorComplete = await monitor;
-
-            const pageHasCaptchaInUrl = this.page
-                .url()
-                .startsWith("https://progressme.ru/showcaptcha?");
-            const pageIsLandingPage =
-                this.page.url() === "https://progressme.ru";
-            if (pageIsLandingPage) {
-                await this.handleNavigateToLogin(this.page);
-            }
-
-            if (pageHasCaptchaInUrl) {
-                // Handle any initial captcha
-                await this.handleCaptcha(this.page);
-            }
-
-            // const currentUrl = this.page.url();
-            const newPage = this.page; //await this.createNewTabWithUrl(currentUrl);
-
-            // Find the form
-            const fieldsFound = await newPage.evaluate(() => {
-                console.log(
-                    "email:",
-                    document.querySelector('input[name="Email"]')?.tagName,
-                );
-                console.log(
-                    "pw:",
-                    document.querySelector('input[name="Password"]')?.tagName,
-                );
-                console.log(
-                    "btn:",
-                    document.querySelector('button[data-bind="click:GetRoles"]')
-                        ?.tagName,
-                );
-
-                return (
-                    document.querySelector('input[name="Email"]')?.type !==
-                        null &&
-                    document.querySelector('input[name="Password"]')?.type !==
-                        null &&
-                    document.querySelector(
-                        'button[data-bind="click:GetRoles"]',
-                    ) !== null
-                );
-            });
-
-            //// Fill in login form
-            // console.log("creds", email, password);
-
-            // console.log("fields found:? ", fieldsFound);
-
-            if (!fieldsFound) {
-                throw new Error("Authentication failed: No auth fields found");
-                // const oldpage = this.page;
-                // this.page = await this.browser.newPage();
-                // await oldpage.close();
-                // return this.authenticateWithProgressMe(email, password)
-            }
-
-            await newPage.type('input[name="Email"]', email);
-            await newPage.type('input[name="Password"]', password);
-            await newPage.click('button[data-bind="click:GetRoles"]'),
-                // Wait for either navigation or network idle
-                await Promise.race([
-                    newPage.waitForNavigation({
-                        timeout: 60000,
-                        waitUntil: ["networkidle0", "load", "domcontentloaded"],
-                    }),
-                    newPage.waitForNetworkIdle({
-                        timeout: 60000,
-                        idleTime: 500,
-                    }),
-                ]);
-
-            // console.log("XHR::", this.currentXHR);
-
-            const response = this.currentXHR[`${newPage.title.toString()}`].res;
-
-            // Handle any post-login captcha
-            await this.handleCaptcha(newPage);
-
-            // Get cookies for WebSocket connection
-            const cookies = await this.browser.cookies();
-            // const debugInfo = this.browser.debugInfo;
-
-            // const authCookie = cookies.find(cookie => cookie.name === '.ASPXAUTH');
-            const authToken = cookies.find(
-                (cookie) => cookie.name === "Auth-Token",
-            );
-            // console.log("cookies", authToken);
-
-            // console.log("debugInfo", response);
-
-            if (!authToken?.value) {
-                throw new Error("Authentication failed: No auth cookie found");
-            }
-
-            return {
-                token: authToken.value,
-                data: this.currentXHR[`${newPage.title.toString()}`],
-                // cookies: cookies
-            };
-        } catch (error) {
-            throw new Error("Authentication failed: " + error.message);
-        }
-    }
-
-    async cleanup() {
-        if (this.page) {
-            await this.page.close();
-            this.page = null;
-        }
-        if (this.browser) {
-            await this.browser.close();
-            this.browser = null;
-        }
-    }
-
-    generateSocketMessages(targetUrl, bookId, userId) {
-        return {
-            GetIdMaterial: {
-                controller: "SharingMaterialWsController",
-                method: "GetIdMaterial",
-                value: JSON.stringify({
-                    Code: targetUrl.split("SharingMaterial/")[1] || "",
-                }),
-            },
-            GetBook: {
-                controller: "SharingMaterialWsController",
-                method: "GetBook",
-                value: JSON.stringify({ BookId: bookId, UserId: null }),
-            },
-            CopyBook: {
-                controller: "BookWsController",
-                method: "CopyBook",
-                value: JSON.stringify({ BookId: bookId, UserId: userId }),
-            },
-        };
-    }
-
-    async connectToWebSocket(url, token, messageHandler) {
-        return new Promise((resolve, reject) => {
-            const ws = new WebSocket(
-                `${url}?Page=TeacherProfile&isSharing=True&token=${token}`,
-            );
-
-            ws.on("open", () => {
-                resolve(ws);
-            });
-
-            ws.on("message", (data) => {
-                messageHandler(data);
-            });
-
-            ws.on("error", (error) => {
-                reject(error);
-            });
-        });
-    }
-
-
-    async getIdMaterial(code){
-        try {
-            const fallbackAuthToken = this.generateAuthToken()
-            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || fallbackAuthToken }`;
-            // console.log(wsUrl);
-            const ws = await this.createWebSocketConnection(wsUrl);
-            const bookInfo = {
-                bookId: bookId,
-                bookName: "",
-            };
-
-            return new Promise((resolve, reject) => {
-
-                ws.send(
-                    JSON.stringify(
-                        this.controllerTemplates.GetIdMaterialMessage(
-                            code,
-                        ),
-                    ),
-                );
-                ws.on("message", async (data) => {
-                    const response = JSON.parse(data.toString());
-
-
-                    if (
-                        response.Class === "SharingMaterialWsController" &&
-                        response.Method === "GetIdMaterial"
-                    ) {
-                        console.log("book", response);
-                        if(response.ErrorMessage){
-                           resolve({error: response.ErrorMessage})
-                        }else{
-
-                            bookInfo.bookName = response.Value.Name;
-                            resolve({ ...bookInfo });
-                        }
-                    }
-                });
-
-                ws.on("error", (error) => {
-                    console.error("WebSocket error:", error);
-                    reject(error);
-                });
-
-                this.activeWs.setNewActive(ws);
-                // Add timeout
-                setTimeout(() => {
-                    this.activeWs.clear();
-                    ws.close();
-                    reject(new Error("WebSocket authentication timeout"));
-                }, 300000);
-            });
-        } catch (error) {
-            console.error("Error getting id material:", error);
-            throw error;
-        }
-    }
-    async getBookById(bookId) {
-        try {
-            const fallbackAuthToken = this.generateAuthToken()
-            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || fallbackAuthToken }`;
-            // console.log(wsUrl);
-            const ws = await this.createWebSocketConnection(wsUrl);
-            const bookInfo = {
-                bookId: bookId,
-                bookName: "",
-            };
-            
-            return new Promise((resolve, reject) => {
-               
-                ws.send(
-                    JSON.stringify(
-                        this.controllerTemplates.GetBookMessage(
-                            `\"${bookId}\"`,
-                        ),
-                    ),
-                );
-                ws.on("message", async (data) => {
-                    const response = JSON.parse(data.toString());
-                    
-
-                    if (
-                        response.Class === "SharingMaterialWsController" &&
-                        response.Method === "GetBook"
-                    ) {
-                        console.log("book", response);
-                        if(response.ErrorMessage){
-                           resolve({error: response.ErrorMessage})
-                        }else{
-                            
-                            bookInfo.bookName = response.Value.Name;
-                            resolve({ ...bookInfo });
-                        }
-                    }
-                });
-
-                ws.on("error", (error) => {
-                    console.error("WebSocket error:", error);
-                    reject(error);
-                });
-
-                this.activeWs.setNewActive(ws);
-                // Add timeout
-                setTimeout(() => {
-                    this.activeWs.clear();
-                    ws.close();
-                    reject(new Error("WebSocket authentication timeout"));
-                }, 300000);
-            });
-        } catch (error) {
-            console.error("Error getting book:", error);
-            throw error;
-        }
-    }
-    
-    async getBookByCode(bookCode) {
-        try {
-            const fallbackAuthToken = this.generateAuthToken()
-            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || fallbackAuthToken }`;
-            // console.log(wsUrl);
-            const ws = await this.createWebSocketConnection(wsUrl);
-            const bookInfo = {
-                bookId: "",
-                bookName: "",
-            };
-            
-            return new Promise((resolve, reject) => {
-                const getBookIdStringed = JSON.stringify(
-                    this.controllerTemplates.GetIdMaterialMessage(
-                        `\"${bookCode}\"`
-                    ),
-                );
-                // console.log("getBookIdStringed", getBookIdStringed);
-                ws.send(getBookIdStringed);
-
-                ws.on("message", async (data) => {
-                    const response = JSON.parse(data.toString());
-                    // console.log("Received:", response);
-                    if (
-                        response.Class === "SharingMaterialWsController" &&
-                        response.Method === "GetIdMaterial"
-                    ) {
-                        console.log("book", response);
-                        // const bookId = response.Value.;
-                        
-                        if(response.ErrorMessage){
-                           return resolve({error: response.ErrorMessage})
-                        }
-                        this.currentBook.sharingMaterialId = response.Value.SharingMaterialId;
-                        bookInfo.bookId = response.Value.BookId;
-                        ws.send(
-                            JSON.stringify(
-                                this.controllerTemplates.GetBookMessage(
-                                    `\"${bookInfo.bookId}\"`,
-                                ),
-                            ),
-                        );
-                        // resolve({bookId:response.data.Value.BookId, bookName:""})
-                    }
-
-                    if (
-                        response.Class === "SharingMaterialWsController" &&
-                        response.Method === "GetBook"
-                    ) {
-                        // console.log("book", response);
-                        bookInfo.bookName = response.Value.Name;
-                        // this.currentBook.sharingMaterialId = response.Value.SharingMaterialId;
-                        resolve({ ...bookInfo });
-                    }
-                });
-
-                ws.on("error", (error) => {
-                    console.error("WebSocket error:", error);
-                    reject(error);
-                });
-
-                this.activeWs.setNewActive(ws);
-                // Add timeout
-                setTimeout(() => {
-                    this.activeWs.clear();
-                    ws.close();
-                    reject(new Error("WebSocket authentication timeout"));
-                }, 300000);
-            });
-        } catch (error) {
-            console.error("Error getting book:", error);
-            throw error;
-        }
-    }
-
-    async copyCourse(bookId, userId, token) {
-        try {
-            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || token}`;
-            // console.log(wsUrl);
-            const ws = await this.createWebSocketConnection(wsUrl);
-            
-            return new Promise((resolve, reject) => {
-                const copyBookStringed = JSON.stringify(
-                    this.controllerTemplates.CopySharedBookMessage(
-                        bookId,
-                        this.currentBook.sharingMaterialId,
-                    ),
-                );
-                console.log("copyBookStringed", copyBookStringed);
-                ws.send(copyBookStringed);
-
-                ws.on("message", async (data) => {
-                    const response = JSON.parse(data.toString());
-                    // console.log("Received:", response);
-
-                    if (
-                        response.Class === "BookWsController" &&
-                        response.Method === "CopyBook"
-                    ) {
-                        // console.log("book", response);
-                        if(response.ErrorMessage){
-                            console.log(response)
-                            resolve({error:response.ErrorMessage})
-                        }else{
-                            resolve({ success: response.IsSuccess, message: "Book Saved!" });
-                            
-                        }
-                    }
-                });
-                
-
-                ws.on("error", (error) => {
-                    console.error("WebSocket error:", error);
-                    reject(error);
-                });
-
-                this.activeWs.setNewActive(ws);
-                this.currentBook={};
-                // Add timeout
-                setTimeout(() => {
-                    this.activeWs.clear();
-                    ws.close();
-                    reject(new Error("WebSocket authentication timeout"));
-                }, 300000);
-            });
-        } catch (error) {
-            console.error("Error copying book:", error);
-            throw error;
         }
     }
 
