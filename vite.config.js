@@ -16,13 +16,9 @@ export default defineConfig({
     },
   },
   server: {
-    host: true,
+    host: "0.0.0.0",
     port: 3000,
-    allowedHosts: [
-      "localhost",
-      "127.0.0.1",
-      "de885a4b-d886-4a17-9372-6791449191cc-00-sk4u39m5xe4b.picard.replit.dev",
-    ],
+    allowedHosts: "all",
   },
   build: {
     outDir: "dist",

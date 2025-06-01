@@ -17,7 +17,7 @@ localPort = 5000
 externalPort = 5000
 
 [workflows]
-runButton = "Start Dev Server"
+runButton = "Run"
 
 [[workflows.workflow]]
 name = "gh-deploy"
@@ -37,10 +37,10 @@ task = "shell.exec"
 args = "echo \"deploy complete\""
 
 [[workflows.workflow]]
-name = "Start Dev Server"
+name = "Run"
 author = 28327555
 mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm start"
+args = "pnpm run dev"
