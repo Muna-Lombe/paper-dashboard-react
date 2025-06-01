@@ -1,9 +1,7 @@
-
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Collapse,
-  Button,
   Navbar,
   NavbarToggler,
   NavbarBrand,
@@ -28,6 +26,8 @@ function Header(props) {
   const [color, setColor] = React.useState("transparent");
   const sidebarToggle = React.useRef();
   const location = useLocation();
+    const navigate = useNavigate();
+
   const toggle = () => {
     if (isOpen) {
       setColor("transparent");
@@ -73,6 +73,11 @@ function Header(props) {
       sidebarToggle.current.classList.toggle("toggled");
     }
   }, [location]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("Auth-Token");
+    navigate("/admin/sign-in");
+  };
 
   const AuthedActions = ()=>(
     <Container fluid>
@@ -128,10 +133,13 @@ function Header(props) {
                 </p>
               </DropdownToggle>
               <DropdownMenu right>
-                <DropdownItem tag="a">Action</DropdownItem>
-                <DropdownItem tag="a">Another Action</DropdownItem>
-                <DropdownItem tag="a">Something else here</DropdownItem>
-              </DropdownMenu>
+                  <DropdownItem tag="a">Profile</DropdownItem>
+                  <DropdownItem tag="a">Settings</DropdownItem>
+                  <DropdownItem divider />
+                  <DropdownItem onClick={handleLogout}>
+                    Logout
+                  </DropdownItem>
+                </DropdownMenu>
             </Dropdown>
             <NavItem>
               <Link to="#pablo" className="nav-link btn-rotate">
@@ -153,9 +161,9 @@ function Header(props) {
       color="light"
       size="sm"
       tag="a"
-      
+
     >
-      
+
       Sign in
     </Button>
   )
@@ -178,7 +186,7 @@ function Header(props) {
          <UnauthedActions/>
         : <AuthedActions/>
       }
-      
+
     </Navbar>
   );
 }
