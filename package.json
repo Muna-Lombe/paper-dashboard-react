@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@reduxjs/toolkit": "^2.2.7",
+    "@vitejs/plugin-react": "^4.5.0",
     "array-move": "^4.0.0",
     "axios": "^1.7.5",
     "bootstrap": "4.6.2",
@@ -24,7 +25,8 @@
     "react-router-dom": "6.11.1",
     "react-use-websocket": "^4.8.1",
     "reactstrap": "8.10.0",
-    "sass": "1.62.1"
+    "sass": "1.62.1",
+    "vite": "^6.3.5"
   },
   "scripts": {
     "add-basename": "node addBasename.js",
