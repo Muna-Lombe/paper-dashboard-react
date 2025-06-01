@@ -18,7 +18,7 @@ import axios from "axios";
 import { addError } from "../../variables/slices/errorSlice";
 import { useDispatch } from "react-redux";
 import spirow from "../../assets/img/spriral-arrow.png";
-import { endpoints } from "config";
+import { endpoints } from "@/config";
 import { addToast } from "variables/slices/toastSlice";
 
 const CourseScraperV2 = () => {

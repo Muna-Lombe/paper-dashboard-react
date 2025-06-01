@@ -2,9 +2,10 @@ import useWebSocket, { ReadyState, useSocketIO } from "react-use-websocket";
 import { flattenObject } from "variables";
 import { resetStateWithNewData } from "variables/slices/pdfSlices";
 import { useDispatch, useSelector } from "react-redux";
-import { endpoints } from "config";
+import { endpoints } from "@/config";
+import { useState } from "react";
 
-const { useState } = require("react");
+
 
 // const [useWebSocket, setUseWebSocket] = useState(false)
 

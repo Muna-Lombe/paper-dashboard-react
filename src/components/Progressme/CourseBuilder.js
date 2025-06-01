@@ -44,8 +44,8 @@ import sampleBook from '../../variables/sampleBook.json'
 // import { resetStateWithNewData } from 'variables/slices/pdfSlices';
 import { flattenObject } from 'variables';
 import { useDispatch, useSelector } from 'react-redux'
-import { updateOrder, updateCorrection, updateData, addCorrection, add, resetStateWithNewData, removeCorrection, addData } from '../../variables/slices/pdfSlices'
-import { endpoints } from 'config';
+import { updateOrder, updateCorrection, updateData, addCorrection, resetStateWithNewData, removeCorrection, addData } from '../../variables/slices/pdfSlices'
+import { endpoints } from '@/config';
 
 const response = sampleBook
 

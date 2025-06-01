@@ -22,7 +22,7 @@ import { Link } from 'react-router-dom'
 import { addError } from '../../variables/slices/errorSlice'
 import { addToast } from '../../variables/slices/toastSlice'
 import './Whatsbot.css'
-import { endpoints } from 'config'
+import { endpoints } from '@/config'
 
 
 export default ({onNotify, hookedNotify}) => {

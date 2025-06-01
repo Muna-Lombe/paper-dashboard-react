@@ -21,7 +21,7 @@ import {
 import { unflattenArray } from '../../variables'
 import { flattenObject } from '../../variables'
 import useWebSocket, { ReadyState, useSocketIO } from 'react-use-websocket'
-import { endpoints } from 'config'
+import { endpoints } from '@/config'
 
 const JsonStyleViewer = ({socket}) => {
   const [isEdited, setIsEdited] = useState(false)

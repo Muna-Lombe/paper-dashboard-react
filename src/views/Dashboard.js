@@ -18,11 +18,11 @@ import {
   Col,
 } from "reactstrap";
 // core components
-import {
-  dashboard24HoursPerformanceChart,
-  dashboardEmailStatisticsChart,
-  dashboardNASDAQChart,
-} from "variables/charts.js";
+// import {
+//   dashboard24HoursPerformanceChart,
+//   dashboardEmailStatisticsChart,
+//   dashboardNASDAQChart,
+// } from "variables/charts.js";
 import Progressme from "../components/Progressme";
 
 function Dashboard() {

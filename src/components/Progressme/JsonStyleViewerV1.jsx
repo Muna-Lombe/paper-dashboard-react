@@ -4,7 +4,7 @@ import { motion, useMotionValue, useTransform } from 'framer-motion'
 import { useState } from 'react'
 import { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { updateOrder, updateCorrection, updateData, addCorrection, add, resetStateWithNewData, removeCorrection} from '../../variables/slices/pdfSlices'
+import { updateCorrection, updateData, addCorrection, resetStateWithNewData, removeCorrection} from '../../variables/slices/pdfSlices'
 import {
   Container,
   Row,

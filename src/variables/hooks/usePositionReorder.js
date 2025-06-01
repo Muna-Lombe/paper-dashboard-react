@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { clamp, distance } from 'popmotion'
-import move, { arrayMoveImmutable } from 'array-move'
+import { arrayMoveImmutable } from 'array-move'
 
 export function usePositionReorder (initialState) {
   const [order, setOrder] = useState(initialState)

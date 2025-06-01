@@ -596,7 +596,7 @@ class LandingPage extends React.Component {
                         color='success'
                         size='lg'
                         className='mx-2 my-2'
-                        href='/dashboard'
+                        type='button'
                       >
                         Go to Dashboard
                       </Button>

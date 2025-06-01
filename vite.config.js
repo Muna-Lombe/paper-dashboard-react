@@ -23,5 +23,17 @@ export default defineConfig({
   build: {
     outDir: "dist",
   },
+  esbuild: {
+    loader: "jsx",
+    include: /src\/.*\.jsx?$/,
+    exclude: [],
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      loader: {
+        ".js": "jsx",
+      },
+    },
+  },
   // base: "/paper-dashboard-react/",
 });
