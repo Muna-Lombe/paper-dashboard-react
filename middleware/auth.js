@@ -12,29 +12,35 @@ module.exports = async function(req, res, next) {
     }
 
     try {
-        // Check token in database
-        const tokenRecord = await Token.findOne({
-            where: {
-                token: token,
-                isActive: true,
-                expiresAt: {
-                    [require('sequelize').Op.gt]: new Date()
-                }
-            }
-        });
+        // Verify JWT
+        const decoded = jwt.verify(token, process.env.JWT_SECRET||undefined);
 
-        if (!tokenRecord) {
+        const {firstName, last, role, userId} = JSON.stringify(decoded)
+        
+
+        const tokenRecord = false
+        // Check token in database
+        // const tokenRecord = await Token.findOne({
+        //     where: {
+        //         token: token,
+        //         isActive: true,
+        //         expiresAt: {
+        //             [require('sequelize').Op.gt]: new Date()
+        //         }
+        //     }
+        // });
+
+        if (!tokenRecord || !decodedUser) {
             return res.status(401).json({ msg: 'Invalid or expired token' });
         }
 
-        // Verify JWT
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'auth-permission-granted-by-muna-lombe-to-');
+        
         
         // Add user from payload
         req.user = {
-            id: tokenRecord.userId,
-            name: tokenRecord.userName,
-            roles: tokenRecord.userRoles
+            id: tokenRecord?.userId || userId,
+            name: tokenRecord?.userName || firstName,
+            roles: tokenRecord?.userRoles || role 
         };
         next();
     } catch (err) {
