@@ -41,6 +41,13 @@ export const endpoints = {
         },
     },
 
+    auth: {
+        url: `${baseApiUrl}/api/auth`,
+        headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+        },
+    },
     getUser: "/api/user",
     updateUser: "/api/user/update",
     deleteUser: "/api/user/delete",

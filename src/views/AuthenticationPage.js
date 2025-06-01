@@ -14,6 +14,7 @@ import {
   Col,
   UncontrolledTooltip,
 } from "reactstrap";
+import { endpoints } from "config";
 
 function SignInPage({ handleFormSubmit }) {
   document.documentElement.classList.remove("nav-open");
@@ -129,7 +130,7 @@ function AuthenticationPage() {
     // Store the token
     sessionStorage.setItem("Auth-Token", authToken);
 
-    const url = "http://localhost:5000/api/auth";
+    const url = endpoints.auth.url;
     const res = await fetch(url, {
       method: "POST",
       headers: {
