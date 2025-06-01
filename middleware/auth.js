@@ -1,25 +1,44 @@
-// const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
+const Token = require('../models/Token');
 require('dotenv').config();
 
-module.exports = function(req, res, next) {
+module.exports = async function(req, res, next) {
     // Get token from header
-    // const token = req.header('x-auth-token');
+    const token = req.header('x-auth-token') || req.header('authorization')?.replace('Bearer ', '');
 
-    // Do not auth for now
     // Check if no token
-    // if (!token) {
-    //     return res.status(401).json({ msg: 'No token, authorization denied' });
-    // }
+    if (!token) {
+        return res.status(401).json({ msg: 'No token, authorization denied' });
+    }
 
-    // try {
-    //     // Verify token
-    //     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    try {
+        // Check token in database
+        const tokenRecord = await Token.findOne({
+            where: {
+                token: token,
+                isActive: true,
+                expiresAt: {
+                    [require('sequelize').Op.gt]: new Date()
+                }
+            }
+        });
+
+        if (!tokenRecord) {
+            return res.status(401).json({ msg: 'Invalid or expired token' });
+        }
+
+        // Verify JWT
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret');
         
-    //     // Add user from payload
-    //     req.user = decoded.user;
-    //     next();
-    // } catch (err) {
-    //     res.status(401).json({ msg: 'Token is not valid' });
-    // }
-    next();
+        // Add user from payload
+        req.user = {
+            id: tokenRecord.userId,
+            name: tokenRecord.userName,
+            roles: tokenRecord.userRoles
+        };
+        next();
+    } catch (err) {
+        console.error('Auth middleware error:', err.message);
+        res.status(401).json({ msg: 'Token is not valid' });
+    }
 }; 

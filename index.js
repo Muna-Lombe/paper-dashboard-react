@@ -18,8 +18,8 @@ const io = socketIo(server, {
 });
 
 // Connect to Database
-// sequelize is throwing error, so remove for now
-// connectDB();
+const { connectDB } = require("./config/database");
+connectDB();
 
 // Middleware
 app.use(
