@@ -14,7 +14,7 @@ import {
   Col,
   UncontrolledTooltip,
 } from "reactstrap";
-import { endpoints } from "config";
+import { endpoints } from "@/config";
 
 function SignInPage({ handleFormSubmit }) {
   document.documentElement.classList.remove("nav-open");
