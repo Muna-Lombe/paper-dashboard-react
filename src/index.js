@@ -19,7 +19,8 @@ import { addBasename } from "variables/slices/basenameSlice.js";
 const root = ReactDOM.createRoot(document.getElementById("root"));
 const basename = "/paper-dashboard-react";
 
-sessionStorage.setItem('token', 1);
+// Remove any existing token on app start to ensure fresh authentication
+// sessionStorage.removeItem('Auth-Token');
 
 const AuthedRoute = () => (
   sessionStorage.getItem('token') ? (
