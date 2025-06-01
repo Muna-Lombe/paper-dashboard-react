@@ -82,7 +82,7 @@ const Token = require("../models/Token");
  *       500:
  *         description: Server error
  */
-router.post("/", async (req, res) => {
+router.post("/authenticate", async (req, res) => {
     try {
         // Get user info from Replit headers or request body
         const userId = req.headers["x-replit-user-id"] || req.body.userId;
