@@ -1,4 +1,3 @@
-
 const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
@@ -83,12 +82,13 @@ const Token = require("../models/Token");
  *       500:
  *         description: Server error
  */
-router.post("/auth", async (req, res) => {
+router.post("/", async (req, res) => {
     try {
         // Get user info from Replit headers or request body
-        const userId = req.headers['x-replit-user-id'] || req.body.userId;
-        const userName = req.headers['x-replit-user-name'] || req.body.userName;
-        const userRoles = req.headers['x-replit-user-roles'] || req.body.userRoles;
+        const userId = req.headers["x-replit-user-id"] || req.body.userId;
+        const userName = req.headers["x-replit-user-name"] || req.body.userName;
+        const userRoles =
+            req.headers["x-replit-user-roles"] || req.body.userRoles;
 
         if (!userId) {
             return res.status(400).json({ msg: "User ID is required" });
@@ -100,9 +100,9 @@ router.post("/auth", async (req, res) => {
                 userId: userId,
                 isActive: true,
                 expiresAt: {
-                    [require('sequelize').Op.gt]: new Date()
-                }
-            }
+                    [require("sequelize").Op.gt]: new Date(),
+                },
+            },
         });
 
         if (existingToken) {
@@ -111,8 +111,8 @@ router.post("/auth", async (req, res) => {
                 user: {
                     id: existingToken.userId,
                     name: existingToken.userName,
-                    roles: existingToken.userRoles
-                }
+                    roles: existingToken.userRoles,
+                },
             });
         }
 
@@ -121,14 +121,14 @@ router.post("/auth", async (req, res) => {
             user: {
                 id: userId,
                 name: userName,
-                roles: userRoles
-            }
+                roles: userRoles,
+            },
         };
 
         const token = jwt.sign(
             payload,
-            process.env.JWT_SECRET || 'default_secret',
-            { expiresIn: "24h" }
+            process.env.JWT_SECRET || "default_secret",
+            { expiresIn: "24h" },
         );
 
         // Store token in database
@@ -141,7 +141,7 @@ router.post("/auth", async (req, res) => {
             userName: userName,
             userRoles: userRoles,
             expiresAt: expiresAt,
-            isActive: true
+            isActive: true,
         });
 
         res.json({
@@ -149,8 +149,8 @@ router.post("/auth", async (req, res) => {
             user: {
                 id: userId,
                 name: userName,
-                roles: userRoles
-            }
+                roles: userRoles,
+            },
         });
     } catch (err) {
         console.error(err.message);
@@ -192,10 +192,14 @@ router.post("/auth", async (req, res) => {
  */
 router.get("/verify", async (req, res) => {
     try {
-        const token = req.header('x-auth-token') || req.header('authorization')?.replace('Bearer ', '');
+        const token =
+            req.header("x-auth-token") ||
+            req.header("authorization")?.replace("Bearer ", "");
 
         if (!token) {
-            return res.status(401).json({ valid: false, msg: 'No token provided' });
+            return res
+                .status(401)
+                .json({ valid: false, msg: "No token provided" });
         }
 
         // Check token in database
@@ -204,29 +208,34 @@ router.get("/verify", async (req, res) => {
                 token: token,
                 isActive: true,
                 expiresAt: {
-                    [require('sequelize').Op.gt]: new Date()
-                }
-            }
+                    [require("sequelize").Op.gt]: new Date(),
+                },
+            },
         });
 
         if (!tokenRecord) {
-            return res.status(401).json({ valid: false, msg: 'Invalid or expired token' });
+            return res
+                .status(401)
+                .json({ valid: false, msg: "Invalid or expired token" });
         }
 
         // Verify JWT
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret');
+        const decoded = jwt.verify(
+            token,
+            process.env.JWT_SECRET || "default_secret",
+        );
 
         res.json({
             valid: true,
             user: {
                 id: tokenRecord.userId,
                 name: tokenRecord.userName,
-                roles: tokenRecord.userRoles
-            }
+                roles: tokenRecord.userRoles,
+            },
         });
     } catch (err) {
         console.error(err.message);
-        res.status(401).json({ valid: false, msg: 'Token is not valid' });
+        res.status(401).json({ valid: false, msg: "Token is not valid" });
     }
 });
 
@@ -248,10 +257,12 @@ router.get("/verify", async (req, res) => {
  */
 router.post("/logout", async (req, res) => {
     try {
-        const token = req.header('x-auth-token') || req.header('authorization')?.replace('Bearer ', '');
+        const token =
+            req.header("x-auth-token") ||
+            req.header("authorization")?.replace("Bearer ", "");
 
         if (!token) {
-            return res.status(401).json({ msg: 'No token provided' });
+            return res.status(401).json({ msg: "No token provided" });
         }
 
         // Deactivate token in database
@@ -260,12 +271,12 @@ router.post("/logout", async (req, res) => {
             {
                 where: {
                     token: token,
-                    isActive: true
-                }
-            }
+                    isActive: true,
+                },
+            },
         );
 
-        res.json({ msg: 'Logout successful' });
+        res.json({ msg: "Logout successful" });
     } catch (err) {
         console.error(err.message);
         res.status(500).send("Server error");

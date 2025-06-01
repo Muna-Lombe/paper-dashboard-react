@@ -15,7 +15,7 @@ module.exports = async function(req, res, next) {
         // Verify JWT
         const decoded = jwt.verify(token, process.env.JWT_SECRET||undefined);
 
-        const {firstName, last, role, userId} = JSON.stringify(decoded)
+        const {firstName, lastName, role, userId} = JSON.stringify(decoded)
         
 
         const tokenRecord = false
