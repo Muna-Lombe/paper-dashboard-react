@@ -14,7 +14,7 @@ const addBaseName = () => {
       console.error(err)
       return
     }
-      
+
     if(data.match(/<BrowserRouter\s+basename="[^"]*">/g)?.[0].length) {
       return console.log("basename already added");
     }
@@ -27,7 +27,7 @@ const addBaseName = () => {
     const replacement2 = "store.dispatch(addBasename(basename));"
 
     const updatedData = data.replace(storeDispatchRegex, replacement2).replace(browserRouterRegex, replacement1)
-   
+
     // console.log('browserRouterTag replaced?: ', updatedData.includes(replacement))
 
     fs.writeFile(indexPath, updatedData, 'utf8', err => {

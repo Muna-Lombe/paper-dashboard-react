@@ -5,7 +5,8 @@ run = "npm run start"
 channel = "stable-24_05"
 
 [deployment]
-run = ["sh", "-c", "npm run start"]
+run = ["sh", "-c", "npm run preview"]
+build = ["sh", "-c", "npm run build"]
 
 [[ports]]
 localPort = 3000
@@ -16,6 +17,7 @@ localPort = 5000
 externalPort = 5000
 
 [workflows]
+runButton = "Start Dev Server"
 
 [[workflows.workflow]]
 name = "gh-deploy"
@@ -33,3 +35,12 @@ args = "pnpm run deploy"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "echo \"deploy complete\""
+
+[[workflows.workflow]]
+name = "Start Dev Server"
+author = 28327555
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm start"
