@@ -1,6 +1,13 @@
+
 const jwt = require("jsonwebtoken");
 const Token = require("../models/Token");
 require("dotenv").config();
+
+// Function to validate UUID v4 format
+function isValidUUIDv4(token) {
+    const uuidv4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidv4Regex.test(token);
+}
 
 module.exports = async function (req, res, next) {
     // Get token from header
@@ -8,45 +15,42 @@ module.exports = async function (req, res, next) {
         req.header("x-auth-token") ||
         req.header("authorization")?.replace("Bearer ", "");
 
-    // console.log("request in middleware..", token ?? false);
-
     // Check if no token
     if (!token) {
         return res.status(401).json({ msg: "No token, authorization denied" });
     }
 
     try {
-        // Verify JWT
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || undefined);
+        // Validate token format (UUID v4)
+        if (!isValidUUIDv4(token)) {
+            return res.status(401).json({ msg: "Invalid token format" });
+        }
 
-        const { firstName, lastName, role, userId } = decoded;
-
-        const tokenRecord = true;
-        console.log("decoded", firstName);
         // Check token in database
-        // const tokenRecord = await Token.findOne({
-        //     where: {
-        //         token: token,
-        //         isActive: true,
-        //         expiresAt: {
-        //             [require('sequelize').Op.gt]: new Date()
-        //         }
-        //     }
-        // });
+        const tokenRecord = await Token.findOne({
+            where: {
+                token: token,
+                isActive: true,
+                expiresAt: {
+                    [require('sequelize').Op.gt]: new Date()
+                }
+            }
+        });
 
-        if (!tokenRecord || !firstName) {
+        if (!tokenRecord) {
             return res.status(401).json({ msg: "Invalid or expired token" });
         }
 
-        // Add user from payload
-        req.body = {
-            userId: tokenRecord?.userId || userId,
-            userName: tokenRecord?.userName || firstName,
-            userRoles: tokenRecord?.userRoles || role,
+        // Add user from token record
+        req.user = {
+            userId: tokenRecord.userId,
+            userName: tokenRecord.userName,
+            userRoles: tokenRecord.userRoles,
         };
+
         next();
     } catch (err) {
-        console.error("Auth middleware error:", err.message);
-        res.status(401).json({ msg: "Token is not valid" });
+        console.error("Scraper middleware error:", err.message);
+        res.status(401).json({ msg: "Token validation failed" });
     }
 };
