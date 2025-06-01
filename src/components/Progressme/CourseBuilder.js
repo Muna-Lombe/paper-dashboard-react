@@ -45,6 +45,7 @@ import sampleBook from '../../variables/sampleBook.json'
 import { flattenObject } from 'variables';
 import { useDispatch, useSelector } from 'react-redux'
 import { updateOrder, updateCorrection, updateData, addCorrection, add, resetStateWithNewData, removeCorrection, addData } from '../../variables/slices/pdfSlices'
+import { endpoints } from 'config';
 
 const response = sampleBook
 
@@ -177,7 +178,7 @@ const CourseBuilder = () => {
     readyState,
     socket
   } = useSocketWrapper({
-    url: 'ws://localhost:8000/ws',
+    url: endpoints.bot.socketUrl,
     onOpenCallback: (ev, socket) => handleOnOpen(ev, socket),
     onCloseCallback: (ev, socket) => console.log('Disconnected'),
     onMessageCallback: (ev, socket) => handleOnMessage(ev, socket),

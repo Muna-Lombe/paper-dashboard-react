@@ -22,12 +22,13 @@ import { Link } from 'react-router-dom'
 import { addError } from '../../variables/slices/errorSlice'
 import { addToast } from '../../variables/slices/toastSlice'
 import './Whatsbot.css'
+import { endpoints } from 'config'
 
 
 export default ({onNotify, hookedNotify}) => {
       const [connection, setConnection] = useState({scanningQr:false, gettingQr:false, isConnecting: false, isConnected: false, error: null})
       const [qrCode, setQrCode] = useState("https://picsum.photos/900/180")
-      const [socketUrl, setSocketUrl] = useState('ws://localhost:5000/api/bot');
+      const [socketUrl, setSocketUrl] = useState(endpoints.bot.socketUrl);
       const [messageHistory, setMessageHistory] = useState([]);
       const sessToken = sessionStorage.getItem('token');
 
