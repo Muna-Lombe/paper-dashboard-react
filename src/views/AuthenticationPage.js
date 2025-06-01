@@ -5,7 +5,7 @@ import { addError } from 'variables/slices/errorSlice'
 import { useSelector, useDispatch } from 'react-redux'
 
 // reactstrap components
-import { Button, Card, Form, Input, NavLink, Row, Col } from "reactstrap";
+import { Button, Card, Form, Input, NavLink, Row, Col, UncontrolledTooltip } from "reactstrap";
 
 
 function SignInPage({handleFormSubmit}) {
@@ -53,7 +53,10 @@ function SignInPage({handleFormSubmit}) {
                   </Button> */}
                 </div>
                 <Form id="signin-form" name="signin-form" className="signin-form">
-                  <label>Authentication Token</label>
+                  <label id="authTokenLabel">Authentication Token</label>
+                  <UncontrolledTooltip placement="right" target="authTokenLabel">
+                    Need a token? Contact us on Telegram: https://t.me/MunaLombe
+                  </UncontrolledTooltip>
                   <Input 
                     form="signin-form" 
                     id="authToken" 
