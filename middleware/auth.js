@@ -28,7 +28,7 @@ module.exports = async function(req, res, next) {
         }
 
         // Verify JWT
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'auth-permission-granted-by-muna-lombe-to-');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret');
         
         // Add user from payload
         req.user = {
