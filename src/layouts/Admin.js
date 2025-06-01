@@ -46,51 +46,9 @@ function Dashboard(props) {
     setBackgroundColor(color);
   };
 
-  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    const checkAuth = async () => {
-      const token = sessionStorage.getItem('Auth-Token');
-      
-      if (!token) {
-        setIsAuthenticated(false);
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const response = await fetch('http://localhost:5000/api/auth', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ token })
-        });
-
-        const data = await response.json();
-        setIsAuthenticated(data.valid || false);
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        setIsAuthenticated(false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  if (isLoading) {
-    return <div className="d-flex justify-content-center align-items-center" style={{height: '100vh'}}>
-      <div>Loading...</div>
-    </div>;
-  }
-
-  if (!isAuthenticated) {
+  if (!sessionStorage.getItem('token')){
     return <Navigate to='/sign-in' replace />
-  }
+  };
 
   return (
     <div className="wrapper">

@@ -8,7 +8,7 @@ import { useSelector, useDispatch } from 'react-redux'
 import { Button, Card, Form, Input, NavLink, Row, Col } from "reactstrap";
 
 
-function SignInPage({handleFormSubmit}) {
+function SignInPage({handleFormSubmit, handleAuthState}) {
   document.documentElement.classList.remove("nav-open");
   useEffect(() => {
     document.body.classList.add("register-page");
@@ -53,32 +53,49 @@ function SignInPage({handleFormSubmit}) {
                   </Button> */}
                 </div>
                 <Form id="signin-form" name="signin-form" className="signin-form">
-                  <label>Authentication Token</label>
-                  <Input 
-                    form="signin-form" 
-                    id="authToken" 
-                    name="authToken" 
-                    placeholder="Enter your authentication token" 
-                    type="text" 
-                  />
-                  <div className="text-muted small mb-3">
-                    Enter your JWT authentication token to access the dashboard.
+                  <label>Email/UserId</label>
+                  <Input form="signin-form" id="userId" name="userId" placeholder="Email or UserId" type="text" />
+                  <label>Password</label>
+                  <Input form="signin-form" id="hashedPassword" name="hashedPassword" placeholder="Password" type="password" />
+                  <div className="forgot">
+                    <div
+                      className="btn-link"
+                      style={{ 'cursor': 'pointer', 'color': '#007bff' }}
+                      onClick={(e) => e.preventDefault()}
+                    >
+                      Forgot password?
+                    </div>
                   </div>
                   <div className="">
                     <Button   
                       className="btn-round " 
                       color="danger"
                       size="sm"
+                      // href = '/admin/dashboard'
                       type="submit"
-                      form="signin-form"
+                      form="register-form"
                       onClick={(e) => handleFormSubmit(e)}
+
                     >
-                      Authenticate
+                      Sign In
                     </Button>
+
                   </div>
                 </Form>
                 
-                
+                <div className="create new account">
+                  Don't have an account yet? 
+                  <div
+                    className="cursor-pointer"
+                    style={{'cursor': 'pointer','color': '#007bff'}}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      handleAuthState(false)
+                    }}
+                  >
+                    Create new account
+                  </div>
+                </div>
                 
               </Card>
             </Col>
@@ -95,39 +112,153 @@ function SignInPage({handleFormSubmit}) {
   );
 }
 
+function SignUpPage ({handleFormSubmit, handleAuthState}) {
+  document.documentElement.classList.remove('nav-open')
+  React.useEffect(() => {
+    document.body.classList.add('register-page')
+    return function cleanup () {
+      document.body.classList.remove('register-page')
+    }
+  })
+  
+  return (
+    <>
+      {/* <ExamplesNavbar /> */}
 
+      
+            <Card className='card-register p-4'>
+              <h3 className='title mx-auto'>Welcome</h3>
+              <div className='social-line text-center'>
+                {/* <Button
+                    className="btn-neutral-invert btn-just-icon mr-1"
+                    color="facebook"
+                    href="#pablo"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    <i className="fa fa-facebook-square" />
+                  </Button>
+                  <Button
+                    className="btn-neutral-invert btn-just-icon mr-1"
+                    color="google"
+                    href="#pablo"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    <i className="fa fa-google-plus" />
+                  </Button>
+                  <Button
+                    className="btn-neutral-invert btn-just-icon"
+                    color="twitter"
+                    href="#pablo"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    <i className="fa fa-twitter" />
+                  </Button> */}
+              </div>
+              <Form
+                id='signup-form'
+                name='signup-form'
+                className='signup-form'
+              >
+                <label>User Id</label>
+                <Input
+                  form='signup-form'
+                  id='userId'
+                  name='userId'
+                  placeholder='User Id'
+                  type='text'
+                />
+                <label>Email</label>
+                <Input
+                  form='signup-form'
+                  id='email'
+                  name='email'
+                  placeholder='Email'
+                  type='text'
+                />
+                <div>
+                  <div>
+                    <label>First Name</label>
+                    <Input
+                      form='signup-form'
+                      id='firstName'
+                      name='firstName'
+                      placeholder='First Name'
+                      type='text'
+                    />
+                  </div>
+                  <div>
+                    <label>Last Name</label>
+                    <Input
+                      form='signup-form'
+                      id='lastName'
+                      name='lastName'
+                      placeholder='Last Name'
+                      type='text'
+                    />
+                  </div>
+                </div>
+                <label>Password</label>
+                <Input
+                  form='signup-form'
+                  id='hashedPassword'
+                  name='hashedPassword'
+                  placeholder='Password'
+                  type='password'
+                />
+                <Button
+                  className='btn-round '
+                  color='danger'
+                  // href = '/admin/dashboard'
+                  type='submit'
+                  form='signup-form'
+                  onClick={e => handleFormSubmit(e)}
+                >
+                  Register
+                </Button>
+              </Form>
+              <div className="signin account">
+                  Already have an account? 
+                  <NavLink
+                    className=""
+                    style={{'cursor': 'pointer','color': '#007bff'}}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      handleAuthState(true)
+                    }}
+                  >
+                    Log in to your account
+                  </NavLink>
+                </div>
+            </Card>
+          
+    </>
+  )
+}
 function AuthenticationPage(){
+  const [isSignIn, setIsSignIn] = React.useState(true);
   const location = useNavigate()
   const dispatch = useDispatch()
   const { basenames } = useSelector(state => state.basenames)
 
   const handleFormSubmit = async (e) => {
     e.preventDefault()
-    const form = document.forms["signin-form"]
+    const form = document.forms[isSignIn ? "signin-form":"signup-form"]
     const formData = Object.fromEntries([...(new FormData(form))])
-    const { authToken } = formData;
-    
-    if (!authToken) {
-      dispatch(addError("Please enter an authentication token"))
-      return;
-    }
-    
-    // Store the token
-    sessionStorage.setItem("Auth-Token", authToken);
+    const {userId, ...rest} = formData;
+    rest[((userId.includes("@") && !rest.email) ? "email" : "userId")] = userId;
+    const data = rest;
    
 
-    const url = "http://localhost:5000/api/auth";
+    const url = isSignIn ? "http://localhost:5000/api/auth/login" : "http://localhost:5000/api/auth/register";
     const res = await fetch(
         url,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": "Bearer " + (sessionStorage.getItem("Auth-Token") || "")
+            "x-auth-token": ""//"Bearer " + (localStorage.getItem("token") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoibW9vcmhvdXNlRU5UIiwiaWF0IjoxNzEwNzEzMTkzfQ.5_SXADx6j1mdAvpX7MDFx5CrlZ_HeWkXdMrKbVm1zmI")
           },
-          body: JSON.stringify({
-            token: authToken
-          })
+          body: JSON.stringify(data)
         }
       )
       .then(res=> res)
@@ -140,11 +271,10 @@ function AuthenticationPage(){
 
       
     }
-    if(resData.valid){
-      // Token is valid, user is authenticated
+    if(resData.status === 200 &&resData?.sessionKey){
+
+      sessionStorage.setItem("Auth-Token", resData?.sessionKey);
       location((basenames[0]||"")+"/admin/dashboard")
-    } else if(resData.message) {
-      dispatch(addError(resData.message))
     }
 
     return;
@@ -154,7 +284,11 @@ function AuthenticationPage(){
     <div className='content'>
       <Row>
         <Col className='ml-auto mr-auto ' md={8}>
-          <SignInPage handleFormSubmit={handleFormSubmit} />
+          {
+            isSignIn ? 
+              <SignInPage handleFormSubmit={handleFormSubmit} handleAuthState={setIsSignIn}/> 
+              : <SignUpPage handleFormSubmit={handleFormSubmit} handleAuthState={setIsSignIn}/>
+          }
         </Col>
       </Row>
       {/* </Container> */}
