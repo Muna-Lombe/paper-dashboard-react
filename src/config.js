@@ -42,7 +42,7 @@ export const endpoints = {
     },
 
     auth: {
-        url: `${baseApiUrl}/api/auth`,
+        url: `${baseApiUrl}/api/auth/authenticate`,
         headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
