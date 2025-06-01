@@ -1,14 +1,21 @@
-
 import React, { useEffect } from "react";
-import {useNavigate} from "react-router-dom";
-import { addError } from 'variables/slices/errorSlice'
-import { useSelector, useDispatch } from 'react-redux'
+import { useNavigate } from "react-router-dom";
+import { addError } from "variables/slices/errorSlice";
+import { useSelector, useDispatch } from "react-redux";
 
 // reactstrap components
-import { Button, Card, Form, Input, NavLink, Row, Col, UncontrolledTooltip } from "reactstrap";
+import {
+  Button,
+  Card,
+  Form,
+  Input,
+  NavLink,
+  Row,
+  Col,
+  UncontrolledTooltip,
+} from "reactstrap";
 
-
-function SignInPage({handleFormSubmit}) {
+function SignInPage({ handleFormSubmit }) {
   document.documentElement.classList.remove("nav-open");
   useEffect(() => {
     document.body.classList.add("register-page");
@@ -16,18 +23,18 @@ function SignInPage({handleFormSubmit}) {
       document.body.classList.remove("register-page");
     };
   });
-  
+
   return (
     <>
       {/* <ExamplesNavbar /> */}
-      
-        <div className="content">
-          <Row>
-            <Col className="ml-auto mr-auto " md={8} >
-              <Card className="card-register p-4">
-                <h3 className="title mx-auto">Welcome</h3>
-                <div className="social-line text-center">
-                  {/* <Button
+
+      <div className="content">
+        <Row>
+          <Col className="ml-auto mr-auto " md={8}>
+            <Card className="card-register p-4">
+              <h3 className="title mx-auto">Welcome</h3>
+              <div className="social-line text-center">
+                {/* <Button
                     className="btn-neutral-invert btn-just-icon mr-1"
                     color="facebook"
                     href="#pablo"
@@ -51,41 +58,46 @@ function SignInPage({handleFormSubmit}) {
                   >
                     <i className="fa fa-twitter" />
                   </Button> */}
+              </div>
+              <Form id="signin-form" name="signin-form" className="signin-form">
+                <label id="authTokenLabel">Authentication Token 🛈</label>
+                <UncontrolledTooltip
+                  autohide={false}
+                  placement="right"
+                  target="authTokenLabel"
+                >
+                  Need a token?
+                  <br />
+                  <a href="https://t.me/MunaLombe" target="_blank">
+                    Contact us on Telegram
+                  </a>
+                </UncontrolledTooltip>
+                <Input
+                  form="signin-form"
+                  id="authToken"
+                  name="authToken"
+                  placeholder="Enter your authentication token"
+                  type="text"
+                />
+                <div className="text-muted small mb-3">
+                  Enter your JWT authentication token to access the dashboard.
                 </div>
-                <Form id="signin-form" name="signin-form" className="signin-form">
-                  <label id="authTokenLabel">Authentication Token</label>
-                  <UncontrolledTooltip placement="right" target="authTokenLabel">
-                    Need a token? Contact us on Telegram: https://t.me/MunaLombe
-                  </UncontrolledTooltip>
-                  <Input 
-                    form="signin-form" 
-                    id="authToken" 
-                    name="authToken" 
-                    placeholder="Enter your authentication token" 
-                    type="text" 
-                  />
-                  <div className="text-muted small mb-3">
-                    Enter your JWT authentication token to access the dashboard.
-                  </div>
-                  <div className="">
-                    <Button   
-                      className="btn-round " 
-                      color="danger"
-                      size="sm"
-                      type="submit"
-                      form="signin-form"
-                      onClick={(e) => handleFormSubmit(e)}
-                    >
-                      Authenticate
-                    </Button>
-                  </div>
-                </Form>
-                
-                
-                
-              </Card>
-            </Col>
-          </Row>
+                <div className="">
+                  <Button
+                    className="btn-round "
+                    color="danger"
+                    size="sm"
+                    type="submit"
+                    form="signin-form"
+                    onClick={(e) => handleFormSubmit(e)}
+                  >
+                    Authenticate
+                  </Button>
+                </div>
+              </Form>
+            </Card>
+          </Col>
+        </Row>
         {/* </Container> */}
         {/* <div className="footer register-footer text-center">
           <h6>
@@ -98,79 +110,73 @@ function SignInPage({handleFormSubmit}) {
   );
 }
 
-
-function AuthenticationPage(){
-  const location = useNavigate()
-  const dispatch = useDispatch()
-  const { basenames } = useSelector(state => state.basenames)
+function AuthenticationPage() {
+  const location = useNavigate();
+  const dispatch = useDispatch();
+  const { basenames } = useSelector((state) => state.basenames);
 
   const handleFormSubmit = async (e) => {
-    e.preventDefault()
-    const form = document.forms["signin-form"]
-    const formData = Object.fromEntries([...(new FormData(form))])
+    e.preventDefault();
+    const form = document.forms["signin-form"];
+    const formData = Object.fromEntries([...new FormData(form)]);
     const { authToken } = formData;
-    
+
     if (!authToken) {
-      dispatch(addError("Please enter an authentication token"))
+      dispatch(addError("Please enter an authentication token"));
       return;
     }
-    
+
     // Store the token
     sessionStorage.setItem("Auth-Token", authToken);
-   
 
     const url = "http://localhost:5000/api/auth";
-    const res = await fetch(
-        url,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + (sessionStorage.getItem("Auth-Token") || "")
-          },
-          body: JSON.stringify({
-            token: authToken
-          })
-        }
-      )
-      .then(res=> res)
-      .catch(err=>({json:async()=>({status: 500, message:"Connection error!\n Please retry in a minute."})}))
-      console.log("res", res)
-    const resData = await res.json()
-    if(resData.status !==200){
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + (sessionStorage.getItem("Auth-Token") || ""),
+      },
+      body: JSON.stringify({
+        token: authToken,
+      }),
+    })
+      .then((res) => res)
+      .catch((err) => ({
+        json: async () => ({
+          status: 500,
+          message: "Connection error!\n Please retry in a minute.",
+        }),
+      }));
+    console.log("res", res);
+    const resData = await res.json();
+    if (resData.status !== 200) {
       // alert(resData.message)
-      dispatch(addError(resData.message))
-
-      
+      dispatch(addError(resData.message));
     }
-    if(resData.valid){
+    if (resData.valid) {
       // Token is valid, user is authenticated
-      location((basenames[0]||"")+"/admin/dashboard")
-    } else if(resData.message) {
-      dispatch(addError(resData.message))
+      location((basenames[0] || "") + "/admin/dashboard");
+    } else if (resData.message) {
+      dispatch(addError(resData.message));
     }
 
     return;
-
-  }
+  };
   return (
-    <div className='content'>
+    <div className="content">
       <Row>
-        <Col className='ml-auto mr-auto ' md={8}>
+        <Col className="ml-auto mr-auto " md={8}>
           <SignInPage handleFormSubmit={handleFormSubmit} />
         </Col>
       </Row>
       {/* </Container> */}
-      <div className='footer register-footer text-center'>
+      <div className="footer register-footer text-center">
         <h6>
-          © {new Date().getFullYear()}, made with{' '}
-          <i className='fa fa-heart heart' /> by MoorHouse Tutoring
+          © {new Date().getFullYear()}, made with{" "}
+          <i className="fa fa-heart heart" /> by MoorHouse Tutoring
         </h6>
       </div>
     </div>
-
-      
-  
-  )
+  );
 }
 export default AuthenticationPage;
