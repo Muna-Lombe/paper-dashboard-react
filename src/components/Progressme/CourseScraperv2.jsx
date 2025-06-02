@@ -34,7 +34,7 @@ const CourseScraperV2 = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    const token = sess.getItem("Auth-Token");
+    const token = sess.getItem("expirableToken");
     if (token) {
       setIsAuthenticated(true);
     }
@@ -53,6 +53,13 @@ const CourseScraperV2 = () => {
         {
           url: e.target?.[0]?.value.trim() || "",
         },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            "Authorization": "Bearer " + sess.getItem("Auth-Token"),
+          },
+        }
       );
 
       if (response.data.url) {
@@ -81,9 +88,16 @@ const CourseScraperV2 = () => {
 
     const formData = new FormData(e.target);
     try {
-      if (!sess.getItem("Auth-Token")) {
+        if (!sess.getItem("Auth-Token")) {
         const tokenResponse = await axios.get(
           endpoints.paperDashApi.getToken.url,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              "Authorization": "Bearer " + sess.getItem("expirableToken"),
+            },
+          },
         );
         sess.setItem("Auth-Token", tokenResponse.data.token);
       }
@@ -93,6 +107,13 @@ const CourseScraperV2 = () => {
         {
           email: formData.get("email"),
           password: formData.get("password"),
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            "Authorization": "Bearer " + sess.getItem("expirableToken"),
+          },
         },
       );
       if (response.data.token){
@@ -130,11 +151,21 @@ const CourseScraperV2 = () => {
     }
 
     try {
-      await axios.post(endpoints.paperDashApi.copyCourse.url, {
-        bookId,
-        userId,
-        token,
-      });
+      await axios.post(
+        endpoints.paperDashApi.copyCourse.url, 
+        {
+          bookId,
+          userId,
+          token,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            "Authorization": "Bearer"+ sess.getItem("Auth-Token"),
+          },
+        }
+      );
       dispatch(addToast("Book saved, go to your dashboard to see it"));
       setTimeout(() => {
         setUrl("https://progressme.ru/TeacherAccount/materials/personal");
@@ -199,7 +230,7 @@ const CourseScraperV2 = () => {
 
   const BookDetails = () =>{ 
     const Details = () => (
-      <>
+      <div className="d-flex flex-column justify-content-between align-items-baseline gap-4">
         
           <Input
             value={bookDetails.bookId}
@@ -238,26 +269,27 @@ const CourseScraperV2 = () => {
             <span
               color={isAuthenticated ? "success" : "danger"}
               className={isAuthenticated
-              ?("position-absolute top-50 end-0") : "d-none "+ " w-25 h-50 border border-danger text-sm-center"}
-              style={{top: "25%", right: "15%", zIndex: 1 }}
+              ?("position-absolute top-50 right-0") : "d-none "+ " w-25 h-50 border border-danger text-sm-center"}
+              style={{top: "25%", right: "8%", zIndex: 1, cursor: "pointer" }}
               onClick={handleResetId}
             >
-              x
+              <i className="fas fa-times text-danger" style={{fontSize: "1.5rem", marginTop: "4px"}}></i>
             </span>
           </div>
         
         
-      </>
+      </div>
     )
     return(
       <>
-        <Col md="3" className="book-details  p-3 d-xs-none d-sm-none d-md-none d-lg-flex flex-column justify-content-between align-items-baseline gap-4 ">
+        <Col md="6" className="book-details  p-3 d-xs-none d-sm-none d-md-none d-lg-flex flex-column justify-content-between align-items-baseline gap-4 " style={{width: "100%", maxWidth: "150px"}}>
           <div className="w-100 d-flex flex-column justify-content-evenly ">
             <Details/>
           </div>
           <Button
             color="primary"
             onClick={handleSave}
+            style={{ width: "100%", maxWidth: "80px" }}
             disabled={
               !isAuthenticated || !bookDetails.bookId || !bookDetails.userId
             }
@@ -265,13 +297,14 @@ const CourseScraperV2 = () => {
             Save
           </Button>
         </Col>
-        <Row md="2" className="book-details p-3 w-100 d-lg-none d-xl-none d-2xl-none d-md-flex flex-wrap justify-content-end align-items-baseline gap-4">
+        <Row md="2" className="book-details p-3 w-100 d-lg-none d-xl-none d-2xl-none d-md-flex flex-wrap justify-content-end align-items-baseline gap-4" style={{width: "100%"}}>
           <div className="w-100 d-flex justify-content-end ">
             <Details/>
           </div>
           <Button
             color="primary"
             onClick={handleSave}
+            style={{width: "100%", maxWidth: "200px"}}
             disabled={
               !isAuthenticated || !bookDetails.bookId || !bookDetails.userId
             }
@@ -320,8 +353,8 @@ const CourseScraperV2 = () => {
           <iframe
             src={url}
             title="Course Content"
-            className="w-75 h-100"
-            style={{ border: "none", minHeight: "500px" }}
+            className="w-100 h-100"
+            style={{ border: "none", minHeight: "500px",  }}
           />
         </div>
       );
@@ -379,7 +412,7 @@ const CourseScraperV2 = () => {
   };
 
   return (
-    <Card className="h-100">
+    <Card className="h-100 course-scraper-card">
       <CardHeader className="d-flex flex-column justify-content-between align-items-center">
         <CardTitle tag="h4">Course Scraper</CardTitle>
         <div className="w-75 d-flex justify-content-start align-items-baseline gap-3">
@@ -398,49 +431,27 @@ const CourseScraperV2 = () => {
               <div className="invalid-feedback">
                 Please check the link and make sure there are no spaces.
               </div>
-              <Col className="d-flex justify-content-end">
-                <Button color="primary" type="submit" disabled={isLoading}>
-                  {/* link icon */}
-
+              <Col className="d-flex justify-content-end mt-2">
+                <Button color="primary" type="submit" disabled={isLoading} className="mr-2">
+                  <i className="fas fa-link mr-1 d-md-none"></i>
                   <span className="d-none d-md-inline">Connect</span>
-                  <span className="d-inline d-md-none">
-                    <i className="fas fa-link"></i>
-                  </span>
                 </Button>
                 <Button color="secondary" onClick={handleReset}>
-                  Reset
+                  <i className="fas fa-undo mr-1 d-md-none"></i>
+                  <span className="d-none d-md-inline">Reset</span>
                 </Button>
               </Col>
             </FormGroup>
           </Form>
-          {/* <Input
-            placeholder="Enter URL"
-            defaultValue={url}
-            value={url}
-            style={{ width: "300px" }}
-          /> */}
-          {/* <Button color="primary" onClick={handleLoadLink} disabled={isLoading}>
-           
-            
-            <span className="d-none d-md-inline">Connect</span>
-            <span className="d-inline d-md-none">
-              <i className="fas fa-link"></i>
-            </span>
-          </Button>
-          <Button color="secondary" onClick={handleReset}>
-            Reset
-          </Button> */}
         </div>
       </CardHeader>
-      <CardBody className="d-flex flex-col flex-row-reverse justify-content-between align-items-center">
-        <Col md={"auto"}  className="book-details p-3 w-100 d-lg-none d-xl-none d-2xl-none d-md-flex flex-wrap justify-content-between align-items-baseline gap-4">
+      <CardBody className="d-flex flex-column flex-md-row course-scraper-body">
+        <div className="content-area  p-3 order-md-1 order-2" style={{ width: "100%" }}>
+          {BookContent()}
+        </div>
+        <div className="details-sidebar p-3 order-md-2 order-1 bg-light border-left" style={{width: "auto"}}>
           <BookDetails />
-          <div className="content-area mt-3 w-100">{BookContent()}</div>
-        </Col>
-        <Row md={2} className="book-details  p-3 w-100 d-xs-none d-sm-none d-md-none d-lg-flex flex-row-reverse justify-content-between align-items-baseline gap-4">
-          <BookDetails />
-          <div className="content-area mt-3 w-100">{BookContent()}</div>
-        </Row>
+        </div>
       </CardBody>
     </Card>
   );

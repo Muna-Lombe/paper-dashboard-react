@@ -84,7 +84,7 @@ const CourseScraper = () => {
     e.preventDefault();
     const bookId = sess.getItem("bookId");
     const userId = sess.getItem("userId");
-    const token = sess.getItem("Auth-Token");
+    const token = sess.getItem("expirableToken");
 
     if (!bookId || !userId || !token) {
       dispatch(addError("Missing required information"));
@@ -116,11 +116,11 @@ const CourseScraper = () => {
 
     try {
       // Get a new token if not already set
-      if (!sess.getItem("Auth-Token")) {
+      if (!sess.getItem("expirableToken")) {
         const tokenResponse = await axios.get(
           endpoints.paperDashApi.getToken.url,
         );
-        sess.setItem("Auth-Token", tokenResponse.data.token);
+        sess.setItem("expirableToken", tokenResponse.data.token);
       }
 
       // Authenticate with the token

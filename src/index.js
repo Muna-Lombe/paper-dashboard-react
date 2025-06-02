@@ -20,16 +20,9 @@ const root = ReactDOM.createRoot(document.getElementById("root"));
 const basename = "/paper-dashboard-react";
 
 // Remove any existing token on app start to ensure fresh authentication
-// sessionStorage.removeItem('Auth-Token');
+// sessionStorage.removeItem('expirableToken');
 
-const AuthedRoute = () => (
-  sessionStorage.getItem('token') ? (
-    <AdminLayout />
-  ) : (
-    <Navigate to='/sign-in' replace />
-  )
 
-)
 
 
 //store.dispatch(addBasename(basename));
@@ -42,7 +35,7 @@ root.render(
       <DisplayNotification>
         <Routes>
 
-          <Route path={(store.getState().basenames[0]||"")+"/admin/*"} element={<AuthedRoute/>} />
+          <Route path={(store.getState().basenames[0]||"")+"/admin/*"} element={<AdminLayout />} />
           <Route path={(store.getState().basenames[0]||"")+"/*"} element={<GuestLayout />} />
           
           <Route path={(store.getState().basenames[0]||"")+"/"} element={<Navigate to={(store.getState().basenames[0]||"")+"/landing" }replace />} />

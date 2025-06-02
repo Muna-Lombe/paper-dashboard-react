@@ -15,6 +15,7 @@ import {
   UncontrolledTooltip,
 } from "reactstrap";
 import { endpoints } from "@/config";
+import useAuth from "variables/hooks/useAuth";
 
 function SignInPage({ handleFormSubmit }) {
   document.documentElement.classList.remove("nav-open");
@@ -115,6 +116,7 @@ function AuthenticationPage() {
   const location = useNavigate();
   const dispatch = useDispatch();
   const { basenames } = useSelector((state) => state.basenames);
+  const { authenticateUser } = useAuth();
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
@@ -122,44 +124,7 @@ function AuthenticationPage() {
     const formData = Object.fromEntries([...new FormData(form)]);
     const { authToken } = formData;
 
-    if (!authToken) {
-      dispatch(addError("Please enter an authentication token"));
-      return;
-    }
-
-    // Store the token
-    sessionStorage.setItem("Auth-Token", authToken);
-
-    const url = endpoints.auth.url;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + (sessionStorage.getItem("Auth-Token") || ""),
-      },
-      body: JSON.stringify({
-        token: authToken,
-      }),
-    })
-      .then((res) => res)
-      .catch((err) => ({
-        json: async () => ({
-          status: 500,
-          message: "Connection error!\n Please retry in a minute.",
-        }),
-      }));
-    console.log("res", res);
-    const resData = await res.json();
-    if (resData.status !== 200) {
-      // alert(resData.message)
-      dispatch(addError(resData.message));
-    }
-    if (resData.valid) {
-      // Token is valid, user is authenticated
-      location((basenames[0] || "") + "/admin/dashboard");
-    } else if (resData.message) {
-      dispatch(addError(resData.message));
-    }
+    authenticateUser(authToken);
 
     return;
   };
