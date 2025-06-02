@@ -24,7 +24,10 @@ connectDB();
 // Middleware
 app.use(
     cors({
-        origin: true, // Allows all origins
+        origin: [
+            "https://paper-dashboard-react.onrender.com",
+            "http://localhost:3000",
+        ], // Allows all origins
         credentials: true,
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allowedHeaders: ["Content-Type", "Authorization"],
