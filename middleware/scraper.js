@@ -23,31 +23,8 @@ module.exports = async function (req, res, next) {
     try {
         // Validate token format (UUID v4)
         if (!isValidUUIDv4(token)) {
-            return res.status(401).json({ msg: "Invalid token format" });
-        }
-
-        // Check token in database
-        const tokenRecord = await Token.findOne({
-            where: {
-                token: token,
-                isActive: true,
-                expiresAt: {
-                    [require('sequelize').Op.gt]: new Date()
-                }
-            }
-        });
-
-        if (!tokenRecord) {
             return res.status(401).json({ msg: "Invalid or expired token" });
         }
-
-        // Add user from token record
-        req.user = {
-            userId: tokenRecord.userId,
-            userName: tokenRecord.userName,
-            userRoles: tokenRecord.userRoles,
-        };
-
         next();
     } catch (err) {
         console.error("Scraper middleware error:", err.message);
