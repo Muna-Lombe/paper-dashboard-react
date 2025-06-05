@@ -112,7 +112,7 @@ const CourseScraperV2 = () => {
           headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
-            "Authorization": "Bearer " + sess.getItem("expirableToken"),
+            "Authorization": "Bearer " + sess.getItem("Auth-Token"),
           },
         },
       );
