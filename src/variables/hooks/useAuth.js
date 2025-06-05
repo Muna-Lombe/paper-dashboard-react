@@ -17,7 +17,7 @@ const useAuth = () => {
     if (!authToken) {
       const errorMsg = "Please enter an authentication token";
       dispatch(addError(errorMsg));
-      dispatch(addToast({ message: errorMsg, type: "error" }));
+      // dispatch(addToast({ message: errorMsg, type: "error" }));
       // Optional: setIsLoading(false);
       return;
     }

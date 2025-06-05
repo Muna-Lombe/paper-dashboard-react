@@ -80,6 +80,7 @@ function SignInPage({ handleFormSubmit }) {
                   name="authToken"
                   placeholder="Enter your authentication token"
                   type="text"
+                  required
                 />
                 <div className="text-muted small mb-3">
                   Enter your JWT authentication token to access the dashboard.
