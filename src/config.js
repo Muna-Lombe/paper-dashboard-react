@@ -1,5 +1,5 @@
-const baseApiUrl = "https://de885a4b-d886-4a17-9372-6791449191cc-00-sk4u39m5xe4b.picard.replit.dev:5000"//"https://paper-dash-api.onrender.com";
-
+// const baseApiUrl = "https://de885a4b-d886-4a17-9372-6791449191cc-00-sk4u39m5xe4b.picard.replit.dev:5000"//"https://paper-dash-api.onrender.com";
+const baseApiUrl = "https://paper-dash-api.onrender.com"
 export const endpoints = {
     bot: {
         socketUrl: "ws://localhost:5000/api/bot",
