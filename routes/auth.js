@@ -99,7 +99,7 @@ router.post(
             }
 
             const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(password, salt);
+            // const hashedPassword = await bcrypt.hash(password, salt);
 
             // user = await User.create({
             //     name,

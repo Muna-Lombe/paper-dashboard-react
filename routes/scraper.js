@@ -205,7 +205,7 @@ router.post(
 router.get("/getbook", [], async (req, res) => {
     try {
         const { url } = req.query;
-        const bookContentRegex = /https:\/\/progressme\.ru\/cabinet\/school\/materials\/book\/\d+\/content/;
+        // const bookContentRegex = /https:\/\/progressme\.ru\/cabinet\/school\/materials\/book\/\d+\/content/;
         const bookIdRegex = /\/book\/(\d+)/;
         let book = {};
         // lets say that the url is encoded

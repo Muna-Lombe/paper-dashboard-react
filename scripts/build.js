@@ -45,7 +45,7 @@ function processFile(filePath) {
   // Comment out console.logs
   content = content.replace(
     /console\.log\((.*?)\);/g,
-    "// // console.log($1);",
+    "// // // // console.log($1);",
   );
 
   // Write back to file
@@ -77,4 +77,4 @@ if (!fs.existsSync(buildDir)) {
 
 // Copy and process files
 processDirectory(path.join(__dirname, ".."));
-// console.log('Build process completed!');
+// // // console.log('Build process completed!');

@@ -33,6 +33,12 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+
+// health check
+app.get("/health", (req, res) => {
+    res.status(200).send("OK");
+});
+
 // Serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
@@ -61,10 +67,10 @@ app.use("/api/scraper", require("./routes/scraper"));
 
 // WebSocket connection
 io.on("connection", (socket) => {
-    // console.log('New client connected');
+    // // // console.log('New client connected');
 
     socket.on("disconnect", () => {
-        // console.log('Client disconnected');
+        // // // console.log('Client disconnected');
     });
 
     // Handle course updates
@@ -76,6 +82,6 @@ io.on("connection", (socket) => {
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
-    // console.log(`Server running on port ${PORT}`);
-    // console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
+    // // // console.log(`Server running on port ${PORT}`);
+    // // // console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
 });
