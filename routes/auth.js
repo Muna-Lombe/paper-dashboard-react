@@ -1,45 +1,47 @@
 const express = require("express");
 const router = express.Router();
-const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { check, validationResult } = require("express-validator");
 const auth = require("../middleware/auth");
-// const User = require("../models/User");
+const Token = require("../models/Token");
 
+router.use("/authenticate",auth);
 /**
  * @swagger
  * components:
  *   schemas:
- *     User:
+ *     AuthToken:
  *       type: object
- *       required:
- *         - name
- *         - email
- *         - password
  *       properties:
  *         id:
  *           type: integer
- *           description: The auto-generated id of the user
- *         name:
+ *           description: The auto-generated id of the token
+ *         token:
  *           type: string
- *           description: The user's name
- *         email:
+ *           description: The JWT token
+ *         userId:
  *           type: string
- *           description: The user's email
- *         password:
+ *           description: The user's Replit ID
+ *         userName:
  *           type: string
- *           description: The user's password (hashed)
- *         createdAt:
+ *           description: The user's Replit username
+ *         userRoles:
  *           type: string
- *           format: date
- *           description: The date the user was created
+ *           description: The user's Replit roles
+ *         expiresAt:
+ *           type: string
+ *           format: date-time
+ *           description: When the token expires
+ *         isActive:
+ *           type: boolean
+ *           description: Whether the token is active
  */
 
 /**
  * @swagger
- * /api/auth/register:
+ * /api/auth:
  *   post:
- *     summary: Register a new user
+ *     summary: Authenticate user and generate token
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -47,20 +49,19 @@ const auth = require("../middleware/auth");
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - name
- *               - email
- *               - password
  *             properties:
- *               name:
+ *               userId:
  *                 type: string
- *               email:
+ *                 description: Replit user ID from headers
+ *               userName:
  *                 type: string
- *               password:
+ *                 description: Replit username from headers
+ *               userRoles:
  *                 type: string
+ *                 description: Replit user roles from headers
  *     responses:
  *       200:
- *         description: User registered successfully
+ *         description: Authentication successful
  *         content:
  *           application/json:
  *             schema:
@@ -68,182 +69,219 @@ const auth = require("../middleware/auth");
  *               properties:
  *                 token:
  *                   type: string
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     roles:
+ *                       type: string
  *       400:
- *         description: Invalid input or user already exists
+ *         description: Missing user information
  *       500:
  *         description: Server error
  */
-router.post(
-    "/register",
-    [
-        check("name", "Name is required").not().isEmpty(),
-        check("email", "Please include a valid email").isEmail(),
-        check(
-            "password",
-            "Please enter a password with 6 or more characters",
-        ).isLength({ min: 6 }),
-    ],
-    async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
+router.post("/authenticate", async (req, res) => {
+    try {
+        console.log("request in auth..");
+        // Get user info from Replit headers or request body
+        const userId = req.headers["x-replit-user-id"] || req.body.userId;
+        const userName = req.headers["x-replit-user-name"] || req.body.userName;
+        const userRoles =
+            req.headers["x-replit-user-roles"] || req.body.userRoles;
+
+        if (!userId) {
+            return res.status(400).json({ msg: "User ID is required" });
         }
 
-        const { name, email, password } = req.body;
+        // Check if user already has an active token
+        let existingToken = await Token.findOne({
+            where: {
+                userId: userId,
+                isActive: true,
+                expiresAt: {
+                    [require("sequelize").Op.gt]: new Date(),
+                },
+            },
+        });
 
-        try {
-            let user = null; //await User.findOne({ where: { email } });
-
-            if (user) {
-                return res.status(400).json({ msg: "User already exists" });
-            }
-
-            const salt = await bcrypt.genSalt(10);
-            // const hashedPassword = await bcrypt.hash(password, salt);
-
-            // user = await User.create({
-            //     name,
-            //     email,
-            //     password: hashedPassword
-            // });
-
-            user = null;
-            const payload = {
+        if (existingToken) {
+            return res.json({
+                token: existingToken.token,
                 user: {
-                    id: user?.id || "none",
+                    id: existingToken.userId,
+                    name: existingToken.userName,
+                    roles: existingToken.userRoles,
                 },
-            };
-
-            jwt.sign(
-                payload,
-                process.env.JWT_SECRET,
-                { expiresIn: "5h" },
-                (err, token) => {
-                    if (err) throw err;
-                    res.json({ token });
-                },
-            );
-        } catch (err) {
-            console.error(err.message);
-            res.status(500).send("Server error");
+            });
         }
-    },
-);
+
+        // Create new token
+        const payload = {
+            user: {
+                id: userId,
+                name: userName,
+                roles: userRoles,
+            },
+        };
+
+        const token = jwt.sign(
+            payload,
+            process.env.EXPIRABLE_SECRET || "default_secret",
+            { expiresIn: "5d" },
+        );
+
+        // Store token in database
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24);
+
+        const tokenRecord = await Token.create({
+            token: token,
+            userId: userId,
+            userName: userName,
+            userRoles: userRoles,
+            expiresAt: expiresAt,
+            isActive: true,
+        });
+
+        res.json({
+            token: token,
+            user: {
+                id: userId,
+                name: userName,
+                roles: userRoles,
+            },
+        });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send("Server error");
+    }
+});
 
 /**
  * @swagger
- * /api/auth/login:
- *   post:
- *     summary: Authenticate user & get token
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *             properties:
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *     responses:
- *       200:
- *         description: Login successful
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 token:
- *                   type: string
- *       400:
- *         description: Invalid credentials
- *       500:
- *         description: Server error
- */
-router.post(
-    "/login",
-    [
-        check("email", "Please include a valid email").isEmail(),
-        check("password", "Password is required").exists(),
-    ],
-    async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
-
-        const { email, password } = req.body;
-
-        try {
-            let user = null; //await User.findOne({ where: { email } });
-
-            if (!user) {
-                return res.status(400).json({ msg: "Invalid credentials" });
-            }
-
-            const isMatch = await bcrypt.compare(password, user.password);
-
-            if (!isMatch) {
-                return res.status(400).json({ msg: "Invalid credentials" });
-            }
-
-            const payload = {
-                user: {
-                    id: user?.id,
-                },
-            };
-
-            jwt.sign(
-                payload,
-                process.env.JWT_SECRET,
-                { expiresIn: "5h" },
-                (err, token) => {
-                    if (err) throw err;
-                    res.json({ token });
-                },
-            );
-        } catch (err) {
-            console.error(err.message);
-            res.status(500).send("Server error");
-        }
-    },
-);
-
-/**
- * @swagger
- * /api/auth/user:
+ * /api/auth/verify:
  *   get:
- *     summary: Get authenticated user's data
+ *     summary: Verify token and get user data
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: User data retrieved successfully
+ *         description: Token is valid
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/User'
+ *               type: object
+ *               properties:
+ *                 valid:
+ *                   type: boolean
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     roles:
+ *                       type: string
  *       401:
- *         description: No token, authorization denied
+ *         description: Invalid or expired token
  *       500:
  *         description: Server error
  */
-router.get("/user", auth, async (req, res) => {
+router.get("/verify", async (req, res) => {
     try {
-        const user = null;
-        //await User.findByPk(req.user.id, {
-        //     attributes: { exclude: ['password'] }
-        // });
-        res.json(user || {});
+        const token =
+            req.header("x-auth-token") ||
+            req.header("authorization")?.replace("Bearer ", "");
+
+        if (!token) {
+            return res
+                .status(401)
+                .json({ valid: false, msg: "No token provided" });
+        }
+
+        // Check token in database
+        const tokenRecord = await Token.findOne({
+            where: {
+                token: token,
+                isActive: true,
+                expiresAt: {
+                    [require("sequelize").Op.gt]: new Date(),
+                },
+            },
+        });
+
+        if (!tokenRecord) {
+            return res
+                .status(401)
+                .json({ valid: false, msg: "Invalid or expired token" });
+        }
+
+        // Verify JWT
+        const decoded = jwt.verify(
+            token,
+            process.env.JWT_SECRET || "default_secret",
+        );
+
+        res.json({
+            valid: true,
+            user: {
+                id: tokenRecord.userId,
+                name: tokenRecord.userName,
+                roles: tokenRecord.userRoles,
+            },
+        });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send("Server Error");
+        res.status(401).json({ valid: false, msg: "Token is not valid" });
+    }
+});
+
+/**
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     summary: Logout user by deactivating token
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logout successful
+ *       401:
+ *         description: No token provided
+ *       500:
+ *         description: Server error
+ */
+router.post("/logout", async (req, res) => {
+    try {
+        const token =
+            req.header("x-auth-token") ||
+            req.header("authorization")?.replace("Bearer ", "");
+
+        if (!token) {
+            return res.status(401).json({ msg: "No token provided" });
+        }
+
+        // Deactivate token in database
+        await Token.update(
+            { isActive: false },
+            {
+                where: {
+                    token: token,
+                    isActive: true,
+                },
+            },
+        );
+
+        res.json({ msg: "Logout successful" });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send("Server error");
     }
 });
 

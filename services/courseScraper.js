@@ -9,7 +9,8 @@ puppeteer.default.use(StealthPlugin());
 
 class CourseScraperService {
     constructor() {
-        this.urlRegex = /^https?:\/\/(?:www\.)?(?:new\.)?(?:progressme\.ru|edvibe\.com)\/(?:sharing-material|SharingMaterial)\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}(\/book\/\d+)?$|https:\/\/progressme\.ru\/cabinet\/school\/materials\/book\/\d+\/content$/
+        this.urlRegex =
+            /^https?:\/\/(?:www\.)?(?:new\.)?(?:progressme\.ru|edvibe\.com)\/(?:sharing-material|SharingMaterial)\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}(\/book\/\d+)?$|https:\/\/progressme\.ru\/cabinet\/school\/materials\/book\/\d+\/content$/;
         this.socketUrls = {
             books: "wss://proxy.progressme.ru/websocket",
             socket: "wss://progressme.ru/ws/WebSockets/SocketHandler.ashx",
@@ -45,8 +46,23 @@ class CourseScraperService {
                 return this.list.map((ws) => ws.socket);
             },
         };
+        this.currentBook = {};
         this.currentAuthToken = null;
         this.controllerTemplates = {
+            IsCanSharingMaterialMessage: (bookId, userId) => ({
+                Controller: "BookWsController",
+                Method: "IsCanSharingMaterial",
+                ProjectName: "Books",
+                RequestId: this.generateAuthToken(),
+                Value: `{"BookId":${bookId}, "UserId":${userId}, "SchoolId":null}`,
+            }),
+            GetSharingMaterialMessage: (bookId) => ({
+                Controller: "SharingMaterialWsController",
+                Method: "GetSharingMaterial",
+                ProjectName: "Books",
+                RequestId: this.generateAuthToken(),
+                Value: `{"BookId":${bookId}, "IsInitIfEmpty":true}`,
+            }),
             GetIdMaterialMessage: (code) => ({
                 Controller: "SharingMaterialWsController",
                 Method: "GetIdMaterial",
@@ -61,12 +77,17 @@ class CourseScraperService {
                 RequestId: this.generateAuthToken(),
                 Value: `{"BookId":${bookId}}`,
             }),
-            CopySharedBookMessage: (bookId) => ({
+            CopySharedBookMessage: (bookId, sharingMaterialId) => ({
                 Controller: "BookWsController",
                 Method: "CopyBook",
                 ProjectName: "Books",
                 RequestId: this.generateAuthToken(),
-                Value:JSON.stringify({"BookId":bookId,"IsVisible":false,"IsProtectedCopyright":false}),
+                Value:
+                    '{"BookId":' +
+                    bookId +
+                    ',"IsVisible":false,"IsProtectedCopyright":false, "SharingMaterialId":"' +
+                    sharingMaterialId +
+                    '"}',
             }),
             GetCurrentUserMessage: {
                 controller: "Auth",
@@ -84,289 +105,6 @@ class CourseScraperService {
                 value: '""',
             },
         };
-    }
-
-    validateUrl(url) {
-        const cleanUrl = url
-            .trim()
-            .replace("new.", "")
-            .replace("edvibe.com", "progressme.ru")
-            .replace("sharing-material", "SharingMaterial")
-            .replace("course", "SharingMaterial")
-            // .replace(/\/book\/[0-9]{6}/, "");
-
-        return this.urlRegex.test(cleanUrl) ? cleanUrl : null;
-    }
-
-    async initBrowser() {
-        if (!this.browser) {
-            this.browser = await puppeteer.default.launch({
-                headless: false,
-                args: [
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                    "--disable-web-security",
-                    "--disable-features=IsolateOrigins,site-per-process",
-                    "--disable-site-isolation-trials",
-                ],
-            });
-        }
-        if (!this.page) {
-            this.page = await this.browser.newPage();
-
-            // Set a more realistic viewport
-            await this.page.setViewport({
-                width: 1920 + Math.floor(Math.random() * 100),
-                height: 3000 + Math.floor(Math.random() * 100),
-                deviceScaleFactor: 1,
-                hasTouch: false,
-                isLandscape: false,
-                isMobile: false,
-            });
-
-            // Set more browser-like settings
-            await this.page.setExtraHTTPHeaders({
-                "Accept-Language": "en-US,en;q=0.9",
-                "Accept-Encoding": "gzip, deflate, br",
-                Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
-                Connection: "keep-alive",
-                "Upgrade-Insecure-Requests": "1",
-                "Sec-Fetch-Site": "same-origin",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-User": "?1",
-                "Sec-Fetch-Dest": "document",
-            });
-
-            // Disable request interception (allow all resources)
-            await this.page.setRequestInterception(false);
-
-            // Set random user agent
-            const userAgent = randomUseragent.getRandom();
-            await this.page.setUserAgent(userAgent);
-
-            // Add additional browser characteristics
-            await this.page.evaluateOnNewDocument(() => {
-                // Add common browser features
-                Object.defineProperty(navigator, "plugins", {
-                    get: () => [
-                        {
-                            0: {
-                                type: "application/x-google-chrome-pdf",
-                                suffixes: "pdf",
-                                description: "Portable Document Format",
-                            },
-                            description: "Portable Document Format",
-                            filename: "internal-pdf-viewer",
-                            length: 1,
-                            name: "Chrome PDF Plugin",
-                        },
-                    ],
-                });
-
-                // Listen for specific network responses
-                // this.page.on('response', async response => {
-                //     const url = response.url();
-                //     const method = response.request().method()
-                //     // // // // console.log("tick points", url, method);
-
-                //     // You can check for specific endpoints
-                //     if (url.includes('https://progressme.ru/Account/Login') && method === "POST") {
-                //         try {
-                //             const responseData = await response.json();
-                //             // // // console.log('Response data:', responseData);
-                //             this.currentXHR[`${this.page.title.toString()}`].res = responseData;
-
-                //         } catch (e) {
-                //             // Handle non-JSON responses
-                //             // // // console.log('Non-JSON response:', await response.text());
-                //         }
-                //     }
-                // });
-                // Add language preferences
-                Object.defineProperty(navigator, "languages", {
-                    get: () => ["en-US", "en"],
-                });
-
-                // Add WebGL support
-                Object.defineProperty(window, "WebGL2RenderingContext", {
-                    get: () => true,
-                });
-
-                // // Pass chrome check
-                // window.chrome = {
-                //     runtime: {},
-                // };
-
-                // // Pass notifications check
-                // const originalQuery = window.navigator.permissions.query;
-                // window.navigator.permissions.query = (parameters) => (
-                //     parameters.name === 'notifications' ?
-                //         Promise.resolve({ state: Notification.permission }) :
-                //         originalQuery(parameters)
-                // );
-
-                // // Pass plugins check
-                // Object.defineProperty(navigator, 'plugins', {
-                //     get: () => [1, 2, 3, 4, 5],
-                // });
-
-                // Add media devices
-                Object.defineProperty(navigator, "mediaDevices", {
-                    get: () => ({
-                        enumerateDevices: () =>
-                            Promise.resolve([
-                                {
-                                    kind: "audioinput",
-                                    label: "Default",
-                                    deviceId: "default",
-                                    groupId: "default",
-                                },
-                                {
-                                    kind: "videoinput",
-                                    label: "Default",
-                                    deviceId: "default",
-                                    groupId: "default",
-                                },
-                            ]),
-                    }),
-                });
-            });
-        }
-    }
-
-    async handleNavigateToLogin(page = this.page) {
-        try {
-            // Wait for network to be idle first
-            await page.waitForNetworkIdle({
-                timeout: 60000,
-                idleTime: 500,
-            });
-
-            // // // console.log("page is landing page");
-
-            const loginBtn = await page.evaluate(() => {
-                return document.querySelector('button[text="start_b_login"]');
-            });
-
-            if (!loginBtn) {
-                return false;
-            }
-
-            const btnBox = loginBtn.getBoundingClientRect();
-
-            this.page.mouse.click(btnBox.x, btnBox.y, {
-                delay: 50,
-            });
-
-            await page.waitForNavigation({
-                timeout: 60000,
-                waitUntil: ["networkidle0", "load", "domcontentloaded"],
-            });
-            await page.waitForNetworkIdle({
-                timeout: 60000,
-                idleTime: 500,
-            });
-        } catch (error) {
-            console.error("Login navigation handling failed:", error);
-            return false;
-        }
-    }
-    async handleCaptcha(page = this.page) {
-        try {
-            // Wait for network to be idle first
-            await page.waitForNetworkIdle({
-                timeout: 60000,
-                idleTime: 500,
-            });
-
-            // Check if we're on a captcha page - FIXED VERSION
-            const pageContainsCaptchaButton = await page.evaluate(() => {
-                return (
-                    document.querySelector(".CheckboxCaptcha-Button") !== null
-                );
-            });
-
-            console.log(
-                "page is captcha page",
-                pageHasCaptchaInUrl,
-                pageContainsCaptchaButton,
-            );
-
-            // // // // console.log("Page is captcha page");
-
-            // Wait for iframe to load
-            // if the iframe doesn't appear after 3sec, reload the page
-            // repeat 3 times
-            const frameHandle = await page
-                .waitForSelector('iframe[title="SmartCaptcha checkbox widget"]')
-                .then((res) => res)
-                .catch(async (err) => {
-                    await page.reload();
-                    // return void;
-                });
-            const frame = await frameHandle.contentFrame();
-
-            // Get the button dimensions and position within the iframe
-            const button = await frame.$(".CheckboxCaptcha-Button");
-            const box = await button.boundingBox();
-
-            // // // console.log("IMNR Button is found at coordinates", box);
-
-            // Generate "human-like" mouse movement
-            const points = this.generateMousePath(
-                { x: 0, y: 0 },
-                { x: box.x + box.width / 2, y: box.y + box.height / 2 },
-            );
-
-            // Simulate mouse movement
-            for (const point of points) {
-                await page.mouse.move(point.x, point.y, {
-                    steps: 10, // Make movement smoother
-                });
-            }
-
-            // Random delay before clicking (between 100ms and 300ms)
-            await new Promise((resolve) =>
-                setTimeout(resolve, Math.random() * 200 + 100),
-            );
-
-            this.page.mouse.click(box.x, box.y, {
-                delay: 50,
-            });
-            // Click the button
-            // await button.click({ delay: 50 }); // Small click delay
-
-            // Wait for navigation or success with multiple conditions
-            // await Promise.race([
-            //     page.waitForNetworkIdle({
-            //         timeout: 60000,
-            //         idleTime: 500
-            //     }),
-            //     page.waitForNavigation({
-            //         timeout: 60000,
-            //         waitUntil: ['networkidle0', 'load', 'domcontentloaded']
-            //     })
-            // ]).catch(() => {}); // Ignore timeout
-
-            await page.waitForNavigation({
-                timeout: 60000,
-                waitUntil: ["networkidle0", "load", "domcontentloaded"],
-            });
-            await page.waitForNetworkIdle({
-                timeout: 60000,
-                idleTime: 500,
-            });
-
-            console.log(
-                "Captcha is solved and redirected. current url:",
-                this.page.url(),
-            );
-
-            return true;
-        } catch (error) {
-            console.error("Captcha handling failed:", error);
-            return false;
-        }
     }
 
     async resolveHostname(hostname) {
@@ -410,16 +148,16 @@ class CourseScraperService {
                         }
                     });
                 });
-                // // console.log("System DNS lookup succeeded:", address);
+                console.log("System DNS lookup succeeded:", address);
             } catch (error) {
-                // // console.log("System DNS lookup failed:", error.message);
+                console.log("System DNS lookup failed:", error.message);
                 // If system DNS fails, try our custom DNS resolvers
                 await this.resolveHostname(urlObj.hostname);
             }
 
             while (retryCount < maxRetries) {
                 try {
-                    console.log("Creating WebSocket connection..." + url)
+                    console.log("Creating WebSocket connection..." + url);
                     // Create WebSocket connection with additional options
                     const ws = new WebSocket(url, {
                         headers: {
@@ -450,7 +188,7 @@ class CourseScraperService {
 
                         ws.on("open", () => {
                             clearTimeout(timeout);
-                            console.log("WebSocket connection opened")
+                            console.log("WebSocket connection opened");
                             resolve(ws);
                         });
 
@@ -485,12 +223,11 @@ class CourseScraperService {
         try {
             const authToken = this.generateAuthToken();
             this.currentAuthToken = authToken;
-            
-            
+
             const wsUrl = `wss://proxy.progressme.ru/websocket?token=${authToken}`;
 
             const ws = await this.createWebSocketConnection(wsUrl);
-            // // console.log("WebSocket connected successfully");
+            console.log("WebSocket connected successfully");
             //
 
             return new Promise((resolve, reject) => {
@@ -513,7 +250,7 @@ class CourseScraperService {
                 ws.send(JSON.stringify(loginMessage));
                 ws.on("message", async (data) => {
                     const response = JSON.parse(data.toString());
-                    // // // console.log("Received:", response);
+                    // console.log("Received:", response);
 
                     if (response.Method === "GetAccountRoles") {
                         // Send login message after getting roles
@@ -556,6 +293,386 @@ class CourseScraperService {
             throw new Error(
                 "WebSocket authentication failed: " + error.message,
             );
+        }
+    }
+
+    generateSocketMessages(targetUrl, bookId, userId) {
+        return {
+            GetIdMaterial: {
+                controller: "SharingMaterialWsController",
+                method: "GetIdMaterial",
+                value: JSON.stringify({
+                    Code: targetUrl.split("SharingMaterial/")[1] || "",
+                }),
+            },
+            GetBook: {
+                controller: "SharingMaterialWsController",
+                method: "GetBook",
+                value: JSON.stringify({ BookId: bookId, UserId: null }),
+            },
+            CopyBook: {
+                controller: "BookWsController",
+                method: "CopyBook",
+                value: JSON.stringify({ BookId: bookId, UserId: userId }),
+            },
+        };
+    }
+
+    async connectToWebSocket(url, token, messageHandler) {
+        return new Promise((resolve, reject) => {
+            const ws = new WebSocket(
+                `${url}?Page=TeacherProfile&isSharing=True&token=${token}`,
+            );
+
+            ws.on("open", () => {
+                resolve(ws);
+            });
+
+            ws.on("message", (data) => {
+                messageHandler(data);
+            });
+
+            ws.on("error", (error) => {
+                reject(error);
+            });
+        });
+    }
+
+    async getIdMaterial(code) {
+        try {
+            const fallbackAuthToken = this.generateAuthToken();
+            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || fallbackAuthToken}`;
+            // console.log(wsUrl);
+            const ws = await this.createWebSocketConnection(wsUrl);
+            const bookInfo = {
+                bookId: bookId,
+                bookName: "",
+            };
+
+            return new Promise((resolve, reject) => {
+                ws.send(
+                    JSON.stringify(
+                        this.controllerTemplates.GetIdMaterialMessage(code),
+                    ),
+                );
+                ws.on("message", async (data) => {
+                    const response = JSON.parse(data.toString());
+
+                    if (
+                        response.Class === "SharingMaterialWsController" &&
+                        response.Method === "GetIdMaterial"
+                    ) {
+                        console.log("book", response);
+                        if (response.ErrorMessage) {
+                            resolve({ error: response.ErrorMessage });
+                        } else {
+                            bookInfo.bookName = response.Value.Name;
+                            resolve({ ...bookInfo });
+                        }
+                    }
+                });
+
+                ws.on("error", (error) => {
+                    console.error("WebSocket error:", error);
+                    reject(error);
+                });
+
+                this.activeWs.setNewActive(ws);
+                // Add timeout
+                setTimeout(() => {
+                    this.activeWs.clear();
+                    ws.close();
+                    reject(new Error("WebSocket authentication timeout"));
+                }, 300000);
+            });
+        } catch (error) {
+            console.error("Error getting id material:", error);
+            throw error;
+        }
+    }
+
+    async getBookById(bookId) {
+        try {
+            const fallbackAuthToken = this.generateAuthToken();
+            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || fallbackAuthToken}`;
+            // console.log(wsUrl);
+            const ws = await this.createWebSocketConnection(wsUrl);
+            const bookInfo = {
+                bookId: bookId,
+                bookName: "",
+            };
+
+            return new Promise((resolve, reject) => {
+                ws.send(
+                    JSON.stringify(
+                        this.controllerTemplates.GetBookMessage(
+                            `\"${bookId}\"`,
+                        ),
+                    ),
+                );
+                ws.on("message", async (data) => {
+                    const response = JSON.parse(data.toString());
+
+                    if (
+                        response.Class === "SharingMaterialWsController" &&
+                        response.Method === "GetBook"
+                    ) {
+                        console.log("book", response);
+                        if (response.ErrorMessage) {
+                            resolve({ error: response.ErrorMessage });
+                        } else {
+                            bookInfo.bookName = response.Value.Name;
+                            resolve({ ...bookInfo });
+                        }
+                    }
+                });
+
+                ws.on("error", (error) => {
+                    console.error("WebSocket error:", error);
+                    reject(error);
+                });
+
+                this.activeWs.setNewActive(ws);
+                // Add timeout
+                setTimeout(() => {
+                    this.activeWs.clear();
+                    ws.close();
+                    reject(new Error("WebSocket authentication timeout"));
+                }, 300000);
+            });
+        } catch (error) {
+            console.error("Error getting book:", error);
+            throw error;
+        }
+    }
+
+    async getBookByCode(bookCode) {
+        try {
+            const fallbackAuthToken = this.generateAuthToken();
+            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || fallbackAuthToken}`;
+            // console.log(wsUrl);
+            const ws = await this.createWebSocketConnection(wsUrl);
+            const bookInfo = {
+                bookId: "",
+                bookName: "",
+            };
+
+            return new Promise((resolve, reject) => {
+                const getBookIdStringed = JSON.stringify(
+                    this.controllerTemplates.GetIdMaterialMessage(
+                        `\"${bookCode}\"`,
+                    ),
+                );
+                // console.log("getBookIdStringed", getBookIdStringed);
+                ws.send(getBookIdStringed);
+
+                ws.on("message", async (data) => {
+                    const response = JSON.parse(data.toString());
+                    // console.log("Received:", response);
+                    if (
+                        response.Class === "SharingMaterialWsController" &&
+                        response.Method === "GetIdMaterial"
+                    ) {
+                        console.log("book", response);
+                        // const bookId = response.Value.;
+
+                        if (response.ErrorMessage) {
+                            return resolve({ error: response.ErrorMessage });
+                        }
+                        this.currentBook.sharingMaterialId =
+                            response.Value.SharingMaterialId;
+                        bookInfo.bookId = response.Value.BookId;
+                        ws.send(
+                            JSON.stringify(
+                                this.controllerTemplates.GetBookMessage(
+                                    `\"${bookInfo.bookId}\"`,
+                                ),
+                            ),
+                        );
+                        // resolve({bookId:response.data.Value.BookId, bookName:""})
+                    }
+
+                    if (
+                        response.Class === "SharingMaterialWsController" &&
+                        response.Method === "GetBook"
+                    ) {
+                        // console.log("book", response);
+                        bookInfo.bookName = response.Value.Name;
+                        // this.currentBook.sharingMaterialId = response.Value.SharingMaterialId;
+                        resolve({ ...bookInfo });
+                    }
+                });
+
+                ws.on("error", (error) => {
+                    console.error("WebSocket error:", error);
+                    reject(error);
+                });
+
+                this.activeWs.setNewActive(ws);
+                // Add timeout
+                setTimeout(() => {
+                    this.activeWs.clear();
+                    ws.close();
+                    reject(new Error("WebSocket authentication timeout"));
+                }, 300000);
+            });
+        } catch (error) {
+            console.error("Error getting book:", error);
+            throw error;
+        }
+    }
+
+    async isCanSharingMaterial(bookId, userId, token) {
+        try {
+            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || token}`;
+            const ws = await this.createWebSocketConnection(wsUrl);
+
+            return new Promise((resolve, reject) => {
+                const checkIfCanShareMessage = JSON.stringify(
+                    this.controllerTemplates.IsCanSharingMaterialMessage(
+                        bookId,
+                        userId,
+                    ),
+                );
+
+                console.log("checkIfCanShareMessage", checkIfCanShareMessage);
+
+                ws.send(checkIfCanShareMessage);
+
+                ws.on("message", async (data) => {
+                    const response = JSON.parse(data.toString());
+
+                    if (
+                        response.Class === "BookWsController" &&
+                        response.Method === "IsCanSharingMaterial"
+                    ) {
+                        console.log("isCanSharingMaterial", response);
+                        resolve(response.Value);
+                    }
+                });
+
+                ws.on("error", (error) => {
+                    console.error("WebSocket error:", error);
+                    reject(error);
+                });
+
+                this.activeWs.setNewActive(ws);
+                this.currentBook = {};
+                // Add timeout
+                setTimeout(() => {
+                    this.activeWs.clear();
+                    ws.close();
+                    reject(new Error("WebSocket authentication timeout"));
+                }, 300000);
+            });
+        } catch (error) {
+            console.error("Error checking if can share:", error);
+        }
+    }
+
+    async setSharingMaterialId(bookId, token) {
+        try {
+            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || token}`;
+            // console.log(wsUrl);
+            const ws = await this.createWebSocketConnection(wsUrl);
+
+            return new Promise((resolve, reject) => {
+                const getSharingMaterialIdMessage = JSON.stringify(
+                    this.controllerTemplates.GetSharingMaterialMessage(bookId),
+                );
+
+                console.log(
+                    "getSharingMaterialIdMessage",
+                    getSharingMaterialIdMessage,
+                );
+
+                ws.send(getSharingMaterialIdMessage);
+
+                ws.on("message", async (data) => {
+                    const response = JSON.parse(data.toString());
+
+                    if (
+                        response.Class === "SharingMaterialWsController" &&
+                        response.Method === "GetSharingMaterial"
+                    ) {
+                        resolve(response.Value.Id);
+                    }
+                });
+
+                ws.on("error", (error) => {
+                    console.error("WebSocket error:", error);
+                    reject(error);
+                });
+
+                this.activeWs.setNewActive(ws);
+                this.currentBook = {};
+                // Add timeout
+                setTimeout(() => {
+                    this.activeWs.clear();
+                    ws.close();
+                    reject(new Error("WebSocket authentication timeout"));
+                }, 300000);
+            });
+        } catch (error) {
+            console.error("Error setting sharing material id:", error);
+            throw error;
+        }
+    }
+
+    async copyCourse(bookId, userId, token) {
+        try {
+            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || token}`;
+            // console.log(wsUrl);
+            const ws = await this.createWebSocketConnection(wsUrl);
+
+            return new Promise((resolve, reject) => {
+                const copyBookStringed = JSON.stringify(
+                    this.controllerTemplates.CopySharedBookMessage(
+                        bookId,
+                        this.currentBook.sharingMaterialId,
+                    ),
+                );
+                console.log("copyBookStringed", copyBookStringed);
+                ws.send(copyBookStringed);
+
+                ws.on("message", async (data) => {
+                    const response = JSON.parse(data.toString());
+                    // console.log("Received:", response);
+
+                    if (
+                        response.Class === "BookWsController" &&
+                        response.Method === "CopyBook"
+                    ) {
+                        // console.log("book", response);
+                        if (response.ErrorMessage) {
+                            console.log(response);
+                            resolve({ error: response.ErrorMessage });
+                        } else {
+                            resolve({
+                                success: response.IsSuccess,
+                                message: "Book Saved!",
+                            });
+                        }
+                    }
+                });
+
+                ws.on("error", (error) => {
+                    console.error("WebSocket error:", error);
+                    reject(error);
+                });
+
+                this.activeWs.setNewActive(ws);
+                this.currentBook = {};
+                // Add timeout
+                setTimeout(() => {
+                    this.activeWs.clear();
+                    ws.close();
+                    reject(new Error("WebSocket authentication timeout"));
+                }, 300000);
+            });
+        } catch (error) {
+            console.error("Error copying book:", error);
+            throw error;
         }
     }
 
@@ -654,7 +771,7 @@ class CourseScraperService {
             // Navigate using keyboard instead of goto
             // await this.navigateWithKeyboard(this.page, 'https://progressme.ru/Account/Login');
 
-            // // // console.log("Page is loaded", this.page.url());
+            // console.log("Page is loaded", this.page.url());
 
             // Monitor the login endpoint for response
             // this.currentXHR = {};
@@ -706,9 +823,9 @@ class CourseScraperService {
             });
 
             //// Fill in login form
-            // // // console.log("creds", email, password);
+            // console.log("creds", email, password);
 
-            // // // console.log("fields found:? ", fieldsFound);
+            // console.log("fields found:? ", fieldsFound);
 
             if (!fieldsFound) {
                 throw new Error("Authentication failed: No auth fields found");
@@ -733,7 +850,7 @@ class CourseScraperService {
                     }),
                 ]);
 
-            // // // console.log("XHR::", this.currentXHR);
+            // console.log("XHR::", this.currentXHR);
 
             const response = this.currentXHR[`${newPage.title.toString()}`].res;
 
@@ -748,9 +865,9 @@ class CourseScraperService {
             const authToken = cookies.find(
                 (cookie) => cookie.name === "Auth-Token",
             );
-            // // // console.log("cookies", authToken);
+            // console.log("cookies", authToken);
 
-            // // // console.log("debugInfo", response);
+            // console.log("debugInfo", response);
 
             if (!authToken?.value) {
                 throw new Error("Authentication failed: No auth cookie found");
@@ -777,226 +894,286 @@ class CourseScraperService {
         }
     }
 
-    generateSocketMessages(targetUrl, bookId, userId) {
-        return {
-            GetIdMaterial: {
-                controller: "SharingMaterialWsController",
-                method: "GetIdMaterial",
-                value: JSON.stringify({
-                    Code: targetUrl.split("SharingMaterial/")[1] || "",
-                }),
-            },
-            GetBook: {
-                controller: "SharingMaterialWsController",
-                method: "GetBook",
-                value: JSON.stringify({ BookId: bookId, UserId: null }),
-            },
-            CopyBook: {
-                controller: "BookWsController",
-                method: "CopyBook",
-                value: JSON.stringify({ BookId: bookId, UserId: userId }),
-            },
-        };
+    validateUrl(url) {
+        const cleanUrl = url
+            .trim()
+            .replace("new.", "")
+            .replace("edvibe.com", "progressme.ru")
+            .replace("sharing-material", "SharingMaterial")
+            .replace("course", "SharingMaterial");
+        // .replace(/\/book\/[0-9]{6}/, "");
+
+        return this.urlRegex.test(cleanUrl) ? cleanUrl : null;
     }
 
-    async connectToWebSocket(url, token, messageHandler) {
-        return new Promise((resolve, reject) => {
-            const ws = new WebSocket(
-                `${url}?Page=TeacherProfile&isSharing=True&token=${token}`,
+    async initBrowser() {
+        if (!this.browser) {
+            this.browser = await puppeteer.default.launch({
+                headless: false,
+                args: [
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-web-security",
+                    "--disable-features=IsolateOrigins,site-per-process",
+                    "--disable-site-isolation-trials",
+                ],
+            });
+        }
+        if (!this.page) {
+            this.page = await this.browser.newPage();
+
+            // Set a more realistic viewport
+            await this.page.setViewport({
+                width: 1920 + Math.floor(Math.random() * 100),
+                height: 3000 + Math.floor(Math.random() * 100),
+                deviceScaleFactor: 1,
+                hasTouch: false,
+                isLandscape: false,
+                isMobile: false,
+            });
+
+            // Set more browser-like settings
+            await this.page.setExtraHTTPHeaders({
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept-Encoding": "gzip, deflate, br",
+                Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+                Connection: "keep-alive",
+                "Upgrade-Insecure-Requests": "1",
+                "Sec-Fetch-Site": "same-origin",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-User": "?1",
+                "Sec-Fetch-Dest": "document",
+            });
+
+            // Disable request interception (allow all resources)
+            await this.page.setRequestInterception(false);
+
+            // Set random user agent
+            const userAgent = randomUseragent.getRandom();
+            await this.page.setUserAgent(userAgent);
+
+            // Add additional browser characteristics
+            await this.page.evaluateOnNewDocument(() => {
+                // Add common browser features
+                Object.defineProperty(navigator, "plugins", {
+                    get: () => [
+                        {
+                            0: {
+                                type: "application/x-google-chrome-pdf",
+                                suffixes: "pdf",
+                                description: "Portable Document Format",
+                            },
+                            description: "Portable Document Format",
+                            filename: "internal-pdf-viewer",
+                            length: 1,
+                            name: "Chrome PDF Plugin",
+                        },
+                    ],
+                });
+
+                // Listen for specific network responses
+                // this.page.on('response', async response => {
+                //     const url = response.url();
+                //     const method = response.request().method()
+                //     // // console.log("tick points", url, method);
+
+                //     // You can check for specific endpoints
+                //     if (url.includes('https://progressme.ru/Account/Login') && method === "POST") {
+                //         try {
+                //             const responseData = await response.json();
+                //             // console.log('Response data:', responseData);
+                //             this.currentXHR[`${this.page.title.toString()}`].res = responseData;
+
+                //         } catch (e) {
+                //             // Handle non-JSON responses
+                //             // console.log('Non-JSON response:', await response.text());
+                //         }
+                //     }
+                // });
+                // Add language preferences
+                Object.defineProperty(navigator, "languages", {
+                    get: () => ["en-US", "en"],
+                });
+
+                // Add WebGL support
+                Object.defineProperty(window, "WebGL2RenderingContext", {
+                    get: () => true,
+                });
+
+                // // Pass chrome check
+                // window.chrome = {
+                //     runtime: {},
+                // };
+
+                // // Pass notifications check
+                // const originalQuery = window.navigator.permissions.query;
+                // window.navigator.permissions.query = (parameters) => (
+                //     parameters.name === 'notifications' ?
+                //         Promise.resolve({ state: Notification.permission }) :
+                //         originalQuery(parameters)
+                // );
+
+                // // Pass plugins check
+                // Object.defineProperty(navigator, 'plugins', {
+                //     get: () => [1, 2, 3, 4, 5],
+                // });
+
+                // Add media devices
+                Object.defineProperty(navigator, "mediaDevices", {
+                    get: () => ({
+                        enumerateDevices: () =>
+                            Promise.resolve([
+                                {
+                                    kind: "audioinput",
+                                    label: "Default",
+                                    deviceId: "default",
+                                    groupId: "default",
+                                },
+                                {
+                                    kind: "videoinput",
+                                    label: "Default",
+                                    deviceId: "default",
+                                    groupId: "default",
+                                },
+                            ]),
+                    }),
+                });
+            });
+        }
+    }
+
+    async handleNavigateToLogin(page = this.page) {
+        try {
+            // Wait for network to be idle first
+            await page.waitForNetworkIdle({
+                timeout: 60000,
+                idleTime: 500,
+            });
+
+            // console.log("page is landing page");
+
+            const loginBtn = await page.evaluate(() => {
+                return document.querySelector('button[text="start_b_login"]');
+            });
+
+            if (!loginBtn) {
+                return false;
+            }
+
+            const btnBox = loginBtn.getBoundingClientRect();
+
+            this.page.mouse.click(btnBox.x, btnBox.y, {
+                delay: 50,
+            });
+
+            await page.waitForNavigation({
+                timeout: 60000,
+                waitUntil: ["networkidle0", "load", "domcontentloaded"],
+            });
+            await page.waitForNetworkIdle({
+                timeout: 60000,
+                idleTime: 500,
+            });
+        } catch (error) {
+            console.error("Login navigation handling failed:", error);
+            return false;
+        }
+    }
+    async handleCaptcha(page = this.page) {
+        try {
+            // Wait for network to be idle first
+            await page.waitForNetworkIdle({
+                timeout: 60000,
+                idleTime: 500,
+            });
+
+            // Check if we're on a captcha page - FIXED VERSION
+            const pageContainsCaptchaButton = await page.evaluate(() => {
+                return (
+                    document.querySelector(".CheckboxCaptcha-Button") !== null
+                );
+            });
+
+            console.log(
+                "page is captcha page",
+                pageHasCaptchaInUrl,
+                pageContainsCaptchaButton,
             );
 
-            ws.on("open", () => {
-                resolve(ws);
-            });
+            // // console.log("Page is captcha page");
 
-            ws.on("message", (data) => {
-                messageHandler(data);
-            });
-
-            ws.on("error", (error) => {
-                reject(error);
-            });
-        });
-    }
-    async getBookById(bookId) {
-        try {
-            const fallbackAuthToken = this.generateAuthToken()
-            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || fallbackAuthToken }`;
-            // // // console.log(wsUrl);
-            const ws = await this.createWebSocketConnection(wsUrl);
-            const bookInfo = {
-                bookId: bookId,
-                bookName: "",
-            };
-            return new Promise((resolve, reject) => {
-               
-                ws.send(
-                    JSON.stringify(
-                        this.controllerTemplates.GetBookMessage(
-                            `\"${bookId}\"`,
-                        ),
-                    ),
-                );
-                ws.on("message", async (data) => {
-                    const response = JSON.parse(data.toString());
-                    
-
-                    if (
-                        response.Class === "SharingMaterialWsController" &&
-                        response.Method === "GetBook"
-                    ) {
-                        // // // console.log("book", response);
-                        if(response.ErrorMessage){
-                           resolve({error: response.ErrorMessage})
-                        }else{
-                            
-                            bookInfo.bookName = response.Value.Name;
-                            resolve({ ...bookInfo });
-                        }
-                    }
+            // Wait for iframe to load
+            // if the iframe doesn't appear after 3sec, reload the page
+            // repeat 3 times
+            const frameHandle = await page
+                .waitForSelector('iframe[title="SmartCaptcha checkbox widget"]')
+                .then((res) => res)
+                .catch(async (err) => {
+                    await page.reload();
+                    // return void;
                 });
+            const frame = await frameHandle.contentFrame();
 
-                ws.on("error", (error) => {
-                    console.error("WebSocket error:", error);
-                    reject(error);
+            // Get the button dimensions and position within the iframe
+            const button = await frame.$(".CheckboxCaptcha-Button");
+            const box = await button.boundingBox();
+
+            // console.log("IMNR Button is found at coordinates", box);
+
+            // Generate "human-like" mouse movement
+            const points = this.generateMousePath(
+                { x: 0, y: 0 },
+                { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+            );
+
+            // Simulate mouse movement
+            for (const point of points) {
+                await page.mouse.move(point.x, point.y, {
+                    steps: 10, // Make movement smoother
                 });
+            }
 
-                this.activeWs.setNewActive(ws);
-                // Add timeout
-                setTimeout(() => {
-                    this.activeWs.clear();
-                    ws.close();
-                    reject(new Error("WebSocket authentication timeout"));
-                }, 300000);
+            // Random delay before clicking (between 100ms and 300ms)
+            await new Promise((resolve) =>
+                setTimeout(resolve, Math.random() * 200 + 100),
+            );
+
+            this.page.mouse.click(box.x, box.y, {
+                delay: 50,
             });
+            // Click the button
+            // await button.click({ delay: 50 }); // Small click delay
+
+            // Wait for navigation or success with multiple conditions
+            // await Promise.race([
+            //     page.waitForNetworkIdle({
+            //         timeout: 60000,
+            //         idleTime: 500
+            //     }),
+            //     page.waitForNavigation({
+            //         timeout: 60000,
+            //         waitUntil: ['networkidle0', 'load', 'domcontentloaded']
+            //     })
+            // ]).catch(() => {}); // Ignore timeout
+
+            await page.waitForNavigation({
+                timeout: 60000,
+                waitUntil: ["networkidle0", "load", "domcontentloaded"],
+            });
+            await page.waitForNetworkIdle({
+                timeout: 60000,
+                idleTime: 500,
+            });
+
+            console.log(
+                "Captcha is solved and redirected. current url:",
+                this.page.url(),
+            );
+
+            return true;
         } catch (error) {
-            console.error("Error getting book:", error);
-            throw error;
-        }
-    }
-    
-    async getBookByCode(bookCode) {
-        try {
-            const fallbackAuthToken = this.generateAuthToken()
-            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || fallbackAuthToken }`;
-            // // // console.log(wsUrl);
-            const ws = await this.createWebSocketConnection(wsUrl);
-            const bookInfo = {
-                bookId: "",
-                bookName: "",
-            };
-            return new Promise((resolve, reject) => {
-                const getBookIdStringed = JSON.stringify(
-                    this.controllerTemplates.GetIdMaterialMessage(
-                        `\"${bookCode}\"`
-                    ),
-                );
-                // // // console.log("getBookIdStringed", getBookIdStringed);
-                ws.send(getBookIdStringed);
-
-                ws.on("message", async (data) => {
-                    const response = JSON.parse(data.toString());
-                    // // // console.log("Received:", response);
-                    if (
-                        response.Class === "SharingMaterialWsController" &&
-                        response.Method === "GetIdMaterial"
-                    ) {
-                        // // console.log("book", response);
-                        // const bookId = response.Value.;
-                        
-                        if(response.ErrorMessage){
-                           return resolve({error: response.ErrorMessage})
-                        }
-                        bookInfo.bookId = response.Value.BookId;
-                        ws.send(
-                            JSON.stringify(
-                                this.controllerTemplates.GetBookMessage(
-                                    `\"${bookInfo.bookId}\"`,
-                                ),
-                            ),
-                        );
-                        // resolve({bookId:response.data.Value.BookId, bookName:""})
-                    }
-
-                    if (
-                        response.Class === "SharingMaterialWsController" &&
-                        response.Method === "GetBook"
-                    ) {
-                        // // // console.log("book", response);
-                        bookInfo.bookName = response.Value.Name;
-                        resolve({ ...bookInfo });
-                    }
-                });
-
-                ws.on("error", (error) => {
-                    console.error("WebSocket error:", error);
-                    reject(error);
-                });
-
-                this.activeWs.setNewActive(ws);
-                // Add timeout
-                setTimeout(() => {
-                    this.activeWs.clear();
-                    ws.close();
-                    reject(new Error("WebSocket authentication timeout"));
-                }, 300000);
-            });
-        } catch (error) {
-            console.error("Error getting book:", error);
-            throw error;
-        }
-    }
-
-    async copyCourse(bookId, userId, token) {
-        try {
-            const wsUrl = `${this.socketUrls.books}?Page=TeacherProfile&isSharing=True&token=${this.currentAuthToken || token}`;
-            // // // console.log(wsUrl);
-            const ws = await this.createWebSocketConnection(wsUrl);
-            
-            return new Promise((resolve, reject) => {
-                const copyBookStringed = JSON.stringify(
-                    this.controllerTemplates.CopySharedBookMessage(
-                        bookId
-                    ),
-                );
-                // // // console.log("copyBookStringed", copyBookStringed);
-                ws.send(copyBookStringed);
-
-                ws.on("message", async (data) => {
-                    const response = JSON.parse(data.toString());
-                    // // // console.log("Received:", response);
-
-                    if (
-                        response.Class === "BookWsController" &&
-                        response.Method === "CopyBook"
-                    ) {
-                        // // // console.log("book", response);
-                        if(response.ErrorMessage){
-                            resolve({error:response.ErrorMessage})
-                        }else{
-                            resolve({ success: response.IsSuccess, message: "Book Saved!" });
-                            
-                        }
-                    }
-                });
-                
-
-                ws.on("error", (error) => {
-                    console.error("WebSocket error:", error);
-                    reject(error);
-                });
-
-                this.activeWs.setNewActive(ws);
-                // Add timeout
-                setTimeout(() => {
-                    this.activeWs.clear();
-                    ws.close();
-                    reject(new Error("WebSocket authentication timeout"));
-                }, 300000);
-            });
-        } catch (error) {
-            console.error("Error copying book:", error);
-            throw error;
+            console.error("Captcha handling failed:", error);
+            return false;
         }
     }
 

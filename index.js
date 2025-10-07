@@ -18,18 +18,22 @@ const io = socketIo(server, {
 });
 
 // Connect to Database
-// sequelize is throwing error, so remove for now
-// connectDB();
+const { connectDB } = require("./config/database");
+connectDB();
 
 // Middleware
 app.use(
     cors({
-        origin: true, // Allows all origins
+        origin: [
+            "https://paper-dashboard-react.onrender.com",
+            "http://localhost:3000",
+        ], // Allows all origins
         credentials: true,
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allowedHeaders: ["Content-Type", "Authorization"],
     }),
 );
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

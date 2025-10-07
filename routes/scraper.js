@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const { check, validationResult } = require("express-validator");
-const auth = require("../middleware/auth");
+const scraperMiddleware = require("../middleware/scraper");
 const courseScraperService = require("../services/courseScraper");
-
+const jwt = require("jsonwebtoken");
 /**
  * @swagger
  * tags:
@@ -66,7 +66,7 @@ const courseScraperService = require("../services/courseScraper");
  */
 router.post(
     "/validate-url",
-    [auth, check("url", "URL is required").not().isEmpty()],
+    [scraperMiddleware, check("url", "URL is required").not().isEmpty()],
     async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
@@ -129,7 +129,7 @@ router.post(
 router.post(
     "/auth",
     [
-        auth,
+        scraperMiddleware,
         check("email", "Please include a valid email").isEmail(),
         check("password", "Password is required").exists(),
     ],
@@ -205,7 +205,8 @@ router.post(
 router.get("/getbook", [], async (req, res) => {
     try {
         const { url } = req.query;
-        // const bookContentRegex = /https:\/\/progressme\.ru\/cabinet\/school\/materials\/book\/\d+\/content/;
+        const bookContentRegex =
+            /https:\/\/progressme\.ru\/cabinet\/school\/materials\/book\/\d+\/content/;
         const bookIdRegex = /\/book\/(\d+)/;
         let book = {};
         // lets say that the url is encoded
@@ -217,19 +218,28 @@ router.get("/getbook", [], async (req, res) => {
         // we should extract the book id from the url and then use that to get the book
         // we can use the getBookById function from the scraper service
         // we can also use the getBookByCode function from the scraper service
+        // !IMPORTANT!
+        // we cannot use the getBookById function for now because we need the sharingMaterialId which is only available in the getBookByCode function.
+        // So if only bookId is given, ask for a sharing link
         if (decodedUrl.includes("book/")) {
-
             const bookId = decodedUrl.match(bookIdRegex)[1].split("/")[0];
             book = await courseScraperService.getBookById(bookId);
+            return res.json(book);
         }
         // if we get a url like this
         // "https://progressme.ru/sharing-material/4a9e8f6f-ba3e-4e97-93a3-9c74ca56a660"
         // we should extract the book id from the url and then use that to get the book
-        if (decodedUrl.includes("sharing-material/") || decodedUrl.includes('SharingMaterial/')) {
+        if (
+            decodedUrl.includes("sharing-material/") ||
+            decodedUrl.includes("SharingMaterial/")
+        ) {
             // the regex should match the entire code like "4a9e8f6f-ba3e-4e97-93a3-9c74ca56a660"
 
-            const bookCode = decodedUrl.split("sharing-material/")[1] ?? decodedUrl.split("SharingMaterial/")[1];
+            const bookCode =
+                decodedUrl.split("sharing-material/")[1] ??
+                decodedUrl.split("SharingMaterial/")[1];
             book = await courseScraperService.getBookByCode(bookCode);
+            return res.json(book);
         }
 
         res.json({ ...book });
@@ -284,7 +294,7 @@ router.get("/getbook", [], async (req, res) => {
 router.post(
     "/copy-course",
     [
-        auth,
+        scraperMiddleware,
         check("bookId", "Book ID is required").not().isEmpty(),
         check("userId", "User ID is required").not().isEmpty(),
         check("token", "Token is required").not().isEmpty(),
@@ -296,13 +306,55 @@ router.post(
         }
 
         try {
+            //  we are getting the sharingmaterialId from the existing getBookByCode. You just need to pass that to the copyCourse function
             const { bookId, userId, token } = req.body;
+            console.log(
+                "\nsaving book:\nid: " +
+                    bookId +
+                    "\nuserId: " +
+                    userId +
+                    "\ntoken " +
+                    token,
+            );
+            if (!courseScraperService.currentBook.sharingMaterialId) {
+                console.log(
+                    "\nsharingMaterialId not found. Checking if can share...",
+                );
+
+                const canBookBeShared =
+                    await courseScraperService.isCanSharingMaterial(
+                        bookId,
+                        userId,
+                        token,
+                    );
+
+                if (canBookBeShared) {
+                    console.log("\ncan share. Setting sharingMaterialId...");
+                    const sharingMaterialId =
+                        await courseScraperService.setSharingMaterialId(
+                            bookId,
+                            token,
+                        );
+                    courseScraperService.currentBook.sharingMaterialId =
+                        sharingMaterialId;
+                    console.log(
+                        "\nsharingMaterialId: " +
+                            courseScraperService.currentBook.sharingMaterialId,
+                    );
+                } else {
+                    console.log("\ncannot share... won't try to copy");
+                    return res
+                        .status(400)
+                        .json({ msg: "Book cannot be shared" });
+                }
+            }
+
             const result = await courseScraperService.copyCourse(
                 bookId,
                 userId,
                 token,
             );
-            res.json(result);
+            return res.json(result);
         } catch (err) {
             console.error(err.message);
             res.status(500).send("Failed to copy course");
@@ -331,16 +383,55 @@ router.post(
  *       500:
  *         description: Server error
  */
-router.get("/token", auth, async (req, res) => {
-    try {
-        const token = courseScraperService.generateAuthToken();
-        res.header("Access-Control-Allow-Origin", "*");
-        res.header("Access-Control-Allow-Credentials", "true");
-        res.json({ token });
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send("Server Error");
-    }
-});
+router.get(
+    "/token",
+    (req, res, next) => {
+        // Get token from header
+        const token =
+            req.header("x-auth-token") ||
+            req.header("authorization")?.replace("Bearer ", "");
+
+        // Check if no token
+        if (!token) {
+            return res
+                .status(401)
+                .json({ msg: "No token, authorization denied" });
+        }
+        try {
+            console.log(
+                "in scraper middleware, ",
+                token.split("~expireAt~")[0],
+            );
+            const secretToken = token.split("~expireAt~")[0].toString();
+            // Verify JWT
+            // eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoiMTIzNDU2IiwibmFtZSI6IkpvaG4iLCJyb2xlcyI6InVzZXIifSwiaWF0IjoxNzQ4ODE0NTkyLCJleHAiOjE3NDg5MDA5OTJ9.0BzgNpTxMPsdBLk6MLz6F5HAhfs6n7ADLwgs2lhAhmc
+            // const decoded = jwt.verify(
+            //     secretToken,
+            //     process.env.EXPIRABLE_SECRET || "default_secret",
+            // );
+            // const { firstName, lastName, role, userId } = decoded;
+            // if (!firstName) {
+            //     return res
+            //         .status(401)
+            //         .json({ msg: "Invalid or expired token" });
+            // }
+            next();
+        } catch (error) {
+            console.error("Scraper middleware error:", error.message);
+            res.status(401).json({ msg: "Token validation failed" });
+        }
+    },
+    async (req, res) => {
+        try {
+            const token = courseScraperService.generateAuthToken();
+            res.header("Access-Control-Allow-Origin", "*");
+            res.header("Access-Control-Allow-Credentials", "true");
+            res.json({ token });
+        } catch (err) {
+            console.error(err.message);
+            res.status(500).send("Server Error");
+        }
+    },
+);
 
 module.exports = router;
