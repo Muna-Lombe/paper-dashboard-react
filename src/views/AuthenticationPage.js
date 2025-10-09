@@ -1,23 +1,27 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { addError } from "variables/slices/errorSlice";
 import { useSelector, useDispatch } from "react-redux";
-
 // reactstrap components
 import {
   Button,
   Card,
   Form,
   Input,
-  NavLink,
+  NavLink as RSNavLink, // Renamed to avoid conflict with react-router-dom NavLink
   Row,
   Col,
   UncontrolledTooltip,
-} from "reactstrap";
+  Nav,
+  NavItem,
+}
+from "reactstrap";
 import { endpoints } from "@/config";
 import useAuth from "variables/hooks/useAuth";
+import LoginPage from "../components/Auth/LoginPage"; // Import the new LoginPage
+import classnames from 'classnames';
 
-function SignInPage({ handleFormSubmit }) {
+function SignInPage({ handleFormSubmit, onLoginSuccess }) {
   document.documentElement.classList.remove("nav-open");
   useEffect(() => {
     document.body.classList.add("register-page");
@@ -28,38 +32,12 @@ function SignInPage({ handleFormSubmit }) {
 
   return (
     <>
-      {/* <ExamplesNavbar /> */}
-
       <div className="content">
         <Row>
           <Col className="ml-auto mr-auto " md={8}>
             <Card className="card-register p-4">
               <h3 className="title mx-auto">Welcome</h3>
               <div className="social-line text-center">
-                {/* <Button
-                    className="btn-neutral-invert btn-just-icon mr-1"
-                    color="facebook"
-                    href="#pablo"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    <i className="fa fa-facebook-square" />
-                  </Button>
-                  <Button
-                    className="btn-neutral-invert btn-just-icon mr-1"
-                    color="google"
-                    href="#pablo"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    <i className="fa fa-google-plus" />
-                  </Button>
-                  <Button
-                    className="btn-neutral-invert btn-just-icon"
-                    color="twitter"
-                    href="#pablo"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    <i className="fa fa-twitter" />
-                  </Button> */}
               </div>
               <Form id="signin-form" name="signin-form" className="signin-form">
                 <label id="authTokenLabel">Authentication Token 🛈</label>
@@ -92,7 +70,7 @@ function SignInPage({ handleFormSubmit }) {
                     size="sm"
                     type="submit"
                     form="signin-form"
-                    onClick={(e) => handleFormSubmit(e)}
+                    onClick={handleFormSubmit}
                   >
                     Authenticate
                   </Button>
@@ -101,42 +79,76 @@ function SignInPage({ handleFormSubmit }) {
             </Card>
           </Col>
         </Row>
-        {/* </Container> */}
-        {/* <div className="footer register-footer text-center">
-          <h6>
-            © {new Date().getFullYear()}, made with{" "}
-            <i className="fa fa-heart heart" /> by Creative Tim
-          </h6>
-        </div> */}
       </div>
     </>
   );
 }
 
 function AuthenticationPage() {
-  const location = useNavigate();
+  const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { basenames } = useSelector((state) => state.basenames);
   const { authenticateUser } = useAuth();
+  const [activeTab, setActiveTab] = useState("token-login"); // New state for tabs
 
-  const handleFormSubmit = async (e) => {
+  const toggleTab = (tab) => {
+    if (activeTab !== tab) setActiveTab(tab);
+  };
+
+  const handleTokenSubmit = async (e) => {
     e.preventDefault();
     const form = document.forms["signin-form"];
     const formData = Object.fromEntries([...new FormData(form)]);
     const { authToken } = formData;
 
-    authenticateUser(authToken);
-
-    return;
+    const success = await authenticateUser(authToken);
+    if (success) {
+      navigate("/admin/dashboard"); // Redirect to dashboard on success
+    }
   };
+
+  const handleEmailLoginSuccess = (success) => {
+    if (success) {
+      navigate("/admin/dashboard"); // Redirect to dashboard on success
+    } else {
+      // Optionally display a generic error or clear form
+      dispatch(addError("Login failed. Please check your credentials."));
+    }
+  };
+
   return (
     <div className="content">
       <Row>
         <Col className="ml-auto mr-auto " md={8}>
-          <SignInPage handleFormSubmit={handleFormSubmit} />
+          <Card className="card-register p-4">
+            <Nav tabs>
+              <NavItem>
+                <RSNavLink
+                  className={classnames({ active: activeTab === 'token-login' })}
+                  onClick={() => { toggleTab('token-login'); }}
+                >
+                  Token Login
+                </RSNavLink>
+              </NavItem>
+              <NavItem>
+                <RSNavLink
+                  className={classnames({ active: activeTab === 'email-login' })}
+                  onClick={() => { toggleTab('email-login'); }}
+                >
+                  Email/Password Login
+                </RSNavLink>
+              </NavItem>
+            </Nav>
+            <div className="tab-content">
+              {activeTab === "token-login" && (
+                <SignInPage handleFormSubmit={handleTokenSubmit} />
+              )}
+              {activeTab === "email-login" && (
+                <LoginPage onLoginSuccess={handleEmailLoginSuccess} />
+              )}
+            </div>
+          </Card>
         </Col>
       </Row>
-      {/* </Container> */}
       <div className="footer register-footer text-center">
         <h6>
           © {new Date().getFullYear()}, made with{" "}

@@ -10,6 +10,7 @@
     "bootstrap": "4.6.2",
     "browser-cookie": "^1.2.1",
     "chart.js": "3.9.1",
+    "classnames": "^2.5.1",
     "concurrently": "^9.1.2",
     "framer-motion": "^11.3.30",
     "html2canvas": "^1.4.1",

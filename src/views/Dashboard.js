@@ -1,73 +1,98 @@
 
-import Scrapper from "../components/Progressme/CourseScraper";
-import DisplayNotification from "../components/Headers/DisplayNotification";
-import Whatsbot from "../components/Whatsbot";
-import React from "react";
-// react plugin used to create charts
-
+import React, { useState } from "react";
 // reactstrap components
 import {
   Card,
-  CardImg,
   CardHeader,
   CardBody,
-  CardText,
-  CardFooter,
   CardTitle,
   Row,
   Col,
+  Nav,
+  NavItem,
+  NavLink
 } from "reactstrap";
 // core components
-// import {
-//   dashboard24HoursPerformanceChart,
-//   dashboardEmailStatisticsChart,
-//   dashboardNASDAQChart,
-// } from "variables/charts.js";
-import Progressme from "../components/Progressme";
+import CourseScraperV2 from "../components/Progressme/CourseScraperv2";
+import CourseBuilder from "../components/Progressme/CourseBuilder";
+import ScheduleBuilderV9 from "../components/Progressme/ScheduleBuilderV9";
+import DisplayNotification from "../components/Headers/DisplayNotification";
+import classnames from 'classnames';
 
 function Dashboard() {
+  const [activeTab, setActiveTab] = useState("course-scraper");
+
+  const toggle = (tab) => {
+    if (activeTab !== tab) setActiveTab(tab);
+  };
 
   return (
     <>
-        <div className="content" style={{height:'auto'}}>
-          <Row>
-            <Col lg="3" md="6" sm="6">
-              <Card className="card-stats">
-                {/* <CardBody>
-                  <Row>
-                    <Col md="4" xs="5">
-                      <div className="icon-big text-center icon-warning">
-                        <i className="nc-icon nc-globe text-warning" />
-                      </div>
-                    </Col>
-                    <Col md="8" xs="7">
-                      <div className="numbers">
-                        <p className="card-category">Capacity</p>
-                        <CardTitle tag="p">150GB</CardTitle>
-                        <p />
-                      </div>
-                    </Col>
-                  </Row>
-                </CardBody>
-                <CardFooter>
-                  <hr />
-                  <div className="stats">
-                    <i className="fas fa-sync-alt" /> Update Now
+      <div className="content">
+        <Row>
+          <Col md="12">
+            <DisplayNotification />
+          </Col>
+        </Row>
+        <Row>
+          <Col lg="12" md="12" sm="12">
+            <Card>
+              <CardHeader>
+                <CardTitle tag="h5">Progressme Tools</CardTitle>
+                <Nav tabs>
+                  <NavItem>
+                    <NavLink
+                      className={classnames({ active: activeTab === 'course-scraper' })}
+                      onClick={() => { toggle('course-scraper'); }}
+                    >
+                      Course Copy
+                    </NavLink>
+                  </NavItem>
+                  <NavItem>
+                    <NavLink
+                      className={classnames({ active: activeTab === 'course-builder' })}
+                      onClick={() => { toggle('course-builder'); }}
+                    >
+                      Course Builder
+                    </NavLink>
+                  </NavItem>
+                  <NavItem>
+                    <NavLink
+                      className={classnames({ active: activeTab === 'schedule-builder' })}
+                      onClick={() => { toggle('schedule-builder'); }}
+                    >
+                      Schedule Builder
+                    </NavLink>
+                  </NavItem>
+                </Nav>
+              </CardHeader>
+              <CardBody>
+                {activeTab === "course-scraper" && <CourseScraperV2 />}
+                {activeTab === "course-builder" && (
+                  <div className="justify-content-start ml-4 w-100 py-2 col-8 bg-white rounded-md">
+                    <h3> Section Under Construction ⚠</h3>
+                    <p> Check back in a couple of weeks</p>
                   </div>
-                </CardFooter> */}
-              </Card>
-            
-            </Col>
-            <Col lg="3" md="6" sm="6">
-              {/* <Whatsbot  /> */}
-            </Col>
-            
-          </Row>
-         
-          <Progressme/>
-          
-        </div>
-
+                )}
+                {activeTab === "schedule-builder" && <ScheduleBuilderV9 />}
+              </CardBody>
+            </Card>
+          </Col>
+        </Row>
+        <Row>
+          <Col lg="12" md="12" sm="12">
+            <Card>
+              <CardHeader>
+                <CardTitle tag="h5">Quick Actions</CardTitle>
+              </CardHeader>
+              <CardBody>
+                {/* Placeholder for quick action buttons */}
+                <p>Add quick action buttons here.</p>
+              </CardBody>
+            </Card>
+          </Col>
+        </Row>
+      </div>
     </>
   );
 }

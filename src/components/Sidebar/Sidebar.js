@@ -32,28 +32,29 @@ function Sidebar(props) {
   return (
     <div
       className="sidebar"
-      data-color={props.bgColor}
-      data-active-color={props.activeColor}
+      // data-color={props.bgColor} // Removed
+      // data-active-color={props.activeColor} // Removed
     >
       <div className="logo">
-        <a
-          href=""
+        <NavLink
+          to="/admin/dashboard" // Updated to dashboard route
           className="simple-text logo-mini"
         >
           <div className="logo-img">
             <img src={logo} alt="react-logo" />
           </div>
-        </a>
-        <a
-          href=""
+        </NavLink>
+        <NavLink
+          to="/admin/dashboard" // Updated to dashboard route
           className="simple-text logo-normal"
         >
           MoorHouse Tutoring
-        </a>
+        </NavLink>
       </div>
       <div className="sidebar-wrapper" ref={sidebar}>
         <Nav>
           {props.routes.map((prop, key) => {
+            if (prop.redirect) return null;
             return (
               <li
                 className={
@@ -61,7 +62,7 @@ function Sidebar(props) {
                 }
                 key={key}
               >
-                <NavLink to={prop.layout + prop.path} className="nav-NavLink">
+                <NavLink to={prop.layout + prop.path} className="nav-link">
                   <i className={prop.icon} />
                   <p>{prop.name}</p>
                 </NavLink>

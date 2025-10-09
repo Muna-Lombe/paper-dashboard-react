@@ -1,29 +1,25 @@
-import React from "react";
+import React, { useEffect } from "react";
 // javascript plugin used to create scrollbars on windows
 import PerfectScrollbar from "perfect-scrollbar";
-import { Route, Routes, useLocation,Navigate  } from "react-router-dom";
-
+import { Route, Routes, useLocation, Navigate } from "react-router-dom";
 import DemoNavbar from "@/components/Navbars/DemoNavbar.js";
 import Footer from "@/components/Footer/Footer.js";
 import Sidebar from "@/components/Sidebar/Sidebar.js";
-import FixedPlugin from "@/components/FixedPlugin/FixedPlugin.js";
-
+// import FixedPlugin from "@/components/FixedPlugin/FixedPlugin.js"; // Removed FixedPlugin
 import routes from "@/routes.js";
-import { endpoints } from "@/config";
+// import { endpoints } from "@/config"; // Not directly used here anymore
+import useAuth from "variables/hooks/useAuth";
 
 var ps;
 
-function Dashboard(props) {
-  const [backgroundColor, setBackgroundColor] = React.useState("black");
-  const [activeColor, setActiveColor] = React.useState("info");
-  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(true);
+function Admin(props) {
+  // const [backgroundColor, setBackgroundColor] = React.useState("black"); // Removed
+  // const [activeColor, setActiveColor] = React.useState("info"); // Removed
+  const { isAuthenticated, isLoading } = useAuth(); // Use useAuth hook
+  // const [isAuthenticated, setIsAuthenticated] = React.useState(false); // Removed
+  // const [isLoading, setIsLoading] = React.useState(true); // Removed
   const mainPanel = React.useRef();
   const location = useLocation();
- 
-
-
-  
 
   React.useEffect(() => {
     // Initialize PerfectScrollbar only when mainPanel.current is available
@@ -53,50 +49,41 @@ function Dashboard(props) {
     }
   }, [location]);
 
-  const handleActiveClick = (color) => {
-    setActiveColor(color);
-  };
-  const handleBgClick = (color) => {
-    setBackgroundColor(color);
-  };
+  // const handleActiveClick = (color) => { // Removed
+  //   setActiveColor(color);
+  // };
+  // const handleBgClick = (color) => { // Removed
+  //   setBackgroundColor(color);
+  // };
 
-
-  React.useEffect(() => {
-    const checkAuth = async () => {
-      
-      
-      try {
-        const token = sessionStorage.getItem('expirableToken');
-        
-        if (!token) {
-          setIsAuthenticated(false);
-          // setIsLoading(false); // setIsLoading is handled in finally
-          return;
-        }else {
-          const expireAt = token.split('~expireAt~')[1];
-          const currentTime = new Date();
-          const isExpired = new Date(expireAt) < currentTime;
-  
-          console.log("tokent is expired", isExpired);
-          
-          if (isExpired) {
-            setIsAuthenticated(false);
-            // setIsLoading(false); // setIsLoading is handled in finally
-            return;
-          }
-        }
-        setIsAuthenticated(true);
-        // setIsLoading(false); // setIsLoading is handled in finally
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        setIsAuthenticated(false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
+  // Removed redundant authentication check
+  // React.useEffect(() => {
+  //   const checkAuth = async () => {
+  //     try {
+  //       const token = sessionStorage.getItem('expirableToken');
+  //       if (!token) {
+  //         setIsAuthenticated(false);
+  //         return;
+  //       }else {
+  //         const expireAt = token.split('~expireAt~')[1];
+  //         const currentTime = new Date();
+  //         const isExpired = new Date(expireAt) < currentTime;
+  //         console.log("tokent is expired", isExpired);
+  //         if (isExpired) {
+  //           setIsAuthenticated(false);
+  //           return;
+  //         }
+  //       }
+  //       setIsAuthenticated(true);
+  //     } catch (error) {
+  //       console.error('Auth check failed:', error);
+  //       setIsAuthenticated(false);
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
+  //   checkAuth();
+  // }, []);
 
   if (isLoading) {
     return <div className="d-flex justify-content-center align-items-center" style={{height: '100vh'}}>
@@ -105,7 +92,7 @@ function Dashboard(props) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to='/sign-in' replace />
+    return <Navigate to='/auth' replace /> // Redirect to /auth
   }
 
   return (
@@ -113,8 +100,8 @@ function Dashboard(props) {
       <Sidebar
         {...props}
         routes={routes}
-        bgColor={backgroundColor}
-        activeColor={activeColor}
+        // bgColor={backgroundColor} // Removed
+        // activeColor={activeColor} // Removed
       />
       <div className="main-panel" ref={mainPanel}>
         <DemoNavbar {...props} />
@@ -142,4 +129,4 @@ function Dashboard(props) {
   );
 }
 
-export default Dashboard;
+export default Admin; // Renamed Dashboard to Admin to match filename

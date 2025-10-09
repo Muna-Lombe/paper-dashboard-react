@@ -12,7 +12,6 @@ import {
   Label,
   Row,
   Col,
-  
 } from "reactstrap";
 import axios from "axios";
 import { addError } from "../../variables/slices/errorSlice";
@@ -20,11 +19,12 @@ import { useDispatch } from "react-redux";
 import spirow from "../../assets/img/spriral-arrow.png";
 import { endpoints } from "@/config";
 import { addToast } from "variables/slices/toastSlice";
+import { useNavigate } from "react-router-dom";
+import useAuth from "variables/hooks/useAuth";
 
 const CourseScraperV2 = () => {
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [bookDetails, setBookDetails] = useState({
     bookId: "",
     bookName: "",
@@ -32,13 +32,15 @@ const CourseScraperV2 = () => {
   });
   const sess = sessionStorage;
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { isAuthenticated, userId } = useAuth(); // Get isAuthenticated and userId from useAuth hook
 
+  // Redirect to login if not authenticated
   useEffect(() => {
-    const token = sess.getItem("expirableToken");
-    if (token) {
-      setIsAuthenticated(true);
+    if (!isAuthenticated) {
+      navigate("/auth");
     }
-  }, []);
+  }, [isAuthenticated, navigate]);
 
   // on page load, check if there is a bookId in session storage and remove it
   useEffect(() => {});
@@ -70,7 +72,7 @@ const CourseScraperV2 = () => {
         setBookDetails({
           bookId: bookResponse.data?.bookId || "",
           bookName: bookResponse.data?.bookName || "",
-          userId: sess.getItem("userId") || "",
+          userId: userId || "", // Use userId from useAuth
         });
       } else {
         dispatch(addError("Invalid URL"));
@@ -82,63 +84,17 @@ const CourseScraperV2 = () => {
     }
   };
 
-  const handleAuth = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    const formData = new FormData(e.target);
-    try {
-        if (!sess.getItem("Auth-Token")) {
-        const tokenResponse = await axios.get(
-          endpoints.paperDashApi.getToken.url,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-              "Authorization": "Bearer " + sess.getItem("expirableToken"),
-            },
-          },
-        );
-        sess.setItem("Auth-Token", tokenResponse.data.token);
-      }
-
-      const response = await axios.post(
-        endpoints.paperDashApi.authenticate.url,
-        {
-          email: formData.get("email"),
-          password: formData.get("password"),
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            "Authorization": "Bearer " + sess.getItem("Auth-Token"),
-          },
-        },
-      );
-      if (response.data.token){
-        sess.setItem("Auth-Token", response.data.token);
-      }
-      sess.setItem("userId", response.data.data.Value.Id);
-      setBookDetails((ps) => ({ ...ps, userId: response.data.data.Value.Id }));
-      setIsAuthenticated(true);
-    } catch (error) {
-      dispatch(addError(error.response?.data?.msg || "Authentication failed"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleReset = () => {
     setUrl("");
     setBookDetails({ bookId: "", bookName: ""});
   };
 
-  const handleResetId=()=>{
+  const handleResetId = () => {
     sess.removeItem("userId");
-    setIsAuthenticated(false);
+    // setIsAuthenticated(false); // No longer managing local auth state
     setBookDetails(ps=>({...ps, userId:""}));
-  }
+  };
+
   const handleSave = async (e) => {
     console.log("Saving book details:", bookDetails);
     e.preventDefault();
@@ -152,7 +108,7 @@ const CourseScraperV2 = () => {
 
     try {
       await axios.post(
-        endpoints.paperDashApi.copyCourse.url, 
+        endpoints.paperDashApi.copyCourse.url,
         {
           bookId,
           userId,
@@ -175,24 +131,6 @@ const CourseScraperV2 = () => {
     }
   };
 
-  const AuthForm = () => (
-    <div className="auth-form p-2">
-      <Form onSubmit={handleAuth}>
-        <div className="mb-3">
-          <Label>Email</Label>
-          <Input type="email" name="email" required />
-        </div>
-        <div className="mb-3">
-          <Label>Password</Label>
-          <Input type="password" name="password" required />
-        </div>
-        <Button color="primary" disabled={isLoading}>
-          {isLoading ? <Spinner size="sm" /> : "Login"}
-        </Button>
-      </Form>
-    </div>
-  );
-
   const LoadingComponent = () => (
     <div
       className="d-flex flex-column align-items-center justify-content-center"
@@ -206,80 +144,55 @@ const CourseScraperV2 = () => {
     </div>
   );
 
-  const NoLinkComponent = () => (
-    <div className="text-center p-4">
-      <img src={spirow} alt="arrow" style={{ width: "50px" }} />
-      <p className="mt-3">Add your link above</p>
-    </div>
-  );
 
-  const AuthOverlay = () => (
-    <div
-      className="auth-overlay position-absolute w-100 h-100 d-flex justify-content-center align-items-center"
-      style={{
-        top: 0,
-        left: 0,
-        background: "rgba(0,0,0,0.7)",
-        zIndex: 1000,
-      }}
-    >
-      <AuthForm />
-    </div>
-  );
-
-
-  const BookDetails = () =>{ 
+  const BookDetails = () => {
     const Details = () => (
       <div className="d-flex flex-column justify-content-between align-items-baseline gap-4">
-        
+        <Input
+          value={bookDetails.bookId}
+          readOnly
+          placeholder="Book ID"
+          className="m-2"
+          style={{
+            maxWidth: "200px",
+          }}
+        />
+        <Input
+          value={bookDetails.bookName}
+          readOnly
+          placeholder="Book Name"
+          className="m-2"
+          style={{
+            maxWidth: "200px",
+          }}
+        />
+        <div className="position-relative w-auto">
           <Input
-            value={bookDetails.bookId}
+            color={"danger"}
+            value={bookDetails.userId || userId}
             readOnly
-            placeholder="Book ID"
-            className="m-2"
+            placeholder="User ID"
+            className={
+              (isAuthenticated
+                ? "border border-success"
+                : " border border-danger ") + " m-2 "
+            }
             style={{
               maxWidth: "200px",
             }}
           />
-          <Input
-            value={bookDetails.bookName}
-            readOnly
-            placeholder="Book Name"
-            className="m-2"
-            style={{
-              maxWidth: "200px",
-            }}
-          />
-          <div className="position-relative w-auto">
-            <Input
-              
-              color={"danger"}
-              value={bookDetails.userId || sess.getItem("userId")}
-              readOnly
-              placeholder="User ID"
-              className={
-                (isAuthenticated
-                  ? "border border-success"
-                  : " border border-danger ") + " m-2 "
-              }
-              style={{
-                maxWidth: "200px",
-              }}
-            />
-            <span
-              color={isAuthenticated ? "success" : "danger"}
-              className={isAuthenticated
-              ?("position-absolute top-50 right-0") : "d-none "+ " w-25 h-50 border border-danger text-sm-center"}
-              style={{top: "25%", right: "8%", zIndex: 1, cursor: "pointer" }}
-              onClick={handleResetId}
-            >
-              <i className="fas fa-times text-danger" style={{fontSize: "1.5rem", marginTop: "4px"}}></i>
-            </span>
-          </div>
-        
-        
+          <span
+            color={isAuthenticated ? "success" : "danger"}
+            className={isAuthenticated
+            ?("position-absolute top-50 right-0") : "d-none "+ " w-25 h-50 border border-danger text-sm-center"}
+            style={{top: "25%", right: "8%", zIndex: 1, cursor: "pointer" }}
+            onClick={handleResetId}
+          >
+            <i className="fas fa-times text-danger" style={{fontSize: "1.5rem", marginTop: "4px"}}></i>
+          </span>
+        </div>
       </div>
-    )
+    );
     return(
       <>
         <Col md="6" className="book-details  p-3 d-xs-none d-sm-none d-md-none d-lg-flex flex-column justify-content-between align-items-baseline gap-4 " style={{width: "100%", maxWidth: "150px"}}>
@@ -290,9 +203,7 @@ const CourseScraperV2 = () => {
             color="primary"
             onClick={handleSave}
             style={{ width: "100%", maxWidth: "80px" }}
-            disabled={
-              !isAuthenticated || !bookDetails.bookId || !bookDetails.userId
-            }
+            disabled={!isAuthenticated || !bookDetails.bookId || !bookDetails.userId}
           >
             Save
           </Button>
@@ -305,15 +216,14 @@ const CourseScraperV2 = () => {
             color="primary"
             onClick={handleSave}
             style={{width: "100%", maxWidth: "200px"}}
-            disabled={
-              !isAuthenticated || !bookDetails.bookId || !bookDetails.userId
-            }
+            disabled={!isAuthenticated || !bookDetails.bookId || !bookDetails.userId}
           >
             Save
           </Button>
         </Row>
       </>
-  )};
+    );
+  };
 
   const BookContent = () => {
     // Link loaded but not authenticated
@@ -376,7 +286,7 @@ const CourseScraperV2 = () => {
             <h4 className="text-white mb-1">
               Please authenticate to view the content
             </h4>
-            <AuthForm />
+            {/* <AuthForm /> */}
           </div>
         </div>
       );
@@ -397,16 +307,13 @@ const CourseScraperV2 = () => {
       );
     }
 
-    // No link and not authenticated (initial state)
+    // No link and not authenticated (initial state) - should redirect
     return (
       <div className="d-flex flex-column align-items-center p-4">
         <p className="text-center mb-4">
-          Welcome! To access and save course content, please log in first. Then
-          you can add a course link above to view its contents.
+          Please log in to access course content.
         </p>
-        <h3>Temporary Login</h3>
-
-        <AuthForm />
+        {/* <AuthForm /> */}
       </div>
     );
   };

@@ -1,9 +1,9 @@
 .card{
-  border-radius: $border-radius-extreme;
-  box-shadow: 0 6px 10px -4px rgba(0, 0, 0, 0.15);
+  border-radius: $border-radius-large; // Use a more subtle border-radius
+  box-shadow: $box-shadow; // Use the new, lighter box-shadow variable
   background-color: #FFFFFF;
   color: $card-black-color;
-  margin-bottom: 20px;
+  margin-bottom: $margin-base-vertical * 1.5; // Adjust margin for better spacing
   position: relative;
   border: 0 none;
 
@@ -134,7 +134,7 @@
         }
 
         img{
-            border-radius: $border-radius-extreme;
+            border-radius: $border-radius-large; // Use consistent border-radius
         }
     }
 }

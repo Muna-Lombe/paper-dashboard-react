@@ -3,10 +3,18 @@ input,
 optgroup,
 select,
 textarea{
-    font-family: $sans-serif-family;
+    font-family: $font-family-sans-serif;
 }
-h1,h2,h3,h4,h5,h6{
+
+body { // Explicitly set font-family for body
+    font-family: $font-family-sans-serif;
     font-weight: $font-weight-normal;
+    line-height: $line-height-general;
+    color: $font-color; // Use the new global font color
+}
+
+h1,h2,h3,h4,h5,h6{
+    font-weight: $font-weight-bold; // Make headings bolder for better hierarchy
 }
 
 a{
@@ -18,7 +26,7 @@ a{
 }
 h1, .h1 {
     font-size: $font-size-h1;
-    line-height: 1.15;
+    line-height: 1.2;
     margin-bottom: $margin-base-vertical * 2;
 
     small{
@@ -58,6 +66,8 @@ h6, .h6{
     text-transform: uppercase;
 }
 p{
+    font-size: $font-paragraph; // Ensure paragraphs use the defined paragraph font size
+    line-height: $line-height-general; // Use general line height
     &.description{
         font-size: 1.14em;
     }
@@ -90,14 +100,14 @@ p{
 .footer-big p,
 .card .footer .stats{
     color: $dark-gray;
-    font-weight: $font-weight-light;
+    font-weight: $font-weight-normal; // Adjusted to normal for better readability
 }
 .category,
 .card-category{
     text-transform: capitalize;
     font-weight: $font-weight-normal;
     color: $dark-gray;
-    font-size: $font-size-mini;
+    font-size: $font-size-small; // Adjusted to small font size for categories
 }
 
 .card-category{
