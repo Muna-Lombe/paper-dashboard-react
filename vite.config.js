@@ -17,7 +17,7 @@ export default defineConfig({
   },
   server: {
     host: "0.0.0.0",
-    port: 3000,
+    // port: 3000, // Removed to let the hosting environment assign the port
     allowedHosts: true,
   },
   build: {

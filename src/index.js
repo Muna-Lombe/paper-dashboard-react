@@ -14,6 +14,7 @@ import AdminLayout from "./layouts/Admin.js";
 import GuestLayout from "./layouts/Guest.js";
 import DisplayNotification from "./components/Headers/DisplayNotification";
 import store from "./variables/reducerStore";
+import HealthCheck from "views/HealthCheck";
 // import { addBasename } from "variables/slices/basenameSlice.js"; // Removed basename logic
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
