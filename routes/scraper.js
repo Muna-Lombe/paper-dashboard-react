@@ -3,7 +3,7 @@ const router = express.Router();
 const { check, validationResult } = require("express-validator");
 const scraperMiddleware = require("../middleware/scraper");
 const courseScraperService = require("../services/courseScraper");
-const jwt = require("jsonwebtoken");
+// const jwt = require("jsonwebtoken");
 /**
  * @swagger
  * tags:
@@ -205,7 +205,7 @@ router.post(
 router.get("/getbook", [], async (req, res) => {
     try {
         const { url } = req.query;
-        const bookContentRegex =
+        // const bookContentRegex =
             /https:\/\/progressme\.ru\/cabinet\/school\/materials\/book\/\d+\/content/;
         const bookIdRegex = /\/book\/(\d+)/;
         let book = {};
@@ -329,7 +329,7 @@ router.post(
                     );
 
                 if (canBookBeShared) {
-                    console.log("\ncan share. Setting sharingMaterialId...");
+                    // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // console.log("\ncan share. Setting sharingMaterialId...");
                     const sharingMaterialId =
                         await courseScraperService.setSharingMaterialId(
                             bookId,
@@ -342,7 +342,7 @@ router.post(
                             courseScraperService.currentBook.sharingMaterialId,
                     );
                 } else {
-                    console.log("\ncannot share... won't try to copy");
+                    // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // console.log("\ncannot share... won't try to copy");
                     return res
                         .status(400)
                         .json({ msg: "Book cannot be shared" });
@@ -402,7 +402,7 @@ router.get(
                 "in scraper middleware, ",
                 token.split("~expireAt~")[0],
             );
-            const secretToken = token.split("~expireAt~")[0].toString();
+            // const secretToken = token.split("~expireAt~")[0].toString();
             // Verify JWT
             // eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoiMTIzNDU2IiwibmFtZSI6IkpvaG4iLCJyb2xlcyI6InVzZXIifSwiaWF0IjoxNzQ4ODE0NTkyLCJleHAiOjE3NDg5MDA5OTJ9.0BzgNpTxMPsdBLk6MLz6F5HAhfs6n7ADLwgs2lhAhmc
             // const decoded = jwt.verify(

@@ -19,36 +19,76 @@ function processFile(filePath) {
     ecmaVersion: "latest",
   });
 
-  // Track used variables
+  const declaredVars = new Map(); // Maps varName to its VariableDeclaration node
   const usedVars = new Set();
-  const declaredVars = new Set();
 
-  // Find all variable declarations and usages
-  walk.simple(ast, {
-    VariableDeclarator(node) {
+  walk.ancestor(ast, {
+    VariableDeclarator(node, ancestors) {
       if (node.id.type === "Identifier") {
-        declaredVars.add(node.id.name);
+        const declarationNode = ancestors[ancestors.length - 2]; // Parent of VariableDeclarator is VariableDeclaration
+        declaredVars.set(node.id.name, declarationNode);
       }
     },
-    Identifier(node) {
+    Identifier(node, ancestors) {
+      const parent = ancestors[ancestors.length - 1]; // Current node's parent
+
+      // Exclude identifiers that are part of a declaration (left-hand side of an assignment)
+      if (
+        (parent.type === 'VariableDeclarator' && parent.id === node) ||
+        (parent.type === 'Property' && parent.key === node && parent.shorthand) || // object shorthand { foo }
+        (parent.type === 'Property' && parent.key === node && parent.computed) || // computed property name { [foo] }
+        (parent.type === 'FunctionDeclaration' && parent.id === node) ||
+        (parent.type === 'ClassDeclaration' && parent.id === node) ||
+        (parent.type === 'FunctionExpression' && parent.id === node) || // named function expression
+        (parent.type === 'ClassExpression' && parent.id === node) || // named class expression
+        (parent.type === 'CatchClause' && parent.param === node) ||
+        (parent.type === 'ImportSpecifier' && (parent.local === node || parent.imported === node)) ||
+        (parent.type === 'ImportDefaultSpecifier' && parent.local === node) ||
+        (parent.type === 'ImportNamespaceSpecifier' && parent.local === node) ||
+        (parent.type === 'ExportSpecifier' && (parent.local === node || parent.exported === node)) ||
+        (parent.type === 'LabeledStatement' && parent.label === node)
+      ) {
+        return; // This is a declaration or binding, not a usage
+      }
+
       usedVars.add(node.name);
-    },
+    }
   });
 
-  // Comment out unused variables
-  const unusedVars = [...declaredVars].filter((v) => !usedVars.has(v));
-  unusedVars.forEach((varName) => {
-    const regex = new RegExp(`(const|let|var)\\s+${varName}\\s*=`);
-    content = content.replace(regex, "// $&");
+  const declarationsToComment = new Set();
+
+  declaredVars.forEach((declarationNode, varName) => {
+    if (!usedVars.has(varName)) {
+      declarationsToComment.add(declarationNode);
+    }
   });
+
+  let lines = content.split('\n');
+
+  // Sort by end position in reverse to avoid messing up offsets when modifying content
+  const sortedDeclarationsToComment = Array.from(declarationsToComment).sort((a, b) => b.end - a.end);
+
+  sortedDeclarationsToComment.forEach(nodeToComment => {
+    // Get line numbers for the declaration
+    const startLineIdx = content.substring(0, nodeToComment.start).split('\n').length - 1;
+    const endLineIdx = content.substring(0, nodeToComment.end).split('\n').length - 1;
+
+    // Apply comments to each line
+    for (let i = startLineIdx; i <= endLineIdx; i++) {
+      if (lines[i] && !lines[i].trim().startsWith('//')) { // Avoid double commenting
+        lines[i] = `// ${lines[i]}`;
+      }
+    }
+  });
+
+  content = lines.join('\n');
 
   // Comment out console.logs
   content = content.replace(
     /console\.log\((.*?)\);/g,
-    "// // // // console.log($1);",
+    "// // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // console.log($1);",
   );
 
-  // Write back to file
   fs.writeFileSync(filePath, content);
 }
 
@@ -62,8 +102,9 @@ function processDirectory(dir) {
 
     if (stat.isDirectory() && !filePath.includes("node_modules")) {
       processDirectory(filePath);
-    } else if (path.basename === "databse.js") {
-    } else if (path.extname(file) === ".js") {
+    } else if (path.basename(file) === "database.js") { // Corrected from path.basename
+      // Do nothing for database.js
+    } else if (path.extname(file) === ".js" || path.extname(file) === ".jsx") { // Added .jsx
       processFile(filePath);
     }
   });
@@ -77,4 +118,4 @@ if (!fs.existsSync(buildDir)) {
 
 // Copy and process files
 processDirectory(path.join(__dirname, ".."));
-// // // console.log('Build process completed!');
+// // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // console.log('Build process completed!');

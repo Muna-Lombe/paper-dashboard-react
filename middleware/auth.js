@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const Token = require("../models/Token");
+// const Token = require("../models/Token");
 require("dotenv").config();
 
 module.exports = async function (req, res, next) {
@@ -7,7 +7,6 @@ module.exports = async function (req, res, next) {
     const token =
         req.header("x-auth-token") ||
         req.header("authorization")?.replace("Bearer ", "");
-
     // console.log("request in middleware..", token ?? false);
 
     // Check if no token
@@ -22,7 +21,7 @@ module.exports = async function (req, res, next) {
         const { firstName, lastName, role, userId } = decoded;
 
         const tokenRecord = true;
-        console.log("decoded", firstName);
+        // console.log("decoded", firstName);
         // Check token in database
         // const tokenRecord = await Token.findOne({
         //     where: {

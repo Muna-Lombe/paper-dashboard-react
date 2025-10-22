@@ -85,7 +85,7 @@ router.use("/authenticate",auth);
  */
 router.post("/authenticate", async (req, res) => {
     try {
-        console.log("request in auth..");
+        // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // console.log("request in auth..");
         // Get user info from Replit headers or request body
         const userId = req.headers["x-replit-user-id"] || req.body.userId;
         const userName = req.headers["x-replit-user-name"] || req.body.userName;
@@ -222,10 +222,10 @@ router.get("/verify", async (req, res) => {
         }
 
         // Verify JWT
-        const decoded = jwt.verify(
-            token,
-            process.env.JWT_SECRET || "default_secret",
-        );
+//         const decoded = jwt.verify(
+//             token,
+//             process.env.JWT_SECRET || "default_secret",
+//         );
 
         res.json({
             valid: true,
