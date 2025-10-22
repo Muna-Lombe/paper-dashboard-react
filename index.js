@@ -40,7 +40,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // health check
 app.get("/health", (req, res) => {
-    res.status(200).send("OK");
+    res.status(200).send({ message: "OK" });
 });
 
 // Serve uploaded files
