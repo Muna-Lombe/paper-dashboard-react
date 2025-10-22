@@ -15,7 +15,7 @@ import {
   InputGroup,
   Input,
 } from "reactstrap";
-import useAuth from "variables/hooks/useAuth";
+import useSupabaseAuth from "variables/hooks/useSupabaseAuth";
 import routes from "@/routes.js";
 
 function Header() {
@@ -25,7 +25,7 @@ function Header() {
   const sidebarToggle = React.useRef();
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated, logoutUser } = useAuth(); // Use useAuth hook for logout
+  const { isAuthenticated, signOut } = useSupabaseAuth();
 
   const toggle = () => {
     if (isOpen) {
@@ -82,8 +82,9 @@ function Header() {
     }
   }, [location]);
 
-  const handleLogout = () => {
-    logoutUser(); // Call the logoutUser from the useAuth hook
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/auth');
   };
 
   const AuthedActions = () => (
@@ -162,15 +163,11 @@ function Header() {
   );
 
   const UnauthedActions = () => (
-    <Button
-      href="/auth"
-      className="btn-curved m-1"
-      color="light"
-      size="sm"
-      tag="a"
-    >
-      Sign In
-    </Button>
+    <Container fluid>
+      <div className="navbar-wrapper">
+        <NavbarBrand href="/">MoorHouse</NavbarBrand>
+      </div>
+    </Container>
   );
 
   return (

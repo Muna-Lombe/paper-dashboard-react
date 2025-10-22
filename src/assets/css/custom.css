@@ -151,3 +151,81 @@
   max-width: 80px;
   margin-bottom: 1rem;
 }
+
+/* Modern Sidebar Enhancements */
+.sidebar {
+  background: linear-gradient(180deg, #1a202c 0%, #2d3748 100%);
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar .nav li a {
+  transition: all 0.3s ease;
+  border-radius: 10px;
+  margin: 5px 15px;
+}
+
+.sidebar .nav li a:hover {
+  background: rgba(102, 126, 234, 0.1);
+  transform: translateX(5px);
+}
+
+.sidebar .nav li.active a {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+}
+
+.sidebar .logo {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 20px;
+}
+
+.sidebar .logo-normal {
+  color: white !important;
+  font-weight: 700;
+}
+
+/* Card Improvements */
+.card {
+  border-radius: 15px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+.card-stats {
+  border-radius: 15px;
+  transition: transform 0.3s ease;
+}
+
+.card-stats:hover {
+  transform: translateY(-5px);
+}
+
+/* Button Enhancements */
+.btn {
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+/* Navbar Improvements */
+.navbar-absolute {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Main Panel */
+.main-panel {
+  background: #f7fafc;
+}
+
+.main-panel .content {
+  padding: 30px;
+}

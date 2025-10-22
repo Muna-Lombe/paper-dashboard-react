@@ -11,14 +11,12 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import './assets/css/custom.css'; // Your custom CSS file
 
 import AdminLayout from "./layouts/Admin.js";
-import GuestLayout from "./layouts/Guest.js";
 import DisplayNotification from "./components/Headers/DisplayNotification";
 import store from "./variables/reducerStore";
-import HealthCheck from "views/HealthCheck";
-// import { addBasename } from "variables/slices/basenameSlice.js"; // Removed basename logic
+import NewLanding from "views/NewLanding.js";
+import Auth from "views/Auth.js";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
-// const basename = "/paper-dashboard-react"; // Removed basename logic
 
 root.render(
   <Provider store={store}>
@@ -26,9 +24,9 @@ root.render(
       <DisplayNotification>
         <Routes>
           <Route path="/admin/*" element={<AdminLayout />} />
-          <Route path="/auth/*" element={<GuestLayout />} />
-          <Route path="/health" element={<HealthCheck />} /> {/* Health Check route */}
-          <Route path="/" element={<Navigate to="/auth" replace />} /> {/* Default to auth page */}
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/landing" element={<NewLanding />} />
+          <Route path="/" element={<Navigate to="/landing" replace />} />
         </Routes>
       </DisplayNotification>
     </BrowserRouter>

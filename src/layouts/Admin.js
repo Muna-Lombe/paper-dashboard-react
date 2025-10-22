@@ -8,14 +8,12 @@ import Sidebar from "@/components/Sidebar/Sidebar.js";
 // import FixedPlugin from "@/components/FixedPlugin/FixedPlugin.js"; // Removed FixedPlugin
 import routes from "@/routes.js";
 // import { endpoints } from "@/config"; // Not directly used here anymore
-import useAuth from "variables/hooks/useAuth";
+import useSupabaseAuth from "variables/hooks/useSupabaseAuth";
 
 var ps;
 
 function Admin(props) {
-  // const [backgroundColor, setBackgroundColor] = React.useState("black"); // Removed
-  // const [activeColor, setActiveColor] = React.useState("info"); // Removed
-  const { isAuthenticated, isLoading } = useAuth(); // Use useAuth hook
+  const { isAuthenticated, loading: isLoading } = useSupabaseAuth();
   // const [isAuthenticated, setIsAuthenticated] = React.useState(false); // Removed
   // const [isLoading, setIsLoading] = React.useState(true); // Removed
   const mainPanel = React.useRef();

@@ -1,93 +1,67 @@
-
-import Dashboard from "views/Dashboard.js";
-import UserPage from "views/User.js";
-import AuthenticationPage from "views/AuthenticationPage.js";
-import LandingPage from "views/Landing.js";
-import HealthCheck from "views/HealthCheck.js"; // Import the new HealthCheck component
+import NewDashboard from "views/NewDashboard.js";
+import NewLanding from "views/NewLanding.js";
+import Auth from "views/Auth.js";
+import CourseScraper from "views/CourseScraper.js";
+import CourseBuilder from "views/CourseBuilder.js";
+import ScheduleBuilder from "views/ScheduleBuilder.js";
+import Bot from "views/Bot.js";
 import React from "react";
 import store from "./variables/reducerStore";
 
-const basename = store.getState().basenames[0]
+const basename = store.getState().basenames[0];
+
 var routes = [
   {
-    path: (basename||"")+"/landing",
+    path: (basename || "") + "/landing",
     name: "Landing",
     icon: "nc-icon nc-bank",
-    component: <LandingPage />,
+    component: <NewLanding />,
     layout: "",
   },
   {
-    path: (basename||"")+"/sign-in",
-    name: "Sign in",
-    icon: "nc-icon nc-bank",
-    component: <AuthenticationPage />,
+    path: (basename || "") + "/auth",
+    name: "Authentication",
+    icon: "nc-icon nc-key-25",
+    component: <Auth />,
     layout: "",
   },
   {
-    path: (basename||"")+"/dashboard",
+    path: (basename || "") + "/dashboard",
     name: "Dashboard",
-    icon: "nc-icon nc-bank",
-    component: <Dashboard />,
-    layout: (basename||"")+"/admin",
+    icon: "nc-icon nc-chart-pie-36",
+    component: <NewDashboard />,
+    layout: (basename || "") + "/admin",
   },
   {
-    path: "/health", // Simple path for health check
-    name: "Health Check",
-    icon: "nc-icon nc-check-2", // A relevant icon
-    component: <HealthCheck />,
-    layout: "", // No layout for this route
+    path: (basename || "") + "/course-scraper",
+    name: "Course Scraper",
+    icon: "nc-icon nc-tap-01",
+    component: <CourseScraper />,
+    layout: (basename || "") + "/admin",
   },
-  // {
-  //   path: (basename||"")+"/icons",
-  //   name: "Icons",
-  //   icon: "nc-icon nc-diamond",
-  //   component: <Icons />,
-  //   layout: (basename||"")+"/admin",
-  // },
-  // {
-  //   path: (basename||"")+"/maps",
-  //   name: "Maps",
-  //   icon: "nc-icon nc-pin-3",
-  //   component: <Maps />,
-  //   layout: (basename||"")+"/admin",
-  // },
-  // {
-  //   path: (basename||"")+"/notifications",
-  //   name: "Notifications",
-  //   icon: "nc-icon nc-bell-55",
-  //   component: <Notifications />,
-  //   layout: (basename||"")+"/admin",
-  // },
   {
-    path: (basename||"")+"/user-page",
-    name: "User Profile",
-    icon: "nc-icon nc-single-02",
-    component: <UserPage />,
-    layout: (basename||"")+"/admin",
+    path: (basename || "") + "/course-builder",
+    name: "Course Builder",
+    icon: "nc-icon nc-settings-gear-65",
+    component: <CourseBuilder />,
+    layout: (basename || "") + "/admin",
   },
-  // {
-  //   path: (basename||"")+"/tables",
-  //   name: "Table List",
-  //   icon: "nc-icon nc-tile-56",
-  //   component: <TableList />,
-  //   layout: (basename||"")+"/admin",
-  // },
-  // {
-  //   path: (basename||"")+"/typography",
-  //   name: "Typography",
-  //   icon: "nc-icon nc-caps-small",
-  //   component: <Typography />,
-  //   layout: (basename||"")+"/admin",
-  // },
-  // {
-  //   pro: true,
-  //   path: (basename||"")+"/upgrade",
-  //   name: "Upgrade to PRO",
-  //   icon: "nc-icon nc-spaceship",
-  //   component: <UpgradeToPro />,
-  //   layout: (basename||"")+"/admin",
-  // },
+  {
+    path: (basename || "") + "/schedule-builder",
+    name: "Schedule Builder",
+    icon: "nc-icon nc-calendar-60",
+    component: <ScheduleBuilder />,
+    layout: (basename || "") + "/admin",
+  },
+  {
+    path: (basename || "") + "/bot",
+    name: "Bot",
+    icon: "nc-icon nc-chat-33",
+    component: <Bot />,
+    layout: (basename || "") + "/admin",
+  },
 ];
-export const NotificationContext = React.createContext(null)
+
+export const NotificationContext = React.createContext(null);
 
 export default routes;
