@@ -5,6 +5,7 @@ import AuthenticationPage from "views/AuthenticationPage.js";
 import LandingPage from "views/Landing.js";
 import HealthCheck from "views/HealthCheck.js"; // Import the new HealthCheck component
 import React from "react";
+import store from "./variables/reducerStore";
 
 const basename = store.getState().basenames[0]
 var routes = [
