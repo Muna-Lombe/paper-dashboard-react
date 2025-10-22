@@ -7,42 +7,29 @@ import "bootstrap/dist/css/bootstrap.css";
 import "./assets/scss/paper-dashboard.scss";
 import "assets/demo/demo.css";
 import "perfect-scrollbar/css/perfect-scrollbar.css";
-import 'bootstrap/dist/css/bootstrap.min.css'
-import './assets/css/custom.css' // Your custom CSS file
+import 'bootstrap/dist/css/bootstrap.min.css';
+import './assets/css/custom.css'; // Your custom CSS file
 
 import AdminLayout from "./layouts/Admin.js";
 import GuestLayout from "./layouts/Guest.js";
 import DisplayNotification from "./components/Headers/DisplayNotification";
 import store from "./variables/reducerStore";
-import { addBasename } from "variables/slices/basenameSlice.js";
+// import { addBasename } from "variables/slices/basenameSlice.js"; // Removed basename logic
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
-const basename = "/paper-dashboard-react";
-
-// Remove any existing token on app start to ensure fresh authentication
-// sessionStorage.removeItem('expirableToken');
-
-
-
-
-//store.dispatch(addBasename(basename));
-
+// const basename = "/paper-dashboard-react"; // Removed basename logic
 
 root.render(
   <Provider store={store}>
     <BrowserRouter>
-    
       <DisplayNotification>
         <Routes>
-
-          <Route path={(store.getState().basenames[0]||"")+"/admin/*"} element={<AdminLayout />} />
-          <Route path={(store.getState().basenames[0]||"")+"/*"} element={<GuestLayout />} />
-          
-          <Route path={(store.getState().basenames[0]||"")+"/"} element={<Navigate to={(store.getState().basenames[0]||"")+"/landing" }replace />} />
+          <Route path="/admin/*" element={<AdminLayout />} />
+          <Route path="/auth/*" element={<GuestLayout />} />
+          <Route path="/health" element={<HealthCheck />} /> {/* Health Check route */}
+          <Route path="/" element={<Navigate to="/auth" replace />} /> {/* Default to auth page */}
         </Routes>
-      
-      </DisplayNotification>  
+      </DisplayNotification>
     </BrowserRouter>
-
   </Provider>
 );
