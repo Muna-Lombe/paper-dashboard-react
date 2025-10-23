@@ -5,6 +5,9 @@ const socketIo = require("socket.io");
 const path = require("path");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpecs = require("./config/swagger");
+const cookieParser = require("cookie-parser");
+const auth = require("./middleware/auth"); // Import auth middleware
+const telegramBot = require("./config/telegramBot"); // Import telegramBot
 // const { connectDB } = require("./config/database");
 require("dotenv").config();
 
@@ -16,6 +19,7 @@ const io = socketIo(server, {
         methods: ["GET", "POST"],
     },
 });
+
 
 // Connect to Database
 const { connectDB } = require("./config/database");
@@ -36,6 +40,7 @@ app.use(
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 
 // health check
@@ -66,8 +71,14 @@ app.use(
 
 // Routes
 app.use("/api/auth", require("./routes/auth"));
-app.use("/api/courses", require("./routes/courses"));
-app.use("/api/scraper", require("./routes/scraper"));
+app.use("/api/courses", auth, require("./routes/courses")); // Protect with auth middleware
+app.use("/api/scraper", auth, require("./routes/scraper")); // Protect with auth middleware
+app.use("/api/telegram", require("./routes/telegram")); // Add Telegram bot routes
+app.use("/api/dashboard", auth, require("./routes/dashboard")); // Add Dashboard routes, protected by auth middleware
+app.use("/api/user", auth, require("./routes/user")); // Add User routes, protected by auth middleware
+app.use("/api/schedule", auth, require("./routes/schedule")); // Add Schedule routes, protected by auth middleware
+app.use("/api/integrations", auth, require("./routes/integrations")); // Add Integrations routes, protected by auth middleware
+app.use("/api/assistant", auth, require("./routes/assistant")); // Add Assistant routes, protected by auth middleware
 
 // WebSocket connection
 io.on("connection", (socket) => {
@@ -82,6 +93,12 @@ io.on("connection", (socket) => {
         io.emit("courseUpdated", data);
     });
 });
+
+// Start Telegram Bot
+telegramBot.launch();
+// Enable graceful stop
+process.once("SIGINT", () => telegramBot.stop("SIGINT"));
+process.once("SIGTERM", () => telegramBot.stop("SIGTERM"));
 
 const PORT = process.env.PORT || 5000;
 

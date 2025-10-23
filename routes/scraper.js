@@ -1,9 +1,42 @@
 const express = require("express");
 const router = express.Router();
 const { check, validationResult } = require("express-validator");
-const scraperMiddleware = require("../middleware/scraper");
+// const scraperMiddleware = require("../middleware/scraper"); // Old middleware
 const courseScraperService = require("../services/courseScraper");
-// const jwt = require("jsonwebtoken");
+const TelegramRegistrationRequest = require("../models/TelegramRegistrationRequest"); // Import TelegramRegistrationRequest model
+
+// API Token Authentication Middleware
+const apiTokenAuth = async (req, res, next) => {
+    const apiToken = req.cookies["api-token"] || req.header("x-api-token");
+
+    if (!apiToken) {
+        return res.status(401).json({ msg: "No API token, authorization denied for scraper access." });
+    }
+
+    try {
+        const registrationRequest = await TelegramRegistrationRequest.findOne({
+            where: {
+                apiToken: apiToken,
+                status: 'approved',
+            },
+        });
+
+        if (!registrationRequest) {
+            return res.status(401).json({ msg: "Invalid or expired API token for scraper access." });
+        }
+
+        req.apiUser = { // Attach API user info to request
+            chatId: registrationRequest.chatId,
+            email: registrationRequest.email,
+            apiToken: registrationRequest.apiToken,
+        };
+        next();
+    } catch (err) {
+        console.error("API Token Auth middleware error:", err.message);
+        res.status(500).send("Server Error");
+    }
+};
+
 /**
  * @swagger
  * tags:
@@ -36,7 +69,7 @@ const courseScraperService = require("../services/courseScraper");
  *     summary: Validate and clean a course URL
  *     tags: [Scraper]
  *     security:
- *       - bearerAuth: []
+ *       - apiTokenAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -61,12 +94,14 @@ const courseScraperService = require("../services/courseScraper");
  *                   type: string
  *       400:
  *         description: Invalid URL
+ *       401:
+ *         description: Unauthorized - Missing or invalid API token
  *       500:
  *         description: Server error
  */
 router.post(
     "/validate-url",
-    [scraperMiddleware, check("url", "URL is required").not().isEmpty()],
+    [apiTokenAuth, check("url", "URL is required").not().isEmpty()],
     async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
@@ -93,7 +128,7 @@ router.post(
  *     summary: Authenticate with ProgressMe
  *     tags: [Scraper]
  *     security:
- *       - bearerAuth: []
+ *       - apiTokenAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -123,13 +158,15 @@ router.post(
  *                   type: object
  *       400:
  *         description: Invalid credentials
+ *       401:
+ *         description: Unauthorized - Missing or invalid API token
  *       500:
  *         description: Authentication failed
  */
 router.post(
-    "/auth",
+    "/getUserInfo", // Renamed from "/auth" to be more descriptive
     [
-        scraperMiddleware,
+        apiTokenAuth, // Use new API token middleware
         check("email", "Please include a valid email").isEmail(),
         check("password", "Password is required").exists(),
     ],
@@ -162,7 +199,7 @@ router.post(
  *     summary: Get a book by code
  *     tags: [Scraper]
  *     security:
- *       - bearerAuth: []
+ *       - apiTokenAuth: []
  *     parameters:
  *       - in: query
  *         name: code
@@ -182,6 +219,8 @@ router.post(
  *                   $ref: '#/components/schemas/ScrapedCourse'
  *       400:
  *         description: Invalid book code
+ *       401:
+ *         description: Unauthorized - Missing or invalid API token
  *       500:
  *         description: Server error
  *       503:
@@ -202,7 +241,7 @@ router.post(
  *
  */
 
-router.get("/getbook", [], async (req, res) => {
+router.get("/getbook", [apiTokenAuth], async (req, res) => {
     try {
         const { url } = req.query;
         // const bookContentRegex =
@@ -256,7 +295,7 @@ router.get("/getbook", [], async (req, res) => {
  *     summary: Copy a course using WebSocket
  *     tags: [Scraper]
  *     security:
- *       - bearerAuth: []
+ *       - apiTokenAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -288,13 +327,15 @@ router.get("/getbook", [], async (req, res) => {
  *                   type: string
  *       400:
  *         description: Missing required information
+ *       401:
+ *         description: Unauthorized - Missing or invalid API token
  *       500:
  *         description: Failed to copy course
  */
 router.post(
     "/copy-course",
     [
-        scraperMiddleware,
+        apiTokenAuth, // Use new API token middleware
         check("bookId", "Book ID is required").not().isEmpty(),
         check("userId", "User ID is required").not().isEmpty(),
         check("token", "Token is required").not().isEmpty(),
@@ -362,76 +403,6 @@ router.post(
     },
 );
 
-/**
- * @swagger
- * /api/scraper/token:
- *   get:
- *     summary: Generate a new auth token
- *     tags: [Scraper]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Token generated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 token:
- *                   type: string
- *       500:
- *         description: Server error
- */
-router.get(
-    "/token",
-    (req, res, next) => {
-        // Get token from header
-        const token =
-            req.header("x-auth-token") ||
-            req.header("authorization")?.replace("Bearer ", "");
-
-        // Check if no token
-        if (!token) {
-            return res
-                .status(401)
-                .json({ msg: "No token, authorization denied" });
-        }
-        try {
-            console.log(
-                "in scraper middleware, ",
-                token.split("~expireAt~")[0],
-            );
-            // const secretToken = token.split("~expireAt~")[0].toString();
-            // Verify JWT
-            // eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoiMTIzNDU2IiwibmFtZSI6IkpvaG4iLCJyb2xlcyI6InVzZXIifSwiaWF0IjoxNzQ4ODE0NTkyLCJleHAiOjE3NDg5MDA5OTJ9.0BzgNpTxMPsdBLk6MLz6F5HAhfs6n7ADLwgs2lhAhmc
-            // const decoded = jwt.verify(
-            //     secretToken,
-            //     process.env.EXPIRABLE_SECRET || "default_secret",
-            // );
-            // const { firstName, lastName, role, userId } = decoded;
-            // if (!firstName) {
-            //     return res
-            //         .status(401)
-            //         .json({ msg: "Invalid or expired token" });
-            // }
-            next();
-        } catch (error) {
-            console.error("Scraper middleware error:", error.message);
-            res.status(401).json({ msg: "Token validation failed" });
-        }
-    },
-    async (req, res) => {
-        try {
-            const token = courseScraperService.generateAuthToken();
-            res.header("Access-Control-Allow-Origin", "*");
-            res.header("Access-Control-Allow-Credentials", "true");
-            res.json({ token });
-        } catch (err) {
-            console.error(err.message);
-            res.status(500).send("Server Error");
-        }
-    },
-);
+// Removed the /api/scraper/token endpoint as it's replaced by API token generation during Telegram registration approval.
 
 module.exports = router;

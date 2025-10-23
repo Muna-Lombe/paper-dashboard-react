@@ -1,13 +1,10 @@
 const jwt = require("jsonwebtoken");
-// const Token = require("../models/Token");
+// const Token = require("../models/Token"); // No longer needed for this authentication flow
 require("dotenv").config();
 
 module.exports = async function (req, res, next) {
-    // Get token from header
-    const token =
-        req.header("x-auth-token") ||
-        req.header("authorization")?.replace("Bearer ", "");
-    // console.log("request in middleware..", token ?? false);
+    // Get token from cookie
+    const token = req.cookies["access-token"];
 
     // Check if no token
     if (!token) {
@@ -16,36 +13,15 @@ module.exports = async function (req, res, next) {
 
     try {
         // Verify JWT
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || undefined);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "default_jwt_secret");
 
-        const { firstName, lastName, role, userId } = decoded;
-
-        const tokenRecord = true;
-        // console.log("decoded", firstName);
-        // Check token in database
-        // const tokenRecord = await Token.findOne({
-        //     where: {
-        //         token: token,
-        //         isActive: true,
-        //         expiresAt: {
-        //             [require('sequelize').Op.gt]: new Date()
-        //         }
-        //     }
-        // });
-
-        if (!tokenRecord || !firstName) {
-            return res.status(401).json({ msg: "Invalid or expired token" });
-        }
-
-        // Add user from payload
-        req.body = {
-            userId: tokenRecord?.userId || userId,
-            userName: tokenRecord?.userName || firstName,
-            userRoles: tokenRecord?.userRoles || role,
-        };
+        // Attach user from payload to request object
+        req.user = decoded.user;
         next();
     } catch (err) {
         console.error("Auth middleware error:", err.message);
-        res.status(401).json({ msg: "Token is not valid" });
+        // Clear invalid token cookie if it exists
+        res.clearCookie("access-token");
+        res.status(401).json({ msg: "Token is not valid or expired" });
     }
 };
