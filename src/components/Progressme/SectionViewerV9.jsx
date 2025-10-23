@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
-import {
-  Row,
-  Col,
-  Card,
-  CardBody,
-  CardTitle,
-  Collapse,
-  Button,
-  ListGroup,
-  ListGroupItem,
-  Input,
-  Dropdown,
-  DropdownToggle,
-  DropdownMenu,
-  DropdownItem,
-} from 'reactstrap';
+// import {
+//   Row,
+//   Col,
+//   Card,
+//   CardBody,
+//   CardTitle,
+//   Collapse,
+//   Button,
+//   ListGroup,
+//   ListGroupItem,
+//   Input,
+//   Dropdown,
+//   DropdownToggle,
+//   DropdownMenu,
+//   DropdownItem,
+// } from 'reactstrap';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 // Helper function to reorder items in drag-and-drop
@@ -27,58 +27,58 @@ const reorder = (list, startIndex, endIndex) => {
 
 // NoteExercise subcomponent
 const NoteExercise = ({ content }) => (
-  <ListGroupItem className='d-flex flex-row justify-content-between m-1 px-1 bg-primary rounded border-primary '>
+  <div className="flex flex-row justify-between items-center m-1 p-1 bg-blue-500 rounded border border-blue-500 text-white">
     <div className="left">
-      <h5 className="left mb-2 bg-secondary border rounded text-white" style={{ width: "20px", display: "flex", justifyContent: "center", alignItems: "center" }}>
-        i
+      <h5 className="mb-2 bg-gray-600 border rounded text-white flex justify-center items-center w-5 h-5">
+        <i className="fas fa-info-circle"></i>
       </h5>
     </div>
-    <div className="middle d-flex flex-column text-white">
+    <div className="middle flex flex-col text-white">
       <p>{content.title}</p>
       <p>{content.text}</p>
     </div>
     <div className="right text-white">
       <span>Visible</span>
     </div>
-  </ListGroupItem>
+  </div>
 );
 
 // GapFillExercise subcomponent
 const GapFillExercise = ({ content }) => (
-  <ListGroupItem>
-    <h5 className="mb-2">{content.title}</h5>
+  <div className="p-4 border-b border-gray-200">
+    <h5 className="text-lg font-semibold mb-2">{content.title}</h5>
     {content.questions.map((question, index) => (
-      <div key={index}>
-        <p>{question.text}</p>
-        <Input type="text" name={`gap-fill-${index}`} className="mx-2" placeholder="Fill in the blank" />
+      <div key={index} className="mb-2">
+        <p className="mb-1">{question.text}</p>
+        <input type="text" name={`gap-fill-${index}`} className="mx-2 p-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Fill in the blank" />
       </div>
     ))}
-  </ListGroupItem>
+  </div>
 );
 
 // TextOrderExercise subcomponent
 const TextOrderExercise = ({ content }) => (
-  <ListGroupItem>
-    <h5 className="mb-2">{content.title}</h5>
+  <div className="p-4 border-b border-gray-200">
+    <h5 className="text-lg font-semibold mb-2">{content.title}</h5>
     {content.sentences.map((sentence, index) => (
-      <p key={index}>{sentence.text}</p>
+      <p key={index} className="mb-2">{sentence.text}</p>
     ))}
-  </ListGroupItem>
+  </div>
 );
 
 // GifExercise subcomponent
 const GifExercise = ({ content }) => (
-  <ListGroupItem>
-    <h5 className="mb-2">{content.title}</h5>
-    <img src={content.gifUrl} alt={content.alt} className="img-fluid" />
-  </ListGroupItem>
+  <div className="p-4 border-b border-gray-200">
+    <h5 className="text-lg font-semibold mb-2">{content.title}</h5>
+    <img src={content.gifUrl} alt={content.alt} className="img-fluid w-full h-auto" />
+  </div>
 );
 
 // VideoExercise subcomponent
 const VideoExercise = ({ content }) => (
-  <ListGroupItem>
-    <h5 className="mb-2">{content.title}</h5>
-    <div className="video-wrapper">
+  <div className="p-4 border-b border-gray-200">
+    <h5 className="text-lg font-semibold mb-2">{content.title}</h5>
+    <div className="relative pb-[56.25%] h-0 overflow-hidden max-w-full bg-black">
       <iframe
         width="100%"
         height="315"
@@ -86,127 +86,173 @@ const VideoExercise = ({ content }) => (
         title={content.title}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
+        className="absolute top-0 left-0 w-full h-full"
       ></iframe>
     </div>
-  </ListGroupItem>
+  </div>
 );
 
 // AudioExercise subcomponent
 const AudioExercise = ({ content }) => (
-  <ListGroupItem>
-    <h5 className="mb-2">{content.title}</h5>
-    <audio controls className="w-100">
+  <div className="p-4 border-b border-gray-200">
+    <h5 className="text-lg font-semibold mb-2">{content.title}</h5>
+    <audio controls className="w-full">
       <source src={content.audioUrl} type="audio/mpeg" />
       Your browser does not support the audio element.
     </audio>
-  </ListGroupItem>
+  </div>
 );
 
 // Picture Component
 const PictureExercise = ({content}) => (
-  <ListGroupItem>
-    <h5 className="mb-2">{content.title}</h5>
-  </ListGroupItem>
+  <div className="p-4 border-b border-gray-200">
+    <h5 className="text-lg font-semibold mb-2">{content.title}</h5>
+  </div>
 )
 
 // PictureLabel subcomponent
 const PictureLabel = ({ content }) => (
-  <ListGroupItem>
-    <h5 className="mb-2">{content.title}</h5>
-    <img src={content.image} alt={content.alt} className="img-fluid" />
-    <Input type="text" defaultValue={content.label} disabled />
-  </ListGroupItem>
+  <div className="p-4 border-b border-gray-200">
+    <h5 className="text-lg font-semibold mb-2">{content.title}</h5>
+    <img src={content.image} alt={content.alt} className="img-fluid w-full h-auto" />
+    <input type="text" defaultValue={content.label} disabled className="w-full p-2 border border-gray-300 rounded mt-2 bg-gray-100" />
+  </div>
 );
 
 // SortingExercise subcomponent
 const SortingExercise = ({ content }) => (
-  <ListGroupItem>
-    <h5 className="mb-2">{content.title}</h5>
+  <div className="p-4 border-b border-gray-200">
+    <h5 className="text-lg font-semibold mb-2">{content.title}</h5>
     <DragComponent id="sortingItems" items={content.items} direction="horizontal" />
-  </ListGroupItem>
+  </div>
 );
 
 // TrueFalse subcomponent
 const TrueFalse = ({ content }) => (
-  <ListGroupItem>
-    <h5 className="mb-2">{content.title}</h5>
+  <div className="p-4 border-b border-gray-200">
+    <h5 className="text-lg font-semibold mb-2">{content.title}</h5>
     {content.questions.map((question, index) => (
-      <div key={index}>
-        <p>{question.text}</p>
-        <Input type="radio" name={`truefalse-${index}`} value="true" /> True
-        <Input type="radio" name={`truefalse-${index}`} value="false" className="ms-2" /> False
+      <div key={index} className="mb-2">
+        <p className="mb-1">{question.text}</p>
+        <input type="radio" name={`truefalse-${index}`} value="true" className="mr-2" /> True
+        <input type="radio" name={`truefalse-${index}`} value="false" className="ml-2 mr-2" /> False
       </div>
     ))}
-  </ListGroupItem>
+  </div>
 );
 
 // MatchingExercise subcomponent
 const MatchingExercise = ({ content }) => (
-  <ListGroupItem>
-    <h5 className="mb-2">{content.title}</h5>
-    <Row className="d-flex flex-row justify-content-between gap-2">
-      <Col className="left-match w-50">
+  <div className="p-4 border-b border-gray-200">
+    <h5 className="text-lg font-semibold mb-2">{content.title}</h5>
+    <div className="flex justify-between gap-2">
+      <div className="w-1/2">
         <DragComponent id="left-match-items" items={content.leftItems} />
-      </Col>
-      <Col className="right-match w-50">
+      </div>
+      <div className="w-1/2">
         <DragComponent id="right-match-items" items={content.rightItems} />
-      </Col>
-    </Row>
-  </ListGroupItem>
+      </div>
+    </div>
+  </div>
 );
 
 // UnscrambleExercise subcomponent
 const UnscrambleExercise = ({ content }) => (
-  <ListGroupItem>
-    <h5 className="mb-2">{content.title}</h5>
+  <div className="p-4 border-b border-gray-200">
+    <h5 className="text-lg font-semibold mb-2">{content.title}</h5>
     <DragComponent id="unscrambleItems" items={content.items} direction="horizontal" />
-  </ListGroupItem>
+  </div>
 );
 
 // SortExercise subcomponent
 const SortExercise = ({ content }) => (
-  <ListGroupItem>
-    <h5 className="mb-2">{content.title}</h5>
+  <div className="p-4 border-b border-gray-200">
+    <h5 className="text-lg font-semibold mb-2">{content.title}</h5>
     <DragComponent id="sortItems" items={content.items} />
-  </ListGroupItem>
+  </div>
 );
 
 // ExternalLink subcomponent
 const ExternalLink = ({ link }) => (
-  <ListGroupItem>
-    <h5 className="mb-2">External Link</h5>
-    <a href={link} target="_blank" rel="noopener noreferrer" className="btn btn-link">
+  <div className="p-4 border-b border-gray-200">
+    <h5 className="text-lg font-semibold mb-2">External Link</h5>
+    <a href={link} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
       Follow the link
     </a>
-  </ListGroupItem>
+  </div>
 );
 
 // NewWords subcomponent
 const NewWords = ({ items }) => (
-  <ListGroupItem>
-    <h5 className="mb-2">New Words</h5>
-    <Button color="primary" className="mb-2">Add all words</Button>
+  <div className="p-4 border-b border-gray-200">
+    <h5 className="text-lg font-semibold mb-2">New Words</h5>
+    <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2">Add all words</button>
     <div>
       {items.map((word, index) => (
-        <p key={index} className="mb-2 p-2 bg-light rounded border">
+        <p key={index} className="mb-2 p-2 bg-gray-100 rounded border border-gray-200">
           {word.word}: {word.definition}
         </p>
       ))}
     </div>
-  </ListGroupItem>
+  </div>
 );
 
 // RecordExercise subcomponent
 const RecordExercise = ({ content }) => (
-  <ListGroupItem>
-    <h5 className="mb-2">{content.title}</h5>
-    <Button color="secondary">Start recording</Button>
-    <audio controls className="w-100">
+  <div className="p-4 border-b border-gray-200">
+    <h5 className="text-lg font-semibold mb-2">{content.title}</h5>
+    <button className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded mb-2">Start recording</button>
+    <audio controls className="w-full">
       <source src={content.audioUrl} type="audio/mpeg" />
       Your browser does not support the audio element.
     </audio>
-  </ListGroupItem>
+  </div>
 );
+
+// SelectOption component for dropdown options
+const SelectOption = ({ dropDownItems = [] }) => {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [selectedOption, setSelectedOption] = useState(dropDownItems[0] || '');
+  const toggle = () => setDropdownOpen(!dropdownOpen);
+
+  return (
+    <div className="relative inline-block text-left">
+      <button
+        type="button"
+        className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-blue-500"
+        id="options-menu"
+        aria-haspopup="true"
+        aria-expanded="true"
+        onClick={toggle}
+      >
+        {selectedOption || 'Select'}
+        <svg className="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+        </svg>
+      </button>
+
+      {dropdownOpen && (
+        <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+          <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+            {dropDownItems.map((item, index) => (
+              <button
+                key={index}
+                onClick={() => {
+                  setSelectedOption(item);
+                  setDropdownOpen(false);
+                }}
+                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 w-full text-left"
+                role="menuitem"
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // DragComponent helper for drag-and-drop functionality
 const DragComponent = ({ id, items, direction }) => {
@@ -221,11 +267,11 @@ const DragComponent = ({ id, items, direction }) => {
     <DragDropContext onDragEnd={handleOnDragEnd}>
       <Droppable droppableId={id} direction={direction}>
         {(provided) => (
-          <div {...provided.droppableProps} ref={provided.innerRef} className={direction === 'horizontal' ? 'd-flex' : ''}>
+          <div {...provided.droppableProps} ref={provided.innerRef} className={direction === 'horizontal' ? 'flex' : ''}>
             {dragItems.map((item, index) => (
               <Draggable key={item.id} draggableId={item.id} index={index}>
                 {(provided) => (
-                  <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="p-2 bg-light rounded mb-2">
+                  <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="p-2 bg-gray-100 rounded mb-2 border border-gray-200 mr-2 cursor-grab">
                     {item.content}
                   </div>
                 )}
@@ -289,38 +335,39 @@ const SectionViewerV9 = ({ section }) => {
   const toggleSection = () => setIsOpen(!isOpen);
 
   return (
-    <div className="container my-4">
-      <Card className="mb-4 shadow-sm">
-        <CardBody className="d-flex justify-content-between align-items-center">
-          <div className="d-flex align-items-center">
-            <div className="rounded-circle d-flex justify-content-center align-items-center bg-light" style={{ height: '80px', width: '80px' }}>
-              <span className="display-6 text-muted">S</span>
+    <div className="container mx-auto my-4">
+      <div className="mb-4 shadow-sm rounded-lg bg-white">
+        <div className="flex justify-between items-center p-4">
+          <div className="flex items-center">
+            <div className="rounded-full flex justify-center items-center bg-gray-100 h-20 w-20">
+              <span className="text-4xl text-gray-500 font-bold">S</span>
             </div>
-            <div className="ms-3">
-              <CardTitle tag="h4" className="mb-0">{section.name}</CardTitle>
+            <div className="ml-3">
+              <h4 className="text-xl font-semibold mb-0">{section.name}</h4>
             </div>
           </div>
-          <Button size='md' color="link" className="text-decoration-none text-secondary" onClick={toggleSection}>
-            {isOpen ? '>' : '<'}
-          </Button>
-        </CardBody>
+          <button className="text-gray-500 text-2xl" onClick={toggleSection}>
+            {isOpen ? <i className="fas fa-chevron-up"></i> : <i className="fas fa-chevron-down"></i>}
+          </button>
+        </div>
 
-        <Collapse isOpen={isOpen}>
-          <CardBody>
-            <ListGroup flush>
+        <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'}`}>
+          <div className="p-4">
+            <div className="border-t border-gray-200 pt-4">
               {
-                section.content && 
-                section.content[0] && 
+                section.content &&
+                section.content[0] &&
                 section.content[0].data.map((exercise, index) => (
                   <ExerciseSwitcher key={index} exercise={exercise} index={index} />
                 ))
               }
-            </ListGroup>
-          </CardBody>
-        </Collapse>
-      </Card>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
 export default SectionViewerV9;
+

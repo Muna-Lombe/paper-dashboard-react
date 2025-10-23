@@ -1,21 +1,4 @@
 import React, { useState } from 'react';
-import {
-  Row,
-  Col,
-  Card,
-  CardBody,
-  CardTitle,
-  Collapse,
-  Button,
-  ListGroup,
-  ListGroupItem,
-  Dropdown,
-  DropdownToggle,
-  DropdownMenu,
-  DropdownItem,
-  Input,
-  
-} from 'reactstrap';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 // Helper function to reorder items in drag-and-drop
@@ -28,31 +11,31 @@ const reorder = (list, startIndex, endIndex) => {
 
 // Subcomponents for each exercise
 const Instructions = () => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.1 Some Instructions</h5>
-    <p>Hello <Input type="text" name="blank1" placeholder="(someone)" /></p>
-  </ListGroupItem>
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.1 Some Instructions</h5>
+    <p>Hello <input type="text" name="blank1" placeholder="(someone)" className="inline-block border border-gray-300 rounded px-2 py-1" /></p>
+  </li>
 );
 
 const Carousel = () => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.2 This is a carousel of pictures</h5>
-    <img src="/path/to/table.jpg" alt="Table" className="img-fluid mb-2" />
-    <p className="text-center">A table</p>
-  </ListGroupItem>
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.2 This is a carousel of pictures</h5>
+    <img src="/path/to/table.jpg" alt="Table" className="w-full h-auto rounded-md mb-2" />
+    <p className="text-center mt-2">A table</p>
+  </li>
 );
 
 const GifExercise = () => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.3 A GIF about something funny</h5>
-    <img src="/path/to/cat-gif.gif" alt="A funny GIF" className="img-fluid" />
-  </ListGroupItem>
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.3 A GIF about something funny</h5>
+    <img src="/path/to/cat-gif.gif" alt="A funny GIF" className="w-full h-auto rounded-md" />
+  </li>
 );
 
 const VideoExercise = () => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.4 A video about trees</h5>
-    <div className="video-wrapper">
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.4 A video about trees</h5>
+    <div className="aspect-w-16 aspect-h-9">
       <iframe
         width="100%"
         height="315"
@@ -60,100 +43,100 @@ const VideoExercise = () => (
         title="YouTube video"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
+        className="w-full h-full"
       ></iframe>
-      <p className="text-center">Trees</p>
+      <p className="text-center mt-2">Trees</p>
     </div>
-  </ListGroupItem>
+  </li>
 );
 
 const GapFillExercise = ({items}) => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.5 Gap Fill Exercise</h5>
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.5 Gap Fill Exercise</h5>
     {
       items.map((i,x)=>{
-        
         const wordBlocks = i.sentence.split(" ")
         const [partBefore, partAfter] = [wordBlocks.slice(0, i.sliceIndex).join(" "), wordBlocks.slice(i.sliceIndex+1).join(" ")]
-
-        
         return(
-          <p key={x} className='d-flex flex-row align-items-baseline flex-wrap'>{x+1}. {partBefore} {' '} <Input type="text" name="blank1" placeholder={i.placeholder} className="mx-2 w-25" /> {partAfter}</p>
+          <p key={x} className="flex flex-row items-baseline flex-wrap text-base mb-2">
+            {x+1}. {partBefore} <input type="text" name="blank1" placeholder={i.placeholder} className="mx-2 w-1/4 border border-gray-300 rounded px-2 py-1" /> {partAfter}
+          </p>
         )
       })
     }
-  </ListGroupItem>
+  </li>
 );
 
 const TestExercise = () => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.6 A Test</h5>
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.6 A Test</h5>
     <p>Which is a fruit?</p>
-    <div className='px-4'>
-      <Input type="radio" name="test" className="me-2" /> Chair
+    <div className="px-4">
+      <label className="inline-flex items-center mt-2"><input type="radio" name="test" className="form-radio mr-2" /> <span className="ml-2">Chair</span></label>
       <br />
-      <Input type="radio" name="test" className="me-2" /> Car
+      <label className="inline-flex items-center mt-2"><input type="radio" name="test" className="form-radio mr-2" /> <span className="ml-2">Car</span></label>
       <br />
-      <Input type="radio" name="test" className="me-2" /> Cherry
+      <label className="inline-flex items-center mt-2"><input type="radio" name="test" className="form-radio mr-2" /> <span className="ml-2">Cherry</span></label>
     </div>
-  </ListGroupItem>
+  </li>
 );
 
 const ArticleExercise = () => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.7 An article about robots</h5>
-    <img src="https://th.bing.com/th/id/R.ee9e4f728bb1d88f72dbb08c8df0e114?rik=cUxMkcgIWpbYiw&pid=ImgRaw&r=0" alt="Robots" className="img-fluid mb-2" />
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.7 An article about robots</h5>
+    <img src="https://th.bing.com/th/id/R.ee9e4f728bb1d88f72dbb08c8df0e114?rik=cUxMkcgIWpbYiw&pid=ImgRaw&r=0" alt="Robots" className="w-full h-auto rounded-md mb-2" />
     <p>In the bustling city of Neotropolis...</p>
-  </ListGroupItem>
+  </li>
 );
 
 const TextExercise = () => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.8 Text about robots</h5>
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.8 Text about robots</h5>
     <p>Robots are machines designed to perform tasks autonomously or with minimal human intervention...</p>
-  </ListGroupItem>
+  </li>
 );
 
 const WritingExercise = () => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.9 Writing Exercise about Robots</h5>
-    <Input type="textarea" placeholder="Write something about robots" />
-  </ListGroupItem>
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.9 Writing Exercise about Robots</h5>
+    <textarea placeholder="Write something about robots" className="w-full border border-gray-300 rounded px-3 py-2"></textarea>
+  </li>
 );
 
 const AudioExercise = () => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.10 Audio Exercise</h5>
-    <audio controls className="w-100">
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.10 Audio Exercise</h5>
+    <audio controls className="w-full">
       <source src="/path/to/robot-audio.mp3" type="audio/mpeg" />
       Your browser does not support the audio element.
     </audio>
-  </ListGroupItem>
+  </li>
 );
 
 const GapFillNoBox = () => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.11 Gap Fill (No Box)</h5>
-    <div className="d-flex flex-wrap">
-      <p className="d-flex flex-row align-items-baseline flex-wrap">
-        Robots{' '} <Input type="text" className="mx-2 w-25" placeholder=" be" /> machines. In{' '} <Input type="text" className="mx-2 w-25" placeholder=" preposition(place)" />the bustling city of Neotropolis, a quirky household robot named Z3N loved to tell stories and help the Johnson children, Mia and Leo. When they{' '} <Input type="text" className="mx-2 w-25" placeholder=" pronoun" /> grew anxious about their upcoming school talent show—Mia too shy to sing solo and Leo lacking confidence for his magic act—Z3N had an idea.
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.11 Gap Fill (No Box)</h5>
+    <div className="flex flex-wrap">
+      <p className="flex flex-row items-baseline flex-wrap text-base">
+        Robots <input type="text" className="mx-2 w-1/4 border border-gray-300 rounded px-2 py-1" placeholder=" be" /> machines. In <input type="text" className="mx-2 w-1/4 border border-gray-300 rounded px-2 py-1" placeholder=" preposition(place)" />the bustling city of Neotropolis, a quirky household robot named Z3N loved to tell stories and help the Johnson children, Mia and Leo. When they <input type="text" className="mx-2 w-1/4 border border-gray-300 rounded px-2 py-1" placeholder=" pronoun" /> grew anxious about their upcoming school talent show—Mia too shy to sing solo and Leo lacking confidence for his magic act—Z3N had an idea.
       </p>
     </div>
-  </ListGroupItem>
+  </li>
 );
 
 const PictureLabel = () => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.12 Picture Label</h5>
-    <Input type="text" placeholder="Label" className="w-25" disabled defaultValue="robots" />
-    <div className="d-flex flex-column justify-content-start align-items-center">
-      <img src="https://www.bing.com/th?id=OIP.l89mVn4MiRsQuptE_ePPdwHaK-&w=146&h=217&c=8&rs=1&qlt=90&o=6&dpr=1.3&pid=3.1&rm=2" alt="Robot" className="img-thumbnail me-3" />
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.12 Picture Label</h5>
+    <input type="text" placeholder="Label" className="w-1/4 border border-gray-300 rounded px-2 py-1 mb-2" disabled defaultValue="robots" />
+    <div className="flex flex-col items-center justify-start">
+      <img src="https://www.bing.com/th?id=OIP.l89mVn4MiRsQuptE_ePPdwHaK-&w=146&h=217&c=8&rs=1&qlt=90&o=6&dpr=1.3&pid=3.1&rm=2" alt="Robot" className="w-auto h-auto border border-gray-300 rounded-md mr-3" />
     </div>
-  </ListGroupItem>
+  </li>
 );
 
 const SortingExercise = ({ items, handleOnDragEnd }) => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.13 Words Order (Sorting)</h5>
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.13 Words Order (Sorting)</h5>
     <DragComponent
       id={"sortingItems"}
       items={items}
@@ -161,23 +144,18 @@ const SortingExercise = ({ items, handleOnDragEnd }) => (
       layout={({ innerRef, draggableProps, dragHandleProps, item }) => {
         if(!innerRef||!dragHandleProps||!draggableProps){
           return(
-            <p>
-              Nothing here
-            </p>
-            
+            <p className="text-red-500">Nothing here</p>
           )
         }
         return (
-          <div ref={innerRef} {...draggableProps} {...dragHandleProps} className="w-25 mx-1 p-2 bg-light rounded border">
-            <div className=" w-auto d-flex align-items-center justify-content-between">
-              <span className='w-auto'>{item.content}</span>
-              <i className="bi bi-arrows-move text-secondary"></i>
-            </div>
+          <div ref={innerRef} {...draggableProps} {...dragHandleProps} className="w-1/4 mx-1 p-2 bg-gray-100 rounded border border-gray-300 flex items-center justify-between shadow-sm">
+            <span className="flex-grow text-gray-800">{item.content}</span>
+            <i className="fas fa-arrows-alt text-gray-500"></i>
           </div>
         )
       }}
     />
-  </ListGroupItem>
+  </li>
 );
 
 const SelectOption = ({dropDownItems=['Edit', 'Delete']})=>{
@@ -185,87 +163,94 @@ const SelectOption = ({dropDownItems=['Edit', 'Delete']})=>{
   const [dropValue, setDropValue] = useState("")
   const toggleDropdown = (id) => setDropdownOpen(prevState => (prevState === id ? null : id));
   return (
-    <Dropdown size='md' drop="down" isOpen={dropdownOpen === 'section'} toggle={() => toggleDropdown('section')}>
-      <DropdownToggle variant="success"  className="text-secondary me-2" hover="" style={{ cursor: 'pointer', lineHeight:'10px', backgroundColor:'transparent', }}>
+    <div className="relative">
+      <button
+        onClick={() => toggleDropdown('section')}
+        className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+      >
         {dropValue.toLowerCase() || '___'}
-      </DropdownToggle>
-      <DropdownMenu  positionFixed={false} right className='w-25'>
-        {
-          dropDownItems.map((item, index)=>(
-            <DropdownItem onClick={() => setDropValue(item)}  key={index}>{item}</DropdownItem>
-          ))
-        }
-      </DropdownMenu>
-    </Dropdown>
+        <i className="fas fa-chevron-down ml-2 -mr-1 h-5 w-5" ></i>
+      </button>
+      {dropdownOpen === 'section' && (
+        <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20">
+          <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+            {dropDownItems.map((item, index) => (
+              <button
+                key={index}
+                onClick={() => {
+                  setDropValue(item);
+                  setDropdownOpen(null);
+                }}
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                role="menuitem"
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 const OptionChoose = () => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.14 Option Choose</h5>
-    <p className='d-flex flex-row align-items-baseline flex-wrap'>Robots {' '} <SelectOption dropDownItems={['are', 'is', 'am']}/> designed to do some interesting things</p>
-  </ListGroupItem>
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.14 Option Choose</h5>
+    <p className="flex flex-row items-baseline flex-wrap text-base">Robots <SelectOption dropDownItems={['are', 'is', 'am']}/> designed to do some interesting things</p>
+  </li>
 );
 
 const TrueFalse = () => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.15 True/False</h5>
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.15 True/False</h5>
     <p>Robots are machines designed to perform tasks autonomously.</p>
-    <div className='d-flex flex-column'>
-      <p>
-        <Input type="radio" name="truefalse" className="me-2" /> True
-
-      </p>
-      <p>
-        <Input type="radio" name="truefalse" className="me-2" /> False
-
-      </p>
+    <div className="flex flex-col">
+      <label className="inline-flex items-center mt-2">
+        <input type="radio" name="truefalse" className="form-radio mr-2" /> <span className="ml-2">True</span>
+      </label>
+      <label className="inline-flex items-center mt-2">
+        <input type="radio" name="truefalse" className="form-radio mr-2" /> <span className="ml-2">False</span>
+      </label>
     </div>
-  </ListGroupItem>
+  </li>
 );
 
 const MatchingExercise = ({ leftItems, rightItems }) => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.16 Matching</h5>
-    <Row className="d-flex flex-row justify-content-between gap-2">
-      <Col  className="left-match w-50 ">
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.16 Matching</h5>
+    <div className="flex flex-row justify-between gap-2">
+      <div className="w-1/2">
         <DragComponent
           id={"left-match-items"}
           items={leftItems}
           layout={({ innerRef, draggableProps, dragHandleProps, item }) => {
             if (!innerRef || !dragHandleProps || !draggableProps) {
-              return (
-                <p>
-                  Nothing here
-                </p>
-
-              )
+              return (<p className="text-red-500">Nothing here</p>)
             }
             return (
-              <div ref={innerRef} {...draggableProps} {...dragHandleProps} key={item.id} className="p-2 bg-light rounded mb-2">{item.content}</div>
-            )}}/>
-       
-      </Col>
-      <Col className="right-match w-50 ms-3">
-        
+              <div ref={innerRef} {...draggableProps} {...dragHandleProps} key={item.id} className="p-2 bg-gray-100 rounded mb-2 border border-gray-300 shadow-sm">
+                {item.content}
+              </div>
+            )
+          }}/>
+      </div>
+      <div className="w-1/2 ml-3">
         <DragComponent
           id={"right-match-items"}
           items={rightItems}
           layout={({ innerRef, draggableProps, dragHandleProps, item }) => {
             if (!innerRef || !dragHandleProps || !draggableProps) {
-              return (
-                <p>
-                  Nothing here
-                </p>
-
-              )
+              return (<p className="text-red-500">Nothing here</p>)
             }
             return (
-              <div ref={innerRef} {...draggableProps} {...dragHandleProps} key={item.id} className="p-2 bg-light rounded mb-2">{item.content}</div>
+              <div ref={innerRef} {...draggableProps} {...dragHandleProps} key={item.id} className="p-2 bg-gray-100 rounded mb-2 border border-gray-300 shadow-sm">
+                {item.content}
+              </div>
             )
           }} />
-      </Col>
-    </Row>
-  </ListGroupItem>
+      </div>
+    </div>
+  </li>
 );
 
 const DragComponent =({id, items, layout, direction})=>{
@@ -280,7 +265,7 @@ const DragComponent =({id, items, layout, direction})=>{
     <DragDropContext onDragEnd={handleOnDragEnd}>
       <Droppable direction={direction} droppableId={id}>
         {(provided) => (
-          <div {...provided.droppableProps} ref={provided.innerRef} className={" d-flex "+ (direction && direction == "horizontal" ? " flex-row " : " flex-column") + " "}>
+          <div {...provided.droppableProps} ref={provided.innerRef} className={`flex ${direction && direction === "horizontal" ? "flex-row" : "flex-col"} space-y-2`}>
             {dragItems.map((item, index) => (
               <Draggable key={item.id} draggableId={item.id} index={index}>
                 {(provided) => (
@@ -297,30 +282,24 @@ const DragComponent =({id, items, layout, direction})=>{
   )
 }
 const UnscrambleExercise = ({ items, handleOnDragEnd }) => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.17 Unscramble</h5>
-    <div className="mb-2 p-2 bg-light rounded border">
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.17 Unscramble</h5>
+    <div className="mb-2 p-2 bg-gray-100 rounded border border-gray-300 shadow-sm">
         {
           items.map((item, index) => (
-            
             <DragComponent
+              key={item.id}
               id={"unscrambleItems-"+item.id}
               items={item.content.split("").map((i,x)=>({id: (x+1).toString(), content:i}))}
               direction={"horizontal"}
               layout={({ innerRef, draggableProps, dragHandleProps, item }) => {
                 if (!innerRef || !dragHandleProps || !draggableProps) {
-                  return (
-                    <p>
-                      Nothing here
-                    </p>
-
-                  )
+                  return (<p className="text-red-500">Nothing here</p>)
                 }
                 return (
-
-                  <div ref={innerRef} {...draggableProps} {...dragHandleProps} className="mx-2 mb-2 p-2 bg-light rounded border d-flex align-items-center justify-content-between">
-                    <span>{item.content}</span>
-                    <i className="bi bi-arrows-move text-secondary"></i>
+                  <div ref={innerRef} {...draggableProps} {...dragHandleProps} className="mx-1 mb-2 p-2 bg-white rounded border border-gray-300 flex items-center justify-between shadow-sm">
+                    <span className="text-gray-800">{item.content}</span>
+                    <i className="fas fa-arrows-alt text-gray-500"></i>
                   </div>
                 )
               }}
@@ -328,79 +307,73 @@ const UnscrambleExercise = ({ items, handleOnDragEnd }) => (
           ))
         }
       </div>
-  </ListGroupItem>
+  </li>
 );
 
 const SortExercise = ({items}) => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.18 Sort Exercise</h5>
-    <p>Sort the following sentences in order:</p>
-    <div>Drag words here: <Input type="text" className="mx-2" /></div>
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.18 Sort Exercise</h5>
+    <p className="mb-2">Sort the following sentences in order:</p>
+    <div className="mb-2">Drag words here: <input type="text" className="mx-2 w-1/4 border border-gray-300 rounded px-2 py-1" /></div>
     <DragComponent
-      id={"unscrambleItems-"}
+      id={"sortableSentences"}
       items={items}
       layout={({ innerRef, draggableProps, dragHandleProps, item, idx }) => {
         if (!innerRef || !dragHandleProps || !draggableProps) {
-          return (
-            <p>
-              Nothing here
-            </p>
-
-          )
+          return (<p className="text-red-500">Nothing here</p>)
         }
         return (
-
-          <div ref={innerRef} {...draggableProps} {...dragHandleProps} className="mx-2 mb-2 p-2 bg-light rounded border d-flex align-items-center justify-content-between">
-            <span>{idx+1}.{item.content}</span>
-            <i className="bi bi-arrows-move text-secondary"></i>
+          <div ref={innerRef} {...draggableProps} {...dragHandleProps} className="mx-1 mb-2 p-2 bg-gray-100 rounded border border-gray-300 flex items-center justify-between shadow-sm">
+            <span className="text-gray-800">{idx+1}. {item.content}</span>
+            <i className="fas fa-arrows-alt text-gray-500"></i>
           </div>
         )
       }}
     />
-  </ListGroupItem>
+  </li>
 );
 
 const ExternalLink = ({ link = "https://www.example.com" }) => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.19 External Link</h5>
-    <a href={link} target="_blank" rel="noopener noreferrer" className="btn btn-link">
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.19 External Link</h5>
+    <a href={link} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
       Follow the link
     </a>
-  </ListGroupItem>
+  </li>
 );
 
 const NewWords = ({items}) => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.20 New Words</h5>
-    <Button color="primary" className="mb-2">Add all words</Button>
-    <div>
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.20 New Words</h5>
+    <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2">Add all words</button>
+    <div className="space-y-2">
       {
         items.map((i,x)=>(
-          <p key={x} className='mb-2 p-2 bg-light rounded border border-light'>
-            - {i.content} : {i.definition}
+          <p key={x} className="mb-2 p-2 bg-gray-100 rounded border border-gray-300 shadow-sm">
+            - <span className="font-semibold">{i.content}</span> : {i.definition}
           </p>
         ))
       }
     </div>
-  </ListGroupItem>
+  </li>
 );
 
 const RecordExercise = () => (
-  <ListGroupItem>
-    <h5 className="mb-2">1.21 Record Yourself Saying Robots</h5>
-    <Button color="secondary" size='sm'>Start recording</Button>
-    <audio controls className="w-100">
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">1.21 Record Yourself Saying Robots</h5>
+    <button className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-1 px-3 rounded text-sm">Start recording</button>
+    <audio controls className="w-full mt-2">
       <source src="/path/to/robot-audio.mp3" type="audio/mpeg" />
       Your browser does not support the audio element.
     </audio>
-  </ListGroupItem>
+  </li>
 );
 
 const TimedTest = () => (
-  <ListGroupItem>
-    <h5 className="mb-2">2.1 Take the Test</h5>
+  <li className="py-3">
+    <h5 className="text-lg font-semibold mb-2">2.1 Take the Test</h5>
     <p>Time-limited test with 1 question.</p>
-  </ListGroupItem>
+  </li>
 );
 
 const SectionViewerV7 = () => {
@@ -460,31 +433,29 @@ const SectionViewerV7 = () => {
   };
 
   return (
-    <div id="content" className="container my-4" style={{ minHeight: 'calc(-97px + 100vh)' }}>
-      <Card className="mb-4 shadow-sm">
-        <CardBody className="d-flex justify-content-between align-items-center">
-          <div className="d-flex align-items-center">
-            <div
-              className="rounded-circle d-flex justify-content-center align-items-center bg-light"
-              style={{ height: '80px', width: '80px' }}
-            >
-              <span className="display-6 text-muted">S</span>
+    <div id="content" className="container mx-auto my-4 min-h-[calc(100vh-97px)]">
+      <div className="bg-white rounded-lg shadow-md mb-4">
+        <div className="flex justify-between items-center p-4">
+          <div className="flex items-center">
+            <div className="rounded-full flex justify-center items-center bg-gray-100 h-20 w-20">
+              <span className="text-gray-500 text-4xl">S</span>
             </div>
-            <div className="ms-3">
-              <CardTitle tag="h4" className="mb-0">Section 1</CardTitle>
+            <div className="ml-3">
+              <h4 className="text-xl font-semibold">Section 1</h4>
             </div>
           </div>
-          <div className="d-flex align-items-center">
+          <div className="flex items-center">
+            {/* Assuming SelectOption is a dropdown for section actions */}
             <SelectOption />
-            <Button color="link" className="text-decoration-none text-secondary" onClick={toggleSection}>
-              {isOpen ? <i className="bi bi-chevron-up"></i> : <i className="bi bi-chevron-down"></i>}
-            </Button>
+            <button className="text-gray-500 hover:text-gray-700 focus:outline-none ml-2" onClick={toggleSection}>
+              {isOpen ? <i className="fas fa-chevron-up"></i> : <i className="fas fa-chevron-down"></i>}
+            </button>
           </div>
-        </CardBody>
+        </div>
 
-        <Collapse isOpen={isOpen}>
-          <CardBody>
-            <ListGroup flush>
+        <div className={`${isOpen ? 'block' : 'hidden'}`}>
+          <div className="p-4">
+            <ul className="divide-y divide-gray-200">
               <Instructions />
               <Carousel />
               <GifExercise />
@@ -503,14 +474,14 @@ const SectionViewerV7 = () => {
               <MatchingExercise leftItems={matchingItemsLeft} rightItems={matchingItemsRight} />
               <UnscrambleExercise items={unscrambleItems} handleOnDragEnd={handleUnscrambleDragEnd} />
               <SortExercise items={matchingItemsLeft.concat(matchingItemsRight)} />
-              <ExternalLink link={""} />
+              <ExternalLink link={null} />
               <NewWords items={newWords} />
               <RecordExercise />
               <TimedTest />
-            </ListGroup>
-          </CardBody>
-        </Collapse>
-      </Card>
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

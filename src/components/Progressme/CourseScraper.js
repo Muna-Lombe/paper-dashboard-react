@@ -1,22 +1,8 @@
 import React, { memo, useEffect, useState } from "react";
-import {
-  Card,
-  CardHeader,
-  CardBody,
-  CardTitle,
-  Row,
-  Col,
-  Button,
-  Spinner,
-  FormGroup,
-  Form,
-  Input,
-  Label,
-} from "reactstrap";
 import axios from "axios";
+axios.defaults.withCredentials = true;
 import { addError } from "../../variables/slices/errorSlice";
 import { useDispatch } from "react-redux";
-import spirow from "../../assets/img/spriral-arrow.png";
 import { endpoints } from "@/config";
 import { addToast } from "variables/slices/toastSlice";
 
@@ -29,6 +15,15 @@ const CourseScraper = () => {
   const [showLogin, setShowLogin] = useState(false);
   const sess = sessionStorage;
   const dispatch = useDispatch();
+
+  useEffect(() => {
+    // Check if api-token exists in sessionStorage or a more robust check if needed
+    if (sessionStorage.getItem("api-token")) {
+      setIsAuthed(true);
+    } else {
+      setIsAuthed(false);
+    }
+  }, []);
 
   const handleGetBook = async (e, tUrl) => {
     e.preventDefault();
@@ -46,8 +41,10 @@ const CourseScraper = () => {
         sess.setItem("bookName", "");
       }
     } catch (error) {
-      // console.log(error);
-      dispatch(addError(error.response?.data?.msg || "Failed to get  book"));
+      dispatch(addError(error.response?.data?.msg || "Failed to get book"));
+      if (error.response && error.response.status === 401) {
+        dispatch(addError("Unauthorized: Please obtain an API token via the Telegram bot."));
+      }
       sess.setItem("bookId", "");
       sess.setItem("bookName", "");
     }
@@ -60,7 +57,7 @@ const CourseScraper = () => {
       const response = await axios.post(
         endpoints.paperDashApi.validateUrl.url,
         {
-          url: e.target?.[0]?.value.trim() || "",
+          url: e.target.url.value.trim() || "",
         },
       );
 
@@ -74,6 +71,9 @@ const CourseScraper = () => {
       }
     } catch (error) {
       dispatch(addError(error.response?.data?.msg || "Failed to validate URL"));
+      if (error.response && error.response.status === 401) {
+        dispatch(addError("Unauthorized: Please obtain an API token via the Telegram bot."));
+      }
       setTargetUrl(testUrl);
     } finally {
       setTimeout(() => setLinkLoading(false), 300);
@@ -84,10 +84,10 @@ const CourseScraper = () => {
     e.preventDefault();
     const bookId = sess.getItem("bookId");
     const userId = sess.getItem("userId");
-    const token = sess.getItem("expirableToken");
+    // The API token is now handled via HttpOnly cookie or x-api-token header, so no direct `token` from sessionStorage needed
 
-    if (!bookId || !userId || !token) {
-      dispatch(addError("Missing required information"));
+    if (!bookId || !userId) {
+      dispatch(addError("Missing required information (Book ID or User ID)."));
       return;
     }
 
@@ -95,7 +95,6 @@ const CourseScraper = () => {
       await axios.post(endpoints.paperDashApi.copyCourse.url, {
         bookId,
         userId,
-        token,
       });
       dispatch(addToast( "Book saved, go to your dashboard to see it"))
       setTimeout(() => {
@@ -103,45 +102,9 @@ const CourseScraper = () => {
       }, 10000);
     } catch (error) {
       dispatch(addError(error.response?.data?.msg || "Failed to copy course"));
-    }
-  };
-
-  const handleAuth = async (e, setAuthing) => {
-    e.preventDefault();
-    setAuthing(true);
-
-    const formData = new FormData(document.forms["auth-in"]);
-    const email = formData.get("email");
-    const password = formData.get("password");
-
-    try {
-      // Get a new token if not already set
-      if (!sess.getItem("expirableToken")) {
-        const tokenResponse = await axios.get(
-          endpoints.paperDashApi.getToken.url,
-        );
-        sess.setItem("expirableToken", tokenResponse.data.token);
+      if (error.response && error.response.status === 401) {
+        dispatch(addError("Unauthorized: Please obtain an API token via the Telegram bot."));
       }
-
-      // Authenticate with the token
-      const response = await axios.post(
-        endpoints.paperDashApi.authenticate.url,
-        {
-          email,
-          password,
-        },
-      );
-
-      // console.log("response from auth", response);
-
-      sess.setItem("userId", response.data.data.Value.Id);
-
-      setIsAuthed(true);
-      setShowLogin(false);
-    } catch (error) {
-      dispatch(addError(error.response?.data?.msg || "Authentication failed"));
-    } finally {
-      setAuthing(false);
     }
   };
 
@@ -151,6 +114,8 @@ const CourseScraper = () => {
     sess.removeItem("bookName");
     setTargetUrl("https://progressme.ru");
     setShowLogin(true);
+    setIsAuthed(false); // Reset authentication status
+    sessionStorage.removeItem("api-token"); // Clear any stored API token
   };
 
   const hasNoBookUserId = () =>
@@ -158,93 +123,69 @@ const CourseScraper = () => {
 
   // Components
   const LoadingButton = () => (
-    <Button color="primary" disabled>
-      <Spinner size="sm">Loading...</Spinner>
-      <span> Loading</span>
-    </Button>
+    <button className="bg-blue-500 text-white font-bold py-2 px-4 rounded opacity-50 cursor-not-allowed" disabled>
+      <span className="animate-spin inline-block w-4 h-4 mr-2 border-b-2 border-white rounded-full"></span>
+      Loading
+    </button>
   );
 
   const AuthIn = () => {
-    const [authing, setAuthing] = useState(false);
     return (
-      <div className="auth-in-wrapper w-75 h-100">
-        <div className="auth-in-header">
-          <h3 className="auth-in-header-title">Temporary Login</h3>
-          <p className="auth-in-header-subtitle">
-            <span>
-              Enter your actual email and password to access your account to
-              save your userId
-            </span>
+      <div className="w-3/4 h-full p-4">
+        <div className="mb-6">
+          <h3 className="text-xl font-bold mb-2">Scraper Access Authentication</h3>
+          <p className="text-gray-700 text-sm">
+            To use the scraper features, you need an API token.
             <br />
-            <em>- This is necessary to save the book to your account</em>
+            Please obtain your API token by registering through our Telegram bot.
             <br />
-            <em>
-              - Please remember to change them after, if you feel insecure.
-              <strong> We do not keep any login credentials</strong>
-            </em>
+            
+            <a href="https://t.me/omni_lang_bot" target="_blank"  className="text-blue-500 hover:underline" onClick={() => alert("You will be redirected to the telegram bot")}>How to get an API token?</a>
           </p>
         </div>
-        <Form id="auth-in" onSubmit={(e) => handleAuth(e, setAuthing)}>
-          <FormGroup id="formBasicEmail">
-            <Label>Email address</Label>
-            <Input
-              form="auth-in"
-              name="email"
-              type="email"
-              placeholder="Enter email"
-              disabled={authing}
-            />
-          </FormGroup>
-          <FormGroup id="formBasicPassword">
-            <Label>Password</Label>
-            <Input
-              form="auth-in"
-              name="password"
-              type="password"
-              placeholder="Password"
-              disabled={authing}
-            />
-          </FormGroup>
-          {authing ? (
-            <LoadingButton />
-          ) : (
-            <Button color="primary" type="submit">
-              Submit
-            </Button>
-          )}
-        </Form>
+        {/* Optionally, add a field here to manually enter an API token if you want to support that flow */}
+        <button 
+          onClick={() => {
+            // On click, re-evaluate if the API token is now available
+            if (sessionStorage.getItem("api-token")) {
+              setIsAuthed(true); // If token is found, set authed state to true
+              setShowLogin(false); // Hide the AuthIn component
+            } else {
+              // Optionally, inform the user that the token is still missing
+              dispatch(addError("API token not found. Please ensure you have obtained it via the Telegram bot."));
+            }
+          }} 
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+        >
+          I have an Access Token
+        </button>
       </div>
     );
   };
 
   const NoTargetUrlSet = () => (
-    <div
-      className="position-absolute top-100 start-50 translate-middle w-100 overlayer d-flex flex-column justify-content-center align-items-center px-2"
-      style={{ inset: 0 }}
-    >
-      <img src={spirow} className="w-25 scale-x-[-1] rotate-90" alt="arrow" />
-      <h4 className="w-75">
+    <div className="absolute inset-0 w-full flex flex-col justify-center items-center p-2">
+      <i className="fas fa-arrow-alt-circle-up text-gray-400 text-5xl mb-3 transform -rotate-90"></i>
+      <h4 className="w-3/4 text-center mt-4 text-lg font-semibold">
         Add the link to your book up here and see the magic
       </h4>
     </div>
   );
 
   const BookCopied = () => (
-    <div
-      className="position-absolute top-100 start-50 translate-middle w-100 overlayer d-flex flex-column justify-content-center align-items-center my-5 px-2"
-      style={{ inset: 0 }}
-    >
-      <div className="w-100 h-100">
-        <h3>Book Copied!</h3>
-        <h5>
+    <div className="absolute inset-0 w-full flex flex-col justify-center items-center my-5 p-2">
+      <div className="w-full h-full text-center">
+        <h3 className="text-2xl font-bold mb-2">Book Copied!</h3>
+        <h5 className="text-lg text-gray-700">
           Log in to
           <a
             href="https://progressme.ru/Account/Login"
             target="_blank"
             rel="noopener noreferrer"
+            className="text-blue-500 hover:underline ml-1"
           >
-            {" progressme.ru "}
-            <i className="fas fa-external-link" aria-hidden="true"></i>
+            progressme.ru
+            <i className="fas fa-external-link ml-1" aria-hidden="true"></i>
           </a>
           to see the book in your personal library
         </h5>
@@ -253,88 +194,83 @@ const CourseScraper = () => {
   );
 
   const LoadLink = ({ setLinkLoading }) => (
-    <Form
+    <form
       id="load-link"
-      className="w-75"
+      className="w-3/4 space-y-4"
       onSubmit={(e) => handleLoadLink(e, setLinkLoading)}
     >
-      <FormGroup className="w-100">
-        <Input
+      <div className="w-full">
+        <input
           type="text"
+          name="url"
           placeholder="progressme link"
           defaultValue={targetUrl || ""}
-          className="form-control"
+          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2"
         />
-        <div className="invalid-feedback">
+        <div className="text-red-500 text-xs italic mb-2">
           Please check the link and make sure there are no spaces.
         </div>
-        <Col>
-          <Button className="btn-semi-round" color="primary" type="submit">
-            connect
-          </Button>
-          <Button
-            className="btn-semi-round"
-            color="danger"
+        <div className="flex space-x-2">
+          <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" type="submit">
+            Connect
+          </button>
+          <button
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
             type="button"
             onClick={handleReset}
           >
-            reset
-          </Button>
-        </Col>
-      </FormGroup>
-    </Form>
+            Reset
+          </button>
+        </div>
+      </div>
+    </form>
   );
 
   const BookInfo = ({ disabled = false }) => (
-    <Form id={disabled ? "disabled-save-book" : "save-book"}>
-      <FormGroup className="w-100">
-        <Input
-          className="mb-1"
+    <form id={disabled ? "disabled-save-book" : "save-book"} className="space-y-4">
+      <div className="w-full">
+        <input
+          className="mb-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
           type="text"
           id={disabled ? "disabled-book-id" : "book-id"}
           readOnly
           defaultValue={
-            disabled ? "book id" : sess.getItem("bookId") || "book id"
+            disabled ? "book id" : sessionStorage.getItem("bookId") || "book id"
           }
         />
-        <Input
-          className="my-1"
+        <input
+          className="my-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
           type="text"
           id={disabled ? "disabled-book-name" : "book-name"}
           readOnly
           defaultValue={
-            disabled ? "book name" : sess.getItem("bookName") || "book name"
+            disabled ? "book name" : sessionStorage.getItem("bookName") || "book name"
           }
         />
-        <Input
-          className="mt-1"
+        <input
+          className="mt-1 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
           type="text"
           id={disabled ? "disabled-user-id" : "user-id"}
           readOnly
           defaultValue={
-            disabled ? "user name" : sess.getItem("userId") || "user name"
+            disabled ? "user name" : sessionStorage.getItem("userId") || "user name"
           }
         />
-        <Button
-          className="btn-semi-round"
-          color="primary"
+        <button
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4"
           type="button"
           disabled={disabled || hasNoBookUserId()}
           onClick={handleSave}
         >
-          save
-        </Button>
-      </FormGroup>
-    </Form>
+          Save
+        </button>
+      </div>
+    </form>
   );
 
   const IntermediateComponent = ({ linkLoading }) => (
-    <div className="w-100 position-relative">
-      <div className="w-100 h-100 bg-img">
-        <img
-          src="https://static.tildacdn.com/tild3633-3338-4961-b237-633361646262/Footer_Bg.svg"
-          alt="background"
-        />
+    <div className="w-full relative">
+      <div className="w-full h-full bg-cover" style={{ backgroundImage: `url('https://static.tildacdn.com/tild3633-3338-4961-b237-633361646262/Footer_Bg.svg')` }}>
       </div>
       {hasNoBookUserId() ? (
         linkLoading ? (
@@ -352,40 +288,24 @@ const CourseScraper = () => {
     authedIn ? (
       targetUrlSet ? (
         linkLoading ? (
-          <div className="iframe-loading w-100 h-100 d-flex flex-column justify-content-center align-items-center">
-            <img
-              src={spirow}
-              alt="ProgressMe Logo"
-              className="mb-3"
-              style={{ width: "50px" }}
-            />
-            <Spinner size="sm" className="mb-2" />
-            <span>Page is loading...</span>
+          <div className="w-full h-full flex flex-col justify-center items-center">
+            <span className="animate-spin inline-block w-12 h-12 border-b-2 border-gray-900 mb-3 rounded-full"></span>
+            <span className="mt-2">Page is loading...</span>
           </div>
         ) : (
-          <div className="w-100 position-relative">
+          <div className="w-full relative">
             {!authedIn ? (
               <div
-                className="no-auth-view-book"
-                style={{
-                  position: "absolute",
-                  width: "100%",
-                  height: "100%",
-                  background: "rgba(0,0,0,0.5)",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
+                className="absolute inset-0 w-full h-full bg-black bg-opacity-50 flex justify-center items-center z-10"
               >
-                <Button
-                  className="btn-semi-round"
-                  color="primary"
+                <button
+                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
                   type="button"
                   disabled={false}
                   onClick={() => setShowLogin(true)}
                 >
                   Login
-                </Button>
+                </button>
               </div>
             ) : (
               <></>
@@ -395,11 +315,7 @@ const CourseScraper = () => {
               src={targetUrl}
               frameBorder="0"
               allowFullScreen={true}
-              style={{
-                minWidth: "100%",
-                minHeight: "100%",
-              }}
-              className="iframe_iframe w-100 h-100 min-h-[500px]"
+              className="w-full h-full min-h-[500px]"
               title="course preview"
             />
           </div>
@@ -409,25 +325,20 @@ const CourseScraper = () => {
       )
     ) : (
       <AuthIn />
-    ),
-    //     showLogin ? (
-    // <AuthIn />
-    //     ) : (
-    //       <IntermediateComponent linkLoading={linkLoading} />
-    //     ),
+    )
   );
 
   const LeftComponent = ({ authedIn, targetUrlSet }) => {
     const [linkLoading, setLinkLoading] = useState(false);
     return (
-      <Col>
-        <Row lg="10">
+      <div className="w-full">
+        <div className="lg:w-10/12">
           <LoadLink setLinkLoading={setLinkLoading} />
-        </Row>
-        <Row lg="10" className="h-100">
+        </div>
+        <div className="lg:w-10/12 h-full">
           <div
-            className="iframe_wrapper w-100 h-100"
-            style={{ minheight: "500px" }}
+            className="w-full h-full"
+            style={{ minHeight: "500px" }}
           >
             <MemoizedIframe
               authedIn={authedIn}
@@ -435,27 +346,27 @@ const CourseScraper = () => {
               linkLoading={linkLoading}
             />
           </div>
-        </Row>
-      </Col>
+        </div>
+      </div>
     );
   };
 
   return (
-    <Col lg="12" className="h-100">
-      <Card className="h-100">
-        <CardHeader>
-          <CardTitle tag="h5">Add the progressme link</CardTitle>
-        </CardHeader>
-        <CardBody className="p-4 h-100">
-          <Row className="h-100 w-100 overflow-hidden flex-row">
+    <div className="w-full h-full">
+      <div className="relative flex flex-col min-w-0 break-words bg-white rounded-lg mb-6 shadow-lg h-full">
+        <div className="px-4 py-3 mb-0 bg-white rounded-t-lg flex flex-col justify-between items-center">
+          <h4 className="text-xl font-semibold">Course Scraper</h4>
+        </div>
+        <div className="flex-auto p-4 h-full">
+          <div className="h-full w-full overflow-hidden flex flex-row">
             <LeftComponent authedIn={isAuthed} targetUrlSet={!!targetUrl} />
-            <Col sm="3">
+            <div className="sm:w-1/4">
               <BookInfo disabled={!isAuthed} />
-            </Col>
-          </Row>
-        </CardBody>
-      </Card>
-    </Col>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

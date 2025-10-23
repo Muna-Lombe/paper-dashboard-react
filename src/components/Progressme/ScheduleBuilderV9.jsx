@@ -1,19 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Table,
-  Button,
-  Input,
-  Row,
-  Col,
-  Label,
-  FormGroup,
-  UncontrolledTooltip,
-  UncontrolledPopover,
-  PopoverBody,
-  Modal,
-  ModalHeader,
-  ModalBody,
-} from 'reactstrap';
 import html2canvas from 'html2canvas';
 
 // Months and Days Mapping
@@ -192,11 +177,11 @@ const ScheduleBuilder = () => {
       
       // Add the image to the modal
       setImagePreview(() => () => (
-        <div className="image-preview-wrapper d-flex flex-column">
-          <a href={link.href} download={link.download} className='btn btn-primary'>
+        <div className="flex flex-col">
+          <a href={link.href} download={link.download} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
             {currentLabels.exportSchedule}
           </a>
-            <img src={img.src} id="image-preview" alt="Schedule Preview" style={{ width: '100%' }} />
+            <img src={img.src} id="image-preview" alt="Schedule Preview" className="w-full" />
         </div>
       ));
       setImageModalOpen(true);
@@ -641,16 +626,16 @@ const ScheduleBuilder = () => {
     ).getDate();
 
     if (day > daysInMonth) {
-      return "invalid-day";
+      return "bg-gray-200 cursor-not-allowed"; // Tailwind classes for invalid day
     }
 
     const isHolidayLesson = (holidayLessons[monthIndex] || []).includes(day);
     const isHoliday = (holidayDays[monthIndex] || []).includes(day);
     const isLesson = (lessonDays[monthIndex] || []).includes(day);
 
-    if (isHolidayLesson) return "holiday-lesson";
-    if (isHoliday) return "holiday";
-    if (isLesson) return "lesson";
+    if (isHolidayLesson) return "bg-yellow-400"; // Tailwind class for holiday lesson
+    if (isHoliday) return "bg-red-500"; // Tailwind class for holiday
+    if (isLesson) return "bg-gray-400"; // Tailwind class for lesson
     return "";
   };
 
@@ -676,22 +661,23 @@ const ScheduleBuilder = () => {
     0
   );
   const TranslateIcon = () =>(
-    <svg style={{width:'15px', aspectRatio:'1/1'}} fill="currentColor" xmlns="http://www.w3.org/2000/svg" class="bi bi-translate" viewBox="0 0 16 16">
-      <path d="M4.545 6.714 4.11 8H3l1.862-5h1.284L8 8H6.833l-.435-1.286H4.545zm1.634-.736L5.5 3.956h-.049l-.679 2.022H6.18z" />
-      <path d="M0 2a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v3h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3H2a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H2zm7.138 9.995c.193.301.402.583.63.846-.748.575-1.673 1.001-2.768 1.292.178.217.451.635.555.867 1.125-.359 2.08-.844 2.886-1.494.777.665 1.739 1.165 2.93 1.472.133-.254.414-.673.629-.89-1.125-.253-2.057-.694-2.82-1.284.681-.747 1.222-1.651 1.621-2.757H14V8h-3v1.047h.765c-.318.844-.74 1.546-1.272 2.13a6.066 6.066 0 0 1-.415-.492 1.988 1.988 0 0 1-.94.31z" />
-    </svg>
+    <i className="fas fa-language w-4 h-4" />
   )
   
   const removeHighlightSelection = () =>{
     // find any cells that have been highlighted and remove highilighting
     // console.log("removing styles");
     
-    const highlightedCells = document.querySelectorAll('.highlighted')
+    const highlightedCells = document.querySelectorAll('.bg-blue-200, .border-blue-500')
     highlightedCells.forEach(cell => {
-      cell.classList.remove('highlighted')
-      cell.classList.remove('highlighted-first-edge')
-      cell.classList.remove('highlighted-inner')
-      cell.classList.remove('highlighted-last-edge')
+      cell.classList.remove('bg-blue-200')
+      cell.classList.remove('border-l-2')
+      cell.classList.remove('border-r-2')
+      cell.classList.remove('border-t-2')
+      cell.classList.remove('border-b-2')
+      cell.classList.remove('rounded-l-lg')
+      cell.classList.remove('rounded-r-lg')
+      cell.classList.remove('border-blue-500')
     })
   }
   const highlightSelection = ()=> {
@@ -791,11 +777,16 @@ const ScheduleBuilder = () => {
     handleCellRangeSelect(null, { first: { monthIndex: parseInt(fm), day: parseInt(fd) }, last: { monthIndex: parseInt(lm), day: parseInt(ld) } });
     
     (
-      highlightedCells.forEach((cell, x)=> (x===0 || x===highlightedCells.length-1) ? 
-      x===0 ?
-          (cell.classList.add('highlighted'), cell.classList.add('highlighted-last-edge'))
-        : (cell.classList.add('highlighted') , cell.classList.add('highlighted-first-edge'))
-      : (cell.classList.add('highlighted') , cell.classList.add('highlighted-inner')))
+      highlightedCells.forEach((cell, x)=> {
+        cell.classList.add('bg-blue-200', 'border-blue-500');
+        if (x === 0) {
+          cell.classList.add('rounded-l-lg', 'border-l-2', 'border-t-2', 'border-b-2');
+        } else if (x === highlightedCells.length - 1) {
+          cell.classList.add('rounded-r-lg', 'border-r-2', 'border-t-2', 'border-b-2');
+        } else {
+          cell.classList.add('border-t-2', 'border-b-2');
+        }
+      })
     )
 
     
@@ -803,101 +794,90 @@ const ScheduleBuilder = () => {
   }
 
   const DaysInput= ()=>(
-    <div className="days-input d-flex flex-column">
-      <h5>{currentLabels.lessonSettings}</h5>
-      <p className='text-danger font-weight-bold'>{currentLabels.lessonSettingsTip}</p>
-      <div className="grouped-forms d-flex flex-row flex-lg-column" style={{gap:'8px'}}>
-        <FormGroup>
-          <Label for="lessonDays" id="lessonDaysTooltip">
+    <div className="flex flex-col">
+      <h5 className="text-lg font-semibold mb-2">{currentLabels.lessonSettings}</h5>
+      <p className="text-red-500 font-bold text-sm mb-4">{currentLabels.lessonSettingsTip}</p>
+      <div className="flex flex-row flex-wrap lg:flex-col gap-2">
+        <div className="mb-4"> {/* Replaced FormGroup */}
+          <label htmlFor="lessonDays" id="lessonDaysTooltip" className="block text-gray-700 text-sm font-bold mb-2">
             {currentLabels.daysForLessons}
-          </Label>
-          <Input
+          </label>
+          <input
             type="text"
             id="lessonDays"
-            // value={lessonDaysInput}
             placeholder="Enter days (comma separated)"
-            // onChange={(e) => setLessonDaysInput(e.target.value)}
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
           />
-          <UncontrolledTooltip placement="right" target="lessonDaysTooltip">
+          <div id="lessonDaysTooltip" className="text-sm text-gray-500 mt-1">
             {currentTooltips.daysForLessons}
-          </UncontrolledTooltip>
-          <Button size='sm' color="primary" className="mt-2 d-flex align-items-center" onClick={addLessonDays}>
-            <span style={{fontSize:"22px"}}>
-              {currentLabels.addButton}
-            </span>
-          </Button>
-        </FormGroup>
-        <FormGroup>
-          <Label for="holidayDays" id="holidayDaysTooltip">
+          </div>
+          <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xl flex items-center mt-2" onClick={addLessonDays}>
+            <span>{currentLabels.addButton}</span>
+          </button>
+        </div>
+        <div className="mb-4"> {/* Replaced FormGroup */}
+          <label htmlFor="holidayDays" id="holidayDaysTooltip" className="block text-gray-700 text-sm font-bold mb-2">
             {currentLabels.holidays}
-          </Label>
-          <Input
+          </label>
+          <input
             type="text"
             id="holidayDays"
-            // value={holidayDaysInput}
             placeholder="Enter days (comma separated)"
-            // onChange={(e) => setHolidayDaysInput(e.target.value)}
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
           />
-          <UncontrolledTooltip placement="right" target="holidayDaysTooltip">
+          <div id="holidayDaysTooltip" className="text-sm text-gray-500 mt-1">
             {currentTooltips.holidays}
-          </UncontrolledTooltip>
-          <Button size='sm' color="primary" className="mt-2 d-flex align-items-center" onClick={addHolidayDays}>
-            <span style={{fontSize:"22px"}}>
-              {currentLabels.addButton}
-            </span>
-          </Button>
-        </FormGroup>
-        <FormGroup>
-          <Label for="holidayLessons" id="holidayLessonsTooltip">
+          </div>
+          <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xl flex items-center mt-2" onClick={addHolidayDays}>
+            <span>{currentLabels.addButton}</span>
+          </button>
+        </div>
+        <div className="mb-4"> {/* Replaced FormGroup */}
+          <label htmlFor="holidayLessons" id="holidayLessonsTooltip" className="block text-gray-700 text-sm font-bold mb-2">
             {currentLabels.lessonsOnHolidays}
-          </Label>
-          <Input
+          </label>
+          <input
             type="text"
             id="holidayLessons"
-            // value={holidayLessonsInput}
             placeholder="Enter days (comma separated)"
-            // onChange={(e) => setHolidayLessonsInput(e.target.value)}
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
           />
-          <UncontrolledTooltip
-            placement="right"
-            target="holidayLessonsTooltip"
+          <div
+            id="holidayLessonsTooltip"
+            className="text-sm text-gray-500 mt-1"
           >
             {currentTooltips.lessonsOnHolidays}
-          </UncontrolledTooltip>
-          <Button size='sm' color="primary" className="mt-2 d-flex align-items-center" onClick={addHolidayLessons}>
-            <span style={{fontSize:"22px"}}>
-              {currentLabels.addButton}
-            </span>
-          </Button>
-        </FormGroup>
-
+          </div>
+          <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-xl flex items-center mt-2" onClick={addHolidayLessons}>
+            <span>{currentLabels.addButton}</span>
+          </button>
+        </div>
       </div>
     </div>
   )
 
   const LeftSideBar =()=>(
     <div
-      className="left-sidebar p-3 border-right d-flex flex-row flex-lg-column"
-      style={{ minWidth: "250px", boxSizing: "border-box" }}
+      className="p-3 border-r flex flex-row flex-wrap lg:flex-col min-w-[250px] box-border"
     >
       <DaysInput />
       {/* Legend */}
-      <div className="legend m-lg-0 mx-3 px-3" style={{ boxSizing: "border-box" }}>
-        <h5>{currentLabels.legendTitle}</h5>
-        <Row className='d-flex flex-column'>
-          <Col className="d-flex align-items-center mb-2">
-            <div className="legend-box lesson me-2"></div>
+      <div className="lg:m-0 mx-3 px-3 box-border">
+        <h5 className="text-lg font-semibold mb-2">{currentLabels.legendTitle}</h5>
+        <div className="flex flex-col">
+          <div className="flex items-center mb-2">
+            <div className="w-5 h-5 border border-black mr-2 bg-gray-400"></div>
             <span>{currentLabels.daysForLessons}</span>
-          </Col>
-          <Col className="d-flex align-items-center mb-2">
-            <div className="legend-box holiday me-2"></div>
+          </div>
+          <div className="flex items-center mb-2">
+            <div className="w-5 h-5 border border-black mr-2 bg-red-500"></div>
             <span>{currentLabels.holidays}</span>
-          </Col>
-          <Col className="d-flex align-items-center mb-2 ">
-            <div className="legend-box holiday-lesson me-2"></div>
+          </div>
+          <div className="flex items-center mb-2 ">
+            <div className="w-5 h-5 border border-black mr-2 bg-yellow-400"></div>
             <span>{currentLabels.lessonsOnHolidays}</span>
-          </Col>
-        </Row>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -918,76 +898,64 @@ const ScheduleBuilder = () => {
     };
   }, []);
   return (
-    <div className="d-flex flex-column bg-white" style={{ overflowX: "auto" }}>
-      <p onClick={toggleLanguage} className='btn  m-3 d-flex  justify-content-center align-items-center m-1 border rounded' style={{width:'50px', height:'40px', cursor:'pointer'}}>
+    <div className="flex flex-col bg-white overflow-x-auto">
+      <p onClick={toggleLanguage} className="flex justify-center items-center m-3 p-1 border rounded w-12 h-10 cursor-pointer">
         <TranslateIcon/>
-        <span className='' >
-          {currentLabels.toggleLanguage}
-        </span>
+        <span>{currentLabels.toggleLanguage}</span>
       </p>
-      <div className="d-flex flex-column  flex-lg-row ">
+      <div className="flex flex-col lg:flex-row">
         {/* Left Sidebar */}
         <LeftSideBar/>
 
         {/* Schedule Table */}
-        {/* <Scheduletable/> */}
         <div
-          className="flex-grow-1 p-3"
+          className="flex-grow p-3 box-border"
           id="schedule-table"
-          style={{ boxSizing: "border-box" }}
         >
-          <h5>{currentLabels.scheduleTitle}</h5>
-          <div className="schedule-header w-100 d-flex justify-content-between">
-            <Button size='sm' color="danger" className="mt-3" onClick={resetSchedule}>
+          <h5 className="text-lg font-semibold mb-4">{currentLabels.scheduleTitle}</h5>
+          <div className="w-full flex justify-between items-center mb-4">
+            <button className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm" onClick={resetSchedule}>
               {currentLabels.resetButton}
-            </Button>
-            <Button color="success" onClick={createImagePreview}>
+            </button>
+            <button className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" onClick={createImagePreview}>
               {currentLabels.exportButton}
-            </Button>
+            </button>
           </div>
-          <div className='table-wrapper'>
-            <p className='table-name w-100 d-flex text-nowrap justify-content-center align-items-baseline font-weight-bold' style={{gap:'8px'}}>
-              <Label for="scheduleName" id="scheduleNameTooltip">
+          <div className="table-wrapper">
+            <p className="w-full flex flex-nowrap justify-center items-baseline font-bold gap-2 mb-2">
+              <label htmlFor="scheduleName" id="scheduleNameTooltip">
                 {currentLabels.scheduleName}:
-              </Label>
-              <Input
+              </label>
+              <input
                 type="text"
                 id="scheduleName"
-                className='w-25 font-weight-bold'
-                
-                // value={holidayLessonsInput}
-                placeholder={""}
-              // onChange={(e) => setHolidayLessonsInput(e.target.value)}
+                className="w-1/4 font-bold border-b border-gray-300 focus:outline-none focus:border-blue-500"
+                placeholder=""
               />
             </p>
-            <Table bordered responsive className="schedule-table" style={{ width: '100%' }}>
-              
+            <table className="table-auto w-full border-collapse border border-gray-400"> {/* Replaced Table */}
               <thead>
-                {/* <tr className='w-100' >
-                  <th colSpan={33} className=' d-flex'>
-                  </th>
-                </tr> */}
                 <tr>
-                  <th>{' '}</th>
-                  <th>{' '}</th>
+                  <th className="px-2 py-1 border border-gray-400">{' '}</th>
+                  <th className="px-2 py-1 border border-gray-400">{' '}</th>
                   {Array.from({ length: 31 }, (_, i) => (
-                    <th key={i}>{i + 1}</th>
+                    <th key={i} className="px-2 py-1 border border-gray-400">{i + 1}</th>
                   ))}
-                  <th>{currentLabels.totalLessons}</th>
+                  <th className="px-2 py-1 border border-gray-400">{currentLabels.totalLessons}</th>
                 </tr>
               </thead>
               <tbody>
                 {monthsData.map((monthData, monthIndex) => (
-                  <tr key={monthIndex} style={{ height: "10px" }}>
-                    <td className='d-flex justify-content-end align-items-center '>
-                      <Input
-
+                  <tr key={monthIndex} className="h-10">
+                    <td className="flex justify-end items-center px-2 py-1 border border-gray-400">
+                      <input
                         type="checkbox"
                         checked={selectedMonths[monthIndex]}
                         onChange={() => toggleMonth(monthIndex)}
+                        className="mr-2"
                       />
                     </td>
-                    <td>
+                    <td className="px-2 py-1 border border-gray-400">
                       {monthData.name}
                     </td>
                     {Array.from({ length: 31 }, (_, dayIndex) => {
@@ -1008,28 +976,27 @@ const ScheduleBuilder = () => {
                         <td
                           key={dayIndex}
                           id={cellId}
-                          className={`${isHighlighted ? cellClass : ""} ${isInvalidDay ? "invalid-day" : ""
-                            }`}
+                          className={`relative text-center align-middle p-1 min-w-[30px] border border-gray-400 ${isHighlighted ? cellClass : ""} ${isInvalidDay ? "bg-gray-200 cursor-not-allowed" : ""}`}
                           
-                          style={{
-                            position: "relative",
-                            cursor: isInvalidDay ? "not-allowed" : "pointer",
-                            height: "10px"
-                          }}
+                          onClick={
+                            !isInvalidDay
+                              ? (e) => {
+                                e.stopPropagation();
+                                removeHighlightSelection();
+                                handleCellClick(e, monthIndex, day)
+                              }
+                              : undefined
+                          }
                           
                         >
                           {isInvalidDay ? (
-                            <div className="invalid-day-overlay"></div>
+                            <div className="absolute inset-0 bg-gray-600 opacity-20 pointer-events-none transform -skew-y-12"></div>
                           ) : (
                             
                             <span 
-                              // style={{width:'100%', height:'100%'}}
                               onClick={
                                 !isInvalidDay
                                   ? (e) => {
-                                    // console.log("reaching span");
-
-                                    // e.preventDefault();
                                     e.stopPropagation();
                                     removeHighlightSelection();
                                     handleCellClick(e, monthIndex, day)
@@ -1043,180 +1010,115 @@ const ScheduleBuilder = () => {
                             </span> 
                           )}
                           {!isInvalidDay && (
-                            <UncontrolledPopover
-                              trigger="legacy"
-                              isOpen={popoverOpen[cellId]}
-                              target={cellId}
-                              toggle={(e) => {
-                                togglePopover(e,monthIndex, day)
-                              }}
-                              placement="auto"
+                            <div // Replaced UncontrolledPopover
+                              className={`absolute z-10 bg-white shadow-lg rounded-lg p-4 ${popoverOpen[cellId] ? "block" : "hidden"}`}
+                              style={{ minWidth: "200px" }}
                             >
-                              <PopoverBody>
-                                {/* Add to Lesson Days */}
-                                <FormGroup 
-                                check 
-                                className='checkbox-formgroup activity'>
-                                  <Label check className="lessons">
-                                    <Input
-                                      type="checkbox"
-                                      onChange={(e) =>{
-                                          //ensure all other inputs are unchecked
+                              <div className="mb-2"> 
+                                <label className="inline-flex items-center">
+                                  <input
+                                    type="checkbox"
+                                    onChange={(e) =>{
                                         e.preventDefault();
                                         e.stopPropagation();
-                                        const checkFormGroup = document.querySelectorAll(".checkbox-formgroup.activity:not(:has(label.lessons))")
-                                          checkFormGroup.forEach((formGroup)=>{
-                                            const checkbox = formGroup.querySelector("input[type='checkbox']")
-                                            checkbox.checked = false;
-                                          }) 
-                                          updateCell("lesson")
-                                        }
+                                        const checkboxes = document.querySelectorAll("input[type='checkbox'][name^='dayType-']");
+                                        checkboxes.forEach((checkbox) => {
+                                          if (checkbox !== e.target) checkbox.checked = false;
+                                        });
+                                        updateCell("lesson")
                                       }
-                                    />{" "}
-                                    {currentLabels.addToLessonDays}
-                                  </Label>
-                                </FormGroup>
-                                {/* Add to Holiday Days */}
-                                <FormGroup 
-                                check 
-                                
-                                className="checkbox-formgroup activity mt-2">
-                                  <Label check className='holiday-days'>
-                                    <Input
-                                      type="checkbox"
-                                      onChange={(e) =>{
-                                          //ensure all other inputs are unchecked
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          const checkFormGroup = document.querySelectorAll(".checkbox-formgroup.activity:not(:has(label.holiday-days))")
-
-                                          checkFormGroup.forEach((formGroup)=>{
-                                            const checkbox = formGroup.querySelector("input[type='checkbox']")
-                                            checkbox.checked = false;
-                                          }) 
-                                          updateCell("holiday")
-                                        }
+                                    }
+                                    className="form-checkbox"
+                                  />{" "}
+                                  <span className="ml-2">{currentLabels.addToLessonDays}</span>
+                                </label>
+                              </div>
+                              <div className="mb-2"> 
+                                <label className="inline-flex items-center">
+                                  <input
+                                    type="checkbox"
+                                    onChange={(e) =>{
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        const checkboxes = document.querySelectorAll("input[type='checkbox'][name^='dayType-']");
+                                        checkboxes.forEach((checkbox) => {
+                                          if (checkbox !== e.target) checkbox.checked = false;
+                                        });
+                                        updateCell("holiday")
                                       }
-                                    />{" "}
-                                    {currentLabels.addToHolidayDays}
-                                  </Label>
-                                </FormGroup>
-                                {/* Add to Holiday Lessons */}
-                                <FormGroup check className="checkbox-formgroup activity mt-2">
-                                  <Label check className='holiday-lessons'>
-                                    <Input
-                                      type="checkbox"
-                                      onChange={(e) =>{
-                                          //ensure all other inputs are unchecked
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          const checkFormGroup = document.querySelectorAll(".checkbox-formgroup.activity:not(:has(label.holiday-lessons))")
-
-                                          checkFormGroup.forEach((formGroup)=>{
-                                            const checkbox = formGroup.querySelector("input[type='checkbox']")
-                                            checkbox.checked = false;
-                                          }) 
-                                          updateCell("holidayLesson")
-                                        }
+                                    }
+                                    className="form-checkbox"
+                                  />{" "}
+                                  <span className="ml-2">{currentLabels.addToHolidayDays}</span>
+                                </label>
+                              </div>
+                              <div className="mb-2"> 
+                                <label className="inline-flex items-center">
+                                  <input
+                                    type="checkbox"
+                                    onChange={(e) =>{
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        const checkboxes = document.querySelectorAll("input[type='checkbox'][name^='dayType-']");
+                                        checkboxes.forEach((checkbox) => {
+                                          if (checkbox !== e.target) checkbox.checked = false;
+                                        });
+                                        updateCell("holidayLesson")
                                       }
-                                    />{" "}
-                                    {currentLabels.addToHolidayLessons}
-                                  </Label>
-                                </FormGroup>
-                                {/* Make Recurring */}
-                                <FormGroup check className="checkbox-formgroup mt-2">
-                                  <Label check className='make-recurring checked-'>
-                                    <Input
-                                      type="checkbox"
-                                      onChange={handleMakeRecurringChange}
-                                    />{" "}
-                                    {currentLabels.makeRecurring}
-                                  </Label>
-                                </FormGroup>
-                                
-                                <Button size='sm' color="danger" onClick={()=>{
-                                  handleDeleteActivity(cellId, getCellClass(monthIndex, day));
-                                  // setModalOpen(false);
-                                }}>
-                                  {currentLabels.removeDay}
-                                </Button>
-                              </PopoverBody>
-                              <style jsx>
-                                {`
-                                  td span{
-                                    display: block;
-                                    width: 100%;
-                                    height: 100%;
-                                    // position: absolute;
-                                    // top: 0;
-                                    // left: 0;
-                                  }
-                                  .checkbox-formgroup{
-                                    border:1px;
-                                    border-radius: 5px;
-                                    
-                                  }
-                                  .checkbox-formgroup:hover{
-                                    background-color: #34b5b8;
-                                    color: white;
-                                  }
-                                  .checkbox-formgroup:has(label input:checked){
-                                    // padding: 3px;
-
-                                    border: 3px,#34b5b8;
-                                    border-radius: 10px;
-                                    color: #34b5b8;
-                                  }
-                                  .checkbox-formgroup:has(label input:checked):hover{
-                                    background-color: white;
-                                    border: 4px;
-                                    border-radius: 10px;
-                                  }
-                                `}
-                              </style>
-                            </UncontrolledPopover>
+                                    }
+                                    className="form-checkbox"
+                                  />{" "}
+                                  <span className="ml-2">{currentLabels.addToHolidayLessons}</span>
+                                </label>
+                              </div>
+                              <label className="inline-flex items-center mt-2"> 
+                                <input
+                                  type="checkbox"
+                                  checked={makeRecurring}
+                                  onChange={handleMakeRecurringChange}
+                                  className="form-checkbox"
+                                />{" "}
+                                <span className="ml-2">
+                                  {currentLabels.makeRecurring}
+                                </span>
+                              </label>
+                              
+                              <button className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded mt-2" onClick={()=>{
+                                handleDeleteActivity(cellId, getCellClass(monthIndex, day));
+                              }}>
+                                {currentLabels.removeDay}
+                              </button>
+                            </div>
                           )}
-                          <style jsx>
-                            {
-                              `
-                                td span{
-                                    display: block;
-                                    width: 100%;
-                                    height: 100%;
-                                    // position: absolute;
-                                    // top: 0;
-                                    // left: 0;
-                                  }
-                              `
-                            }
-                          </style>
                         </td>
                       );
                     })}
-                    <td>{calculateTotalLessons(monthIndex)}</td>
+                   <td className="px-2 py-1 border border-gray-400">{calculateTotalLessons(monthIndex)}</td>
                   </tr>
                 ))}
               </tbody>
               {/* Grand Total */}
               <tfoot>
                 <tr>
-                  <td colSpan={32} className="text-end">
-                    <strong>
+                 <td colSpan={32} className="text-right px-4 py-2 border border-gray-400">
+                   <strong className="font-bold">
                       {currentLabels.grandTotalLessons}: {grandTotalLessons}
                     </strong>
                   </td>
                 </tr>
               </tfoot>
-            </Table>
-            <Modal isOpen={imageModalOpen} toggle={toggleImageModal} size="lg" modalClassName='image-modal d-block'>
-              <ModalHeader toggle={toggleImageModal}>close</ModalHeader>
-              <ModalBody>
+            </table>
+            <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${imageModalOpen ? 'block' : 'hidden'}`}>
+              <div className="bg-white p-4 rounded-lg shadow-lg max-w-4xl w-full">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-lg font-bold">Schedule Preview</h4>
+                  <button onClick={toggleImageModal} className="text-gray-500 hover:text-gray-700">Close</button>
+                </div>
                 {
                   imagePreview && imagePreview()
                 }
-                {/* <ImagePreview/> */}
-              </ModalBody>
-            </Modal>
+              </div>
+            </div>
           </div>
         </div>
         {/* Right Sidebar */}
@@ -1228,107 +1130,6 @@ const ScheduleBuilder = () => {
           
         </div> */}
       </div>
-
-      
-
-      {/* Styling for the legend boxes and table highlights */}
-      <style jsx>{`
-        .legend-box {
-          width: 20px;
-          height: 20px;
-          border: 1px solid #000;
-        }
-        .lesson {
-          background-color: #a9a9a9; /* Gray */
-        }
-        .holiday {
-          background-color: #ff0000; /* Red */
-        }
-        .holiday-lesson {
-          background-color: #ffff00; /* Yellow */
-        }
-        td.lesson {
-          background-color: #a9a9a9;
-        }
-        td.holiday {
-          background-color: #ff0000;
-        }
-        td.holiday-lesson {
-          background-color: #ffff00;
-        }
-        .schedule-table th,
-        .schedule-table td {
-          text-align: center;
-          vertical-align: middle;
-          // padding: 5px;
-          position: relative;
-          min-width: 30px;
-        }
-        // .schedule-table td span{
-        //   display: block;
-        //   width: 100%;
-        //   height: 100%;
-        //   // position: absolute;
-        //   // top: 0;
-        //   // left: 0;
-        // }
-        td.highlighted.highlighted-first-edge{
-          background-color: #e9ecef;
-          // border-radius: 5px;
-          border-top: 3px solid #44c47d;
-          // border-bottom-left-radius: 8px;
-          border-left: 3px solid #44c47d;
-          border-bottom: 3px solid #44c47d;
-          border-bottom-left-radius: 8px;
-          
-          
-          box-shadow: 0 0 0 2px blue;
-        }
-        td.highlighted.highlighted-inner{
-          background-color: #e9ecef;
-          border-top: 3px solid #44c47d;
-          border-bottom: 3px solid #44c47d;
-          
-          
-          box-shadow: 0 0 0 2px blue;
-        }
-        td.highlighted.highlighted-last-edge{
-          background-color: #e9ecef;
-          border-radius: 0 5px 5px 0;
-          border-top: 3px solid #44c47d;
-          border-right: 3px solid #44c47d;
-          border-bottom: 3px solid #44c47d;
-          // border-color: blue;
-          
-          box-shadow: 0 0 0 2px blue;
-        }
-          
-        .invalid-day {
-          background-color: #e9ecef;
-          cursor: not-allowed;
-        }
-        
-        .invalid-day-overlay {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background-image: linear-gradient(
-            135deg,
-            transparent 25%,
-            #6c757d 25%,
-            #6c757d 50%,
-            transparent 50%,
-            transparent 75%,
-            #6c757d 75%,
-            #6c757d
-          );
-          background-size: 10px 10px;
-          opacity: 0.2;
-          pointer-events: none;
-        }
-      `}</style>
     </div>
   );
 };

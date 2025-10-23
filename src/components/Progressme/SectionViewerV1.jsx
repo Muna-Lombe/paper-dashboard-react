@@ -1,25 +1,4 @@
 import React, { useState } from 'react';
-import {
-  Card,
-  CardBody,
-  CardTitle,
-  CardSubtitle,
-  Collapse,
-  Button,
-  ListGroup,
-  ListGroupItem,
-  Modal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Dropdown,
-  DropdownToggle,
-  DropdownMenu,
-  DropdownItem,
-  Input,
-  FormGroup,
-  Label
-} from 'reactstrap';
 
 const SectionViewerV1 = () => {
   const [isOpen, setIsOpen] = useState(true);
@@ -49,138 +28,117 @@ const SectionViewerV1 = () => {
   };
 
   return (
-    <div id="content" className="content" style={{ minHeight: 'calc(-97px + 100vh)' }}>
+    <div id="content" className="min-h-[calc(100vh-97px)]">
       <div className="data_wrapper">
         {/* Section Card */}
-        <Card className="mb-3">
-          <CardBody className="d-flex align-items-center justify-content-between">
-            <div className="d-flex align-items-center">
+        <div className="bg-white rounded-lg shadow-md mb-3">
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center">
               <div
-                className="user_photo_wrapper course-image me-3"
-                style={{
-                  backgroundColor: 'rgb(255, 217, 255)',
-                  height: '80px',
-                  width: '80px',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
+                className="bg-pink-100 h-20 w-20 rounded-lg flex items-center justify-center mr-3"
               >
-                <span className="user_inits" style={{ color: 'rgb(230, 149, 230)', fontSize: '2rem' }}>
-                  S
-                </span>
+                <span className="text-pink-400 text-4xl">S</span>
               </div>
               <div>
-                <CardTitle tag="h5">Section 1</CardTitle>
+                <h5 className="text-xl font-semibold">Section 1</h5>
               </div>
             </div>
-            <div className="d-flex align-items-center">
-              <Dropdown isOpen={dropdownOpen === 'section'} toggle={() => toggleDropdown('section')}>
-                <DropdownToggle tag="span" data-toggle="dropdown" aria-expanded={dropdownOpen === 'section'}>
-                  <Button color="link" className="text-decoration-none text-secondary">
-                    <i className="bi bi-three-dots-vertical"></i>
-                  </Button>
-                </DropdownToggle>
-                <DropdownMenu end>
-                  <DropdownItem>Edit</DropdownItem>
-                  <DropdownItem>Delete</DropdownItem>
-                </DropdownMenu>
-              </Dropdown>
-              <Button color="link" className="text-decoration-none text-secondary" onClick={toggleSection}>
-                {isOpen ? <i className="bi bi-chevron-up"></i> : <i className="bi bi-chevron-down"></i>}
-              </Button>
+            <div className="flex items-center">
+              <div className="relative">
+                <button
+                  onClick={() => toggleDropdown('section')}
+                  className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                >
+                  <i className="fas fa-ellipsis-v"></i>
+                </button>
+                {dropdownOpen === 'section' && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20">
+                    <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Edit</a>
+                    <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Delete</a>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={toggleSection}
+                className="text-gray-500 hover:text-gray-700 focus:outline-none ml-2"
+              >
+                {isOpen ? <i className="fas fa-chevron-up"></i> : <i className="fas fa-chevron-down"></i>}
+              </button>
             </div>
-          </CardBody>
+          </div>
 
           {/* Lessons List */}
-          <Collapse isOpen={isOpen}>
-            <CardBody className="pt-0">
-              <ListGroup flush>
+          <div className={`${isOpen ? 'block' : 'hidden'}`}>
+            <div className="p-4 pt-0">
+              <ul className="divide-y divide-gray-200">
                 {/* Existing Lessons */}
-                <ListGroupItem className="d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center">
+                <li className="flex items-center justify-between py-3">
+                  <div className="flex items-center">
                     <div
-                      className="user_photo_wrapper lesson-image me-3"
-                      style={{
-                        backgroundColor: 'rgb(255, 217, 255)',
-                        height: '40px',
-                        width: '40px',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
+                      className="bg-pink-100 h-10 w-10 rounded-lg flex items-center justify-center mr-3"
                     >
-                      <span className="user_inits" style={{ color: 'rgb(230, 149, 230)', fontSize: '1.5rem' }}>
-                        U
-                      </span>
+                      <span className="text-pink-400 text-xl">U</span>
                     </div>
                     <div>
-                      <CardSubtitle tag="h6" className="mb-0">
-                        Unit 1
-                      </CardSubtitle>
+                      <h6 className="text-base font-semibold">Unit 1</h6>
                     </div>
                   </div>
-                  <Button color="primary" size="sm" onClick={toggleLessonModal}>
+                  <button
+                    onClick={toggleLessonModal}
+                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm"
+                  >
                     Open Unit
-                  </Button>
-                </ListGroupItem>
+                  </button>
+                </li>
 
                 {/* New Unit Button */}
-                <ListGroupItem className="d-flex align-items-center justify-content-start hover-item" style={{ cursor: 'pointer' }}>
-                  <Button color="secondary" className="me-3" size="sm">
-                    <i className="bi bi-plus-lg"></i>
-                  </Button>
+                <li className="flex items-center justify-start py-3 cursor-pointer hover:bg-gray-50">
+                  <button className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-3 rounded text-sm mr-3">
+                    <i className="fas fa-plus-lg"></i>
+                  </button>
                   <div>New Unit</div>
-                </ListGroupItem>
-              </ListGroup>
-            </CardBody>
-          </Collapse>
-        </Card>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
 
         {/* Lesson Modal */}
-        <Modal isOpen={isLessonOpen} toggle={toggleLessonModal} size="lg">
-          <ModalHeader toggle={toggleLessonModal}>Unit 1</ModalHeader>
-          <ModalBody>
+        <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${isLessonOpen ? 'block' : 'hidden'}`}>
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-2xl w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="text-xl font-bold">Unit 1</h4>
+              <button onClick={toggleLessonModal} className="text-gray-500 hover:text-gray-700">Close</button>
+            </div>
             {/* Lesson Content */}
             <div className="lesson-content">
               <div className="lesson-section">
-                <h4 className="lesson_section_header_text d-flex align-items-center">
+                <h4 className="text-lg font-semibold flex items-center mb-4">
                   Section 1
-                  <Button color="link" className="p-0 ms-2">
-                    <i className="bi bi-pencil"></i>
-                  </Button>
+                  <button className="text-blue-500 hover:text-blue-700 ml-2 p-0">
+                    <i className="fas fa-pencil-alt"></i>
+                  </button>
                 </h4>
 
                 {/* Exercises List */}
-                <div className="exercises-list mt-4">
+                <div className="mt-4">
                   {/* Exercise Item 1.1 */}
-                  <div className="exercise_wrapper mb-4">
-                    <div className="d-flex justify-content-between align-items-center mb-2">
-                      <div className="d-flex align-items-center">
+                  <div className="bg-gray-50 p-4 rounded-md mb-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center">
                         <div
-                          className="icon_wrapper me-3"
-                          style={{
-                            backgroundColor: 'rgb(240, 251, 255)',
-                            borderRadius: '50%',
-                            height: '40px',
-                            width: '40px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
+                          className="bg-blue-100 rounded-full h-10 w-10 flex items-center justify-center mr-3"
                         >
-                          <span style={{ color: 'rgb(51, 204, 255)', fontWeight: 'bold' }}>1.1</span>
+                          <span className="text-blue-500 font-bold">1.1</span>
                         </div>
-                        <h5 className="mb-0">Some Instructions</h5>
+                        <h5 className="text-lg font-semibold">Some Instructions</h5>
                       </div>
                       <ExerciseActions />
                     </div>
-                    <div className="exercise-content">
+                    <div className="lesson-content">
                       <p>
                         <span>Hello </span>
-                        <span className="text-primary">[drag word here]</span>
+                        <span className="text-blue-500">[drag word here]</span>
                         <span>(someone).</span>
                       </p>
                     </div>
@@ -190,13 +148,16 @@ const SectionViewerV1 = () => {
                 </div>
               </div>
             </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button color="secondary" onClick={toggleLessonModal}>
-              Close
-            </Button>
-          </ModalFooter>
-        </Modal>
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={toggleLessonModal}
+                className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -208,51 +169,42 @@ const ExerciseActions = () => {
   const toggleDropdown = () => setDropdownOpen(!dropdownOpen);
 
   return (
-    <div className="exercise-common-ui-components-actions" style={{ zIndex: 15 }}>
-      <div className="icon_more_wrapper">
-        <Dropdown isOpen={dropdownOpen} toggle={toggleDropdown}>
-          <DropdownToggle tag="span" data-toggle="dropdown">
-            <img
-              src="/path/to/icon-more.svg"
-              alt="Icon-More"
-              className="exercise-common-ui-components-actions-icon"
-            />
-          </DropdownToggle>
-          <DropdownMenu end className="box-dropdown animation-up">
-            <DropdownItem className="exercise-common-ui-components-actions-menu-item">
-              <div className="icon-reset">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="rgb(82, 82, 102)">
-                  <g id="Icon_Reset" data-name="Icon Reset">
-                    <path id="Icon" d="M17.65 6.35A8 8 0 1 0 19.73 14h-2.08A6 6 0 1 1 12 6a5.915 5.915 0 0 1 4.22 1.78L13 11h7V4z"></path>
-                  </g>
-                </svg>
-              </div>
-              <span>Reset the answers</span>
-            </DropdownItem>
-            <DropdownItem className="exercise-common-ui-components-actions-menu-item">
-              <img src="/path/to/icon-position.svg" alt="Change position" />
-              <span>Change position</span>
-            </DropdownItem>
-            <DropdownItem className="exercise-common-ui-components-actions-menu-item">
-              <img src="/path/to/icon-edit.svg" alt="Edit exercise" />
-              <span>Edit exercise</span>
-            </DropdownItem>
-            <DropdownItem className="exercise-common-ui-components-actions-menu-item">
-              <img src="/path/to/icon-delete.svg" alt="Delete exercise" />
-              <span>Delete exercise</span>
-            </DropdownItem>
-            <DropdownItem divider />
-            <DropdownItem className="exercise-common-ui-components-actions-menu-item">
-              <img src="/path/to/icon-copy.svg" alt="Copy exercise(s)" />
-              <span>Copy exercise(s) to...</span>
-            </DropdownItem>
-            <DropdownItem className="exercise-common-ui-components-actions-menu-item">
-              <img src="/path/to/icon-reply.svg" alt="Move exercise(s)" />
-              <span>Move exercise(s) to...</span>
-            </DropdownItem>
-          </DropdownMenu>
-        </Dropdown>
-      </div>
+    <div className="relative z-10">
+      <button
+        onClick={toggleDropdown}
+        className="text-gray-500 hover:text-gray-700 focus:outline-none"
+      >
+        <i className="fas fa-ellipsis-v"></i>
+      </button>
+      {dropdownOpen && (
+        <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1">
+          <a href="#" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+            <i className="fas fa-sync-alt mr-3 text-gray-500"></i>
+            <span>Reset the answers</span>
+          </a>
+          <a href="#" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+            <i className="fas fa-arrows-alt mr-3 text-gray-500"></i>
+            <span>Change position</span>
+          </a>
+          <a href="#" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+            <i className="fas fa-edit mr-3 text-gray-500"></i>
+            <span>Edit exercise</span>
+          </a>
+          <a href="#" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+            <i className="fas fa-trash-alt mr-3 text-gray-500"></i>
+            <span>Delete exercise</span>
+          </a>
+          <div className="border-t border-gray-200"></div>
+          <a href="#" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+            <i className="fas fa-copy mr-3 text-gray-500"></i>
+            <span>Copy exercise(s) to...</span>
+          </a>
+          <a href="#" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+            <i className="fas fa-reply mr-3 text-gray-500"></i>
+            <span>Move exercise(s) to...</span>
+          </a>
+        </div>
+      )}
     </div>
   );
 };

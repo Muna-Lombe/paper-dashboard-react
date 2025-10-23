@@ -1,0 +1,5 @@
+src/views/User.js
+src/components/Bot/Bot.css
+src/components/Bot/Bot.module.css
+src/components/Bot/Whatsbot.module.css
+src/assets/img/spriral-arrow.png

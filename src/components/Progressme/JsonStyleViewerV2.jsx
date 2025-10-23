@@ -5,19 +5,6 @@ import { useState } from 'react'
 import { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { updateOrder, updateCorrection, updateData, addCorrection, addData, resetStateWithNewData, removeCorrection} from '../../variables/slices/pdfSlices'
-import {
-  Container,
-  Row,
-  Col,
-  Form,
-  FormGroup,
-  Label,
-  Input,
-  Button,
-  Card,
-  CardBody,
-  CardTitle
-} from 'reactstrap'
 import { unflattenArray } from '../../variables'
 import { flattenObject } from '../../variables'
 import useWebSocket, { ReadyState, useSocketIO } from 'react-use-websocket'
@@ -73,7 +60,7 @@ const JsonStyleViewer = ({socket}) => {
           onDragEnd={handleDragEnd}
           style={{ y, boxShadow }}
         >
-          <Container
+          <div
             data={value}
             path={path}
             onEdit={onEdit}
@@ -95,25 +82,22 @@ const JsonStyleViewer = ({socket}) => {
         style={{ y, boxShadow }}
         className={`ml-${depth >=5 ? 4 : depth * 2} p-2 bg-white rounded`}
       >
-        <div
-          className="d-flex flex-row gap-2"
-        >
-          <Label size="lg" for={`${section_id ? (section_id+"-") : ""}item-${name}`} className="text-primary">"{name}":</Label>
-          <Input
-            // bsSize='lg'
+        <div className="flex flex-row gap-2">
+          <label htmlFor={`${section_id ? (section_id+"-") : ""}item-${name}`} className="text-lg text-blue-500">"{name}":</label>
+          <input
             id={`${section_id ? (section_id+"-") : ""}item-${name}`}
             name={`${section_id ? (section_id+"-") : ""}item-${name}`}
             type="text"
             value={value}
             onChange={(e) => handleChange(e.target.value)}
-            className="ml-4 mw-75 bg-transparent border-bottom"
+            className="ml-4 w-3/4 bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500"
           />
         </div>
       </motion.div>
     );
   };
 
-  const Container = ({ data, path, onEdit, depth, isHash, section_id }) => {
+  const JsonContainer = ({ data, path, onEdit, depth, isHash, section_id }) => {
     
     const keys = Object.keys(data)
     const [order, setOrder] = useState(keys)
@@ -140,7 +124,7 @@ const JsonStyleViewer = ({socket}) => {
           {!isRoot ? (isExpanded ? '▼' : '▶') : ""} {path.split('.').pop() + " " + prefix}
         </div>
         {isExpanded && (
-          <Form id={`field-${path.split('.').pop()}`} name={`field-${path.split('.').pop()}`}>
+          <form id={`field-${path.split('.').pop()}`} name={`field-${path.split('.').pop()}`}>
             {order.map((key, index) => {
               const value = data[key];
               const currentPath = path ? `${path}.${key}` : key;
@@ -160,27 +144,17 @@ const JsonStyleViewer = ({socket}) => {
                 />
               );
             })}
-          </Form>
+          </form>
         )}
         {suffix}
       </div>
     );
   };
 
-const JsonDisplay = ({ data, onEdit }) => {
-
-  // data = data.map(d=>{
-  //   console.log("d", d[0])
-  //   if(typeof d[0] === "object" && Array.isArray(d[0])){
-  //     return [d[0][0].split("-")[0], d[0]]
-      
-  //   }
-  // })
-  // console.log("data", data);
-  
+const JsonDisplay = ({ data, onEdit, JsonContainer }) => {
   const objData = unflattenArray((data))
   return (
-    <Container data={objData} path='' onEdit={onEdit} depth={0} isHash={true} />
+    <JsonContainer data={objData} path='' onEdit={onEdit} depth={0} isHash={true} />
   )
 }
 
@@ -197,10 +171,10 @@ const JsonDisplay = ({ data, onEdit }) => {
       }, [correctionState]);
 
       return (
-        <Row className="mb-2">
-          <Col>
-            <FormGroup>
-              <Input
+        <div className="mb-2 flex flex-wrap -mx-2">
+          <div className="w-full px-2">
+            <div className="mb-4">
+              <input
                 id={`property-${index}`}
                 type="text"
                 defaultValue={correctionState.property}
@@ -210,28 +184,28 @@ const JsonDisplay = ({ data, onEdit }) => {
                   }
                 }, 1000)}
                 placeholder="Property"
-                className="mb-2"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2"
               />
-              <Input
+              <textarea
                 id={`correction-${index}`}
-                type="textarea"
                 defaultValue={correctionState.correction}
                 onKeyUp={(e) => setTimeout(() => {
                   setCorrectionState(ps => ({ ...ps, correction: e.target.value, attributeChanged: "correction" }));
                 }, 4000)}
                 placeholder="Correction"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
               />
-            </FormGroup>
-          </Col>
-          <Col xs="auto">
-            <Button
-              color="danger"
+            </div>
+          </div>
+          <div className="flex-shrink-0 px-2">
+            <button
+              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
               onClick={() => onRemoveCorrection(index)}
             >
               X
-            </Button>
-          </Col>
-        </Row>
+            </button>
+          </div>
+        </div>
       );
     };
 
@@ -239,11 +213,11 @@ const JsonDisplay = ({ data, onEdit }) => {
       <div className='mt-4'>
         <h2 className='text-xl font-bold mb-2'>Corrections</h2>
         {corrections.map((correction, index) => (
-          <CorrectionField correction={correction} index={index} />
+          <CorrectionField correction={correction} index={index} key={index} />
         ))}
         <button
           onClick={onAddCorrection}
-          className='bg-info hover:bg-primary text-white font-bold py-2 px-4 rounded'
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-2"
         >
           Add Correction
         </button>
@@ -345,7 +319,7 @@ const JsonDisplay = ({ data, onEdit }) => {
         className='flex flex-col'
       >
         <div className='font-mono text-sm d-flex flex-row gap-4'>
-          <JsonDisplay data={data} onEdit={handleEdit} />
+          <JsonDisplay data={data} onEdit={handleEdit} JsonContainer={JsonContainer} />
           <Corrections
             corrections={corrections}
             onAddCorrection={handleAddCorrection}

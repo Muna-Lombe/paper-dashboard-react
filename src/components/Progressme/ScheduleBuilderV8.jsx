@@ -1,17 +1,14 @@
-import React, { useState } from 'react';
-import {
-  Table,
-  Button,
-  Input,
-  Row,
-  Col,
-  Label,
-  FormGroup,
-  UncontrolledTooltip,
-  UncontrolledPopover,
-  PopoverBody,
-} from 'reactstrap';
+import React, { useState, useEffect } from 'react';
 import html2canvas from 'html2canvas';
+import axios from "axios";
+axios.defaults.withCredentials = true;
+import { useDispatch } from "react-redux";
+import { addError} from "../../variables/slices/errorSlice"; // Assuming addSuccess is available
+import { endpoints } from '../../config';
+import { addToast } from '../../variables/slices/toastSlice';
+
+// import { endpoints } from "../config";
+// endpoints
 
 // Months and Days Mapping
 const languages = {
@@ -43,6 +40,11 @@ const languages = {
       totalLessons: "Total Lessons",
       grandTotalLessons: "Grand Total Lessons",
       wednesdaySchedule: "Wednesday Schedule",
+      lessonDay: "Lesson Day",
+      holiday: "Holiday",
+      lessonOnHoliday: "Lesson on Holiday",
+      makeRecurring: "Make Recurring",
+      addToSchedule: "Add to Schedule",
     },
     tooltips: {
       daysForLessons:
@@ -81,6 +83,11 @@ const languages = {
       totalLessons: "Итого занятий",
       grandTotalLessons: "Итого уроков",
       wednesdaySchedule: "Расписание занятий",
+      lessonDay: "День занятия",
+      holiday: "Праздник",
+      lessonOnHoliday: "Занятие на празднике",
+      makeRecurring: "Сделать повторяющимся",
+      addToSchedule: "Добавить в расписание",
     },
     tooltips: {
       daysForLessons:
@@ -94,6 +101,7 @@ const languages = {
 };
 
 const ScheduleBuilder = () => {
+  const dispatch = useDispatch();
   // States for settings and table
   const [language, setLanguage] = useState("ru");
   const [lessonDaysInput, setLessonDaysInput] = useState("");
@@ -110,6 +118,44 @@ const ScheduleBuilder = () => {
   const [currentCell, setCurrentCell] = useState(null);
   const [selectedDayType, setSelectedDayType] = useState('lesson');
   const [makeRecurring, setMakeRecurring] = useState(false);
+
+  useEffect(() => {
+    fetchSchedule();
+  }, []);
+
+  const fetchSchedule = async () => {
+    try {
+      const response = await axios.get(endpoints.schedule.get.url);
+      if (response.data) {
+        const { lessonDays, holidayDays, holidayLessons, selectedMonths, selectAll, language } = response.data;
+        setLessonDays(lessonDays || {});
+        setHolidayDays(holidayDays || {});
+        setHolidayLessons(holidayLessons || {});
+        setSelectedMonths(selectedMonths || Array(languages[language].months.length).fill(true));
+        setSelectAll(selectAll !== undefined ? selectAll : true);
+        setLanguage(language || "ru");
+      }
+    } catch (error) {
+      dispatch(addError(error.response?.data?.message || "Failed to fetch schedule."));
+    }
+  };
+
+  const saveSchedule = async () => {
+    try {
+      const scheduleData = {
+        lessonDays,
+        holidayDays,
+        holidayLessons,
+        selectedMonths,
+        selectAll,
+        language,
+      };
+      const response = await axios.post(endpoints.schedule.save.url, scheduleData);
+      dispatch(addToast(response.data.message || "Schedule saved successfully!"));
+    } catch (error) {
+      dispatch(addError(error.response?.data?.message || "Failed to save schedule."));
+    }
+  };
 
   // Toggle Language
   const toggleLanguage = () => {
@@ -325,16 +371,16 @@ const ScheduleBuilder = () => {
     ).getDate();
 
     if (day > daysInMonth) {
-      return "invalid-day";
+      return "bg-gray-200 cursor-not-allowed"; // Tailwind classes for invalid day
     }
 
     const isHolidayLesson = (holidayLessons[monthIndex] || []).includes(day);
     const isHoliday = (holidayDays[monthIndex] || []).includes(day);
     const isLesson = (lessonDays[monthIndex] || []).includes(day);
 
-    if (isHolidayLesson) return "holiday-lesson";
-    if (isHoliday) return "holiday";
-    if (isLesson) return "lesson";
+    if (isHolidayLesson) return "bg-yellow-400"; // Tailwind class for holiday lesson
+    if (isHoliday) return "bg-red-500"; // Tailwind class for holiday
+    if (isLesson) return "bg-gray-400"; // Tailwind class for lesson
     return "";
   };
 
@@ -361,97 +407,108 @@ const ScheduleBuilder = () => {
   );
 
   return (
-    <div className="d-flex flex-column">
-      <div className="d-flex flex-row">
+    <div className="flex flex-col">
+      <div className="flex flex-row">
         {/* Left Sidebar */}
         <div
-          className="left-sidebar p-3 border-right"
-          style={{ minWidth: "250px" }}
+          className="p-3 border-r min-w-[250px]"
         >
-          <Button color="link" onClick={toggleLanguage}>
+          <button className="text-blue-500 hover:underline" onClick={toggleLanguage}>
             {currentLabels.toggleLanguage}
-          </Button>
-          <h5>{currentLabels.lessonSettings}</h5>
-          <FormGroup>
-            <Label for="lessonDays" id="lessonDaysTooltip">
+          </button>
+          <h5 className="text-lg font-semibold mt-4">{currentLabels.lessonSettings}</h5>
+          <div className="mb-4"> {/* Replaced FormGroup */}
+            <label htmlFor="lessonDays" id="lessonDaysTooltip" className="block text-gray-700 text-sm font-bold mb-2">
               {currentLabels.daysForLessons}
-            </Label>
-            <Input
+            </label>
+            <input
               type="text"
               id="lessonDays"
               value={lessonDaysInput}
               placeholder="Enter days (comma separated)"
               onChange={(e) => setLessonDaysInput(e.target.value)}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" // Replaced Input
             />
-            <UncontrolledTooltip placement="right" target="lessonDaysTooltip">
+            <div id="lessonDaysTooltip" className="text-sm text-gray-500 mt-1">
               {currentTooltips.daysForLessons}
-            </UncontrolledTooltip>
-            <Button color="primary" className="mt-2" onClick={addLessonDays}>
+            </div>
+            <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-2" onClick={addLessonDays}>
               {currentLabels.addButton}
-            </Button>
-          </FormGroup>
-          <FormGroup>
-            <Label for="holidayDays" id="holidayDaysTooltip">
+            </button>
+          </div>
+          <div className="mb-4"> {/* Replaced FormGroup */}
+            <label htmlFor="holidayDays" id="holidayDaysTooltip" className="block text-gray-700 text-sm font-bold mb-2">
               {currentLabels.holidays}
-            </Label>
-            <Input
+            </label>
+            <input
               type="text"
               id="holidayDays"
               value={holidayDaysInput}
               placeholder="Enter days (comma separated)"
               onChange={(e) => setHolidayDaysInput(e.target.value)}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" // Replaced Input
             />
-            <UncontrolledTooltip placement="right" target="holidayDaysTooltip">
+            <div id="holidayDaysTooltip" className="text-sm text-gray-500 mt-1">
               {currentTooltips.holidays}
-            </UncontrolledTooltip>
-            <Button color="primary" className="mt-2" onClick={addHolidayDays}>
+            </div>
+            <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-2" onClick={addHolidayDays}>
               {currentLabels.addButton}
-            </Button>
-          </FormGroup>
-          <FormGroup>
-            <Label for="holidayLessons" id="holidayLessonsTooltip">
+            </button>
+          </div>
+          <div className="mb-4"> {/* Replaced FormGroup */}
+            <label htmlFor="holidayLessons" id="holidayLessonsTooltip" className="block text-gray-700 text-sm font-bold mb-2">
               {currentLabels.lessonsOnHolidays}
-            </Label>
-            <Input
+            </label>
+            <input
               type="text"
               id="holidayLessons"
               value={holidayLessonsInput}
               placeholder="Enter days (comma separated)"
               onChange={(e) => setHolidayLessonsInput(e.target.value)}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" // Replaced Input
             />
-            <UncontrolledTooltip
-              placement="right"
-              target="holidayLessonsTooltip"
+            <div
+              id="holidayLessonsTooltip"
+              className="text-sm text-gray-500 mt-1"
             >
               {currentTooltips.lessonsOnHolidays}
-            </UncontrolledTooltip>
-            <Button color="primary" className="mt-2" onClick={addHolidayLessons}>
+            </div>
+            <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-2" onClick={addHolidayLessons}>
               {currentLabels.addButton}
-            </Button>
-          </FormGroup>
+            </button>
+          </div>
+          <div className="mt-6">
+            <button
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded w-full"
+              onClick={saveSchedule}
+            >
+              Save Schedule
+            </button>
+          </div>
         </div>
 
         {/* Schedule Table */}
-        <div className="flex-grow-1 p-3" id="schedule-table">
-          <h5>{currentLabels.wednesdaySchedule}</h5>
-          <Table bordered responsive className="schedule-table">
-            <thead>
+        <div className="flex-grow p-3" id="schedule-table">
+          <h5 className="text-lg font-semibold mb-4">{currentLabels.wednesdaySchedule}</h5>
+          <table className="table-auto w-full border-collapse border border-gray-400"> {/* Replaced Table */}
+            <thead className="bg-gray-200">
               <tr>
-                <th></th>
+                <th className="px-4 py-2 border border-gray-400"></th>
                 {Array.from({ length: 31 }, (_, i) => (
-                  <th key={i}>{i + 1}</th>
+                  <th key={i} className="px-4 py-2 border border-gray-400">{i + 1}</th>
                 ))}
-                <th>{currentLabels.totalLessons}</th>
+                <th className="px-4 py-2 border border-gray-400">{currentLabels.totalLessons}</th>
               </tr>
             </thead>
             <tbody>
               {monthsData.map((monthData, monthIndex) => (
                 <tr key={monthIndex}>
-                  <td>
-                    <Input
+                  <td className="px-4 py-2 border border-gray-400">
+                    <input
                       type="checkbox"
                       checked={selectedMonths[monthIndex]}
                       onChange={() => toggleMonth(monthIndex)}
+                      className="mr-2"
                     />
                     {monthData.name}
                   </td>
@@ -473,186 +530,127 @@ const ScheduleBuilder = () => {
                       <td
                         key={dayIndex}
                         id={cellId}
-                        className={`${isHighlighted ? cellClass : ""} ${isInvalidDay ? "invalid-day" : ""
-                          }`}
+                        className={`relative cursor-pointer px-4 py-2 border border-gray-400 ${isHighlighted ? cellClass : ""} ${isInvalidDay ? "bg-gray-200" : ""}`} // Updated classes
                         onClick={
                           !isInvalidDay
                             ? (e) => handleCellClick(e, monthIndex, day)
                             : undefined
                         }
-                        style={{ position: "relative", cursor: "pointer" }}
                       >
                         {isInvalidDay ? (
-                          <div className="invalid-day-overlay"></div>
+                          <div className="absolute inset-0 bg-gray-600 opacity-20 pointer-events-none transform -skew-y-12"></div> // Replaced invalid-day-overlay
                         ) : (
                           isHighlighted && cellClass && "x"
                         )}
                         {!isInvalidDay && (
-                          <UncontrolledPopover
-                            trigger="legacy"
-                            isOpen={popoverOpen[cellId]}
-                            target={cellId}
-                            toggle={() => togglePopover(monthIndex, day)}
-                            placement="auto"
+                          <div // Replaced UncontrolledPopover
+                            className={`absolute z-10 bg-white shadow-lg rounded-lg p-4 ${popoverOpen[cellId] ? "block" : "hidden"}`}
+                            style={{ minWidth: "200px" }}
                           >
-                            <PopoverBody>
-                              <FormGroup>
-                                <Label>
-                                  <Input
-                                    type="radio"
-                                    name={`dayType-${monthIndex}-${day}`}
-                                    value="lesson"
-                                    checked={selectedDayType === 'lesson'}
-                                    onChange={(e) => setSelectedDayType(e.target.value)}
-                                  />
-                                  {language === "en" ? "Lesson Day" : "День занятия"}
-                                </Label>
-                              </FormGroup>
-                              <FormGroup>
-                                <Label>
-                                  <Input
-                                    type="radio"
-                                    name={`dayType-${monthIndex}-${day}`}
-                                    value="holiday"
-                                    checked={selectedDayType === 'holiday'}
-                                    onChange={(e) => setSelectedDayType(e.target.value)}
-                                  />
-                                  {language === "en" ? "Holiday" : "Праздник"}
-                                </Label>
-                              </FormGroup>
-                              <FormGroup>
-                                <Label>
-                                  <Input
-                                    type="radio"
-                                    name={`dayType-${monthIndex}-${day}`}
-                                    value="holidayLesson"
-                                    checked={selectedDayType === 'holidayLesson'}
-                                    onChange={(e) => setSelectedDayType(e.target.value)}
-                                  />
-                                  {language === "en" ? "Lesson on Holiday" : "Занятие на празднике"}
-                                </Label>
-                              </FormGroup>
-                              <FormGroup check className="mt-2">
-                                <Label check>
-                                  <Input
-                                    type="checkbox"
-                                    checked={makeRecurring}
-                                    onChange={(e) => setMakeRecurring(e.target.checked)}
-                                  />{" "}
-                                  {language === "en"
-                                    ? "Make Recurring"
-                                    : "Сделать повторяющимся"}
-                                </Label>
-                              </FormGroup>
-                              <Button
-                                color="primary"
-                                className="mt-2"
-                                onClick={addDayFromCell}
-                              >
-                                {language === "en" ? "Add to Schedule" : "Добавить в расписание"}
-                              </Button>
-                            </PopoverBody>
-                          </UncontrolledPopover>
+                            <div className="mb-2"> {/* Replaced FormGroup */}
+                              <label className="inline-flex items-center">
+                                <input
+                                  type="radio"
+                                  name={`dayType-${monthIndex}-${day}`}
+                                  value="lesson"
+                                  checked={selectedDayType === 'lesson'}
+                                  onChange={(e) => setSelectedDayType(e.target.value)}
+                                  className="form-radio"
+                                />
+                                <span className="ml-2">{currentLabels.lessonDay}</span>
+                              </label>
+                            </div>
+                            <div className="mb-2"> {/* Replaced FormGroup */}
+                              <label className="inline-flex items-center">
+                                <input
+                                  type="radio"
+                                  name={`dayType-${monthIndex}-${day}`}
+                                  value="holiday"
+                                  checked={selectedDayType === 'holiday'}
+                                  onChange={(e) => setSelectedDayType(e.target.value)}
+                                  className="form-radio"
+                                />
+                                <span className="ml-2">{currentLabels.holiday}</span>
+                              </label>
+                            </div>
+                            <div className="mb-2"> {/* Replaced FormGroup */}
+                              <label className="inline-flex items-center">
+                                <input
+                                  type="radio"
+                                  name={`dayType-${monthIndex}-${day}`}
+                                  value="holidayLesson"
+                                  checked={selectedDayType === 'holidayLesson'}
+                                  onChange={(e) => setSelectedDayType(e.target.value)}
+                                  className="form-radio"
+                                />
+                                <span className="ml-2">{currentLabels.lessonOnHoliday}</span>
+                              </label>
+                            </div>
+                            <label className="inline-flex items-center mt-2"> {/* Replaced FormGroup check */}
+                              <input
+                                type="checkbox"
+                                checked={makeRecurring}
+                                onChange={(e) => setMakeRecurring(e.target.checked)}
+                                className="form-checkbox"
+                              />{" "}
+                              <span className="ml-2">
+                                {currentLabels.makeRecurring}
+                              </span>
+                            </label>
+                            <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-2" onClick={addDayFromCell}>
+                              {currentLabels.addToSchedule}
+                            </button>
+                          </div>
                         )}
                       </td>
                     );
                   })}
-                  <td>{calculateTotalLessons(monthIndex)}</td>
+                  <td className="px-4 py-2 border border-gray-400">{calculateTotalLessons(monthIndex)}</td>
                 </tr>
               ))}
             </tbody>
             {/* Grand Total */}
             <tfoot>
               <tr>
-                <td colSpan={32} className="text-end">
-                  <strong>
+                <td colSpan={32} className="text-right px-4 py-2 border border-gray-400">
+                  <strong className="font-bold">
                     {currentLabels.grandTotalLessons}: {grandTotalLessons}
                   </strong>
                 </td>
               </tr>
             </tfoot>
-          </Table>
+          </table>
         </div>
 
         {/* Right Sidebar */}
         <div
-          className="right-sidebar p-3 border-left"
-          style={{ minWidth: "200px" }}
+          className="p-3 border-l min-w-[200px]"
         >
-          <h5>{currentLabels.exportSchedule}</h5>
-          <Button color="success" onClick={exportToImage}>
+          <h5 className="text-lg font-semibold mb-4">{currentLabels.exportSchedule}</h5>
+          <button className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" onClick={exportToImage}>
             {currentLabels.exportButton}
-          </Button>
+          </button>
         </div>
       </div>
 
       {/* Legend */}
-      <div className="legend mt-4 p-3">
-        <h5>{currentLabels.legendTitle}</h5>
-        <Row>
-          <Col className="d-flex align-items-center mb-2">
-            <div className="legend-box lesson me-2"></div>
+      <div className="mt-4 p-3 bg-gray-100 rounded-lg">
+        <h5 className="text-lg font-semibold mb-2">{currentLabels.legendTitle}</h5>
+        <div className="flex flex-wrap">
+          <div className="flex items-center mb-2 mr-4">
+            <div className="w-5 h-5 border border-black mr-2 bg-gray-400"></div>
             <span>{currentLabels.daysForLessons}</span>
-          </Col>
-          <Col className="d-flex align-items-center mb-2">
-            <div className="legend-box holiday me-2"></div>
+          </div>
+          <div className="flex items-center mb-2 mr-4">
+            <div className="w-5 h-5 border border-black mr-2 bg-red-500"></div>
             <span>{currentLabels.holidays}</span>
-          </Col>
-          <Col className="d-flex align-items-center mb-2">
-            <div className="legend-box holiday-lesson me-2"></div>
+          </div>
+          <div className="flex items-center mb-2">
+            <div className="w-5 h-5 border border-black mr-2 bg-yellow-400"></div>
             <span>{currentLabels.lessonsOnHolidays}</span>
-          </Col>
-        </Row>
+          </div>
+        </div>
       </div>
-
-      {/* Styling for the legend boxes and table highlights */}
-      <style jsx>{`
-        .legend-box {
-          width: 20px;
-          height: 20px;
-          border: 1px solid #000;
-        }
-        .lesson {
-          background-color: #a9a9a9; /* Gray */
-        }
-        .holiday {
-          background-color: #ff0000; /* Red */
-        }
-        .holiday-lesson {
-          background-color: #ffff00; /* Yellow */
-        }
-        td.lesson {
-          background-color: #a9a9a9;
-        }
-        td.holiday {
-          background-color: #ff0000;
-        }
-        td.holiday-lesson {
-          background-color: #ffff00;
-        }
-        .schedule-table th,
-        .schedule-table td {
-          text-align: center;
-          vertical-align: middle;
-          padding: 5px;
-          position: relative;
-        }
-        .invalid-day {
-          background-color: #e9ecef;
-          cursor: not-allowed;
-        }
-        .invalid-day-overlay {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background-image: linear-gradient(135deg, transparent 25%, #6c757d 25%, #6c757d 50%, transparent 50%, transparent 75%, #6c757d 75%, #6c757d);
-          background-size: 10px 10px;
-          opacity: 0.2;
-          pointer-events: none;
-        }
-      `}</style>
     </div>
   );
 };

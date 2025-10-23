@@ -40,12 +40,12 @@ export default function useSocketWrapper({
   };
 
   const socket = useWebSocket(socketUrl, {
-    onOpen: (ev) => onOpenCallback(ev, socket), //|| defaultOnOpen(ev,socket),
-    onClose: (ev) => onCloseCallback(ev, socket), //|| defaultOnClose(ev,socket) ,
+    onOpen: (ev) => onOpenCallback ? onOpenCallback(ev, socket) : defaultOnOpen(ev, socket),
+    onClose: (ev) => onCloseCallback ? onCloseCallback(ev, socket) : defaultOnClose(ev, socket),
 
-    onMessage: (ev) => onMessageCallback(ev, socket), //|| defaultOnMessage(ev,socket),
+    onMessage: (ev) => onMessageCallback ? onMessageCallback(ev, socket) : defaultOnMessage(ev, socket),
 
-    onError: (ev) => onErrorCallback(ev, socket), //|| defaultOnError(ev,socket) ,
+    onError: (ev) => onErrorCallback ? onErrorCallback(ev, socket) : defaultOnError(ev, socket),
 
     shouldReconnect: (closeEvent) => true,
     reconnectAttempts: 10,
