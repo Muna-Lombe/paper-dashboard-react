@@ -3,7 +3,7 @@
 
 // const baseApiUrl = "https://paper-dash-api.onrender.com"
 const baseApiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000"
-axios.defaults.withCredentials = true;
+
 
 export const endpoints = {
     bot: {
