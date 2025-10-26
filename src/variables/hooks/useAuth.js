@@ -1,8 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { addError } from "@/variables/slices/errorSlice";
-import { addToast } from "@/variables/slices/toastSlice";
-import { endpoints } from "@/config";
+import { addError, clearErrors, removeError } from "../slices/errorSlice"; // Assuming clearErrors is available
+import { addToast } from "../slices/toastSlice";
+import { endpoints } from "../../config";
 import { useState, useEffect } from "react";
 import axios from "axios";
 axios.defaults.withCredentials = true;
@@ -12,72 +12,85 @@ const useAuth = () => {
   const dispatch = useDispatch();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userId, setUserId] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const storedAuthToken = sessionStorage.getItem("Auth-Token");
-    const storedExpirableToken = sessionStorage.getItem("expirableToken");
+    // On mount, check if a user is already authenticated (e.g., by HttpOnly cookie)
+    // The AdminLayout will attempt to fetch user profile, which will validate the cookie
+    // and redirect to login if unauthorized. So, we don't need extensive sessionStorage checks here.
+    // However, we should still try to get the userId from sessionStorage if it exists
+    // as a fallback or for initial rendering before the API call in AdminLayout completes.
     const storedUserId = sessionStorage.getItem("userId");
-
-    if (storedAuthToken && storedExpirableToken && storedUserId) {
-      const tokenParts = storedExpirableToken.split("~expireAt~");
-      if (tokenParts.length === 2) {
-        const expiryDate = new Date(tokenParts[1]);
-        if (expiryDate > new Date()) {
-          setIsAuthenticated(true);
-          setUserId(storedUserId);
-        } else {
-          logoutUser(); // Token expired
-        }
-      }
+    if (storedUserId) {
+      setUserId(storedUserId);
+      setIsAuthenticated(true);
     }
+    // If AdminLayout redirects to login, isAuthenticated will become false.
+
   }, []);
 
-  const logoutUser = () => {
-    sessionStorage.removeItem("expirableToken");
-    sessionStorage.removeItem("Auth-Token");
-    sessionStorage.removeItem("userId");
-    setIsAuthenticated(false);
-    setUserId(null);
-    navigate("/auth");
-  };
-
-  const loginUser = async (email, password) => {
+  const register = async (email, password) => {
+    setIsLoading(true);
+    dispatch(clearErrors()); // Clear previous errors
     try {
-      const response = await axios.post(
-        endpoints.paperDashApi.authenticate.url,
-        {
-          email: email,
-          password: password,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-        },
-      );
+      const response = await axios.post(endpoints.auth.register.url, { email, password });
+      if (response.status === 200) {
+        
+        return {success: true, message: "Registration successful! Please log in."};
+      }
+      return {success: false, message: response.data?.message || "Registration failed. Please try again."};
+    }
+    catch (error) {
+      dispatch(addError(error.response?.data?.message || "Registration failed. Please try again."));
+      return false;
+    }
+  }
+  const login = async (email, password) => {
+    setIsLoading(true);
+    dispatch(clearErrors()); // Clear previous errors
+    try {
+      const response = await axios.post(endpoints.auth.login.url, { email, password });
 
-      if (response.data.token && response.data.data?.Value?.Id) {
-        const FiveDaysFromNow = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
-        sessionStorage.setItem("Auth-Token", response.data.token);
-        sessionStorage.setItem("expirableToken", response.data.token + "~expireAt~" + FiveDaysFromNow);
-        sessionStorage.setItem("userId", response.data.data.Value.Id);
+      if (response.status === 200) {
+        // Assuming HttpOnly cookie handles token, no need to store in sessionStorage
         setIsAuthenticated(true);
-        setUserId(response.data.data.Value.Id);
-        dispatch(addToast("Login successful!"));
-        return true;
+        setUserId(response.data.user.id); // Assuming user ID is returned in response.data.user
+        sessionStorage.setItem("userId", response.data.user.id); // Store for initial load check in useEffect
+        // dispatch(addToast("Login successful!"));
+        return {success: true, message: "Login successful!"};
+
       } else {
-        dispatch(addError(response.data?.msg || "Login failed: Invalid credentials or missing user ID."));
-        return false;
+        return {success: false, message: response.data?.message || "Login failed."};
       }
     } catch (error) {
-      dispatch(addError(error.response?.data?.msg || "Login failed due to server error."));
-      console.error("Login fetch/processing error:", error);
+      console.error("Login error:", error);
+      dispatch(addError(error.response?.data?.message || "Login failed. Please try again."));
       return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  return { isAuthenticated, userId, loginUser, logoutUser };
-};
+  const logout = () => {
+    // Invalidate the HttpOnly cookie on the backend
+    // For now, we just clear local state and assume backend will handle cookie invalidation on next request
+    setIsAuthenticated(false);
+    setUserId(null);
+    sessionStorage.removeItem("userId"); // Clear userId from sessionStorage
+    sessionStorage.removeItem("Auth-Token"); // Ensure any old tokens are cleared
+    sessionStorage.removeItem("expirableToken"); // Ensure any old tokens are cleared
+    dispatch(addToast("Logged out successfully."));
+    navigate("/login"); // Redirect to login page
+  };
+
+  return {
+    isAuthenticated,
+    userId,
+    isLoading,
+    login,
+    register,
+    logout,
+  };
+}
 
 export default useAuth; 

@@ -328,14 +328,15 @@ const CourseScraper = () => {
     )
   );
 
+
   const LeftComponent = ({ authedIn, targetUrlSet }) => {
     const [linkLoading, setLinkLoading] = useState(false);
     return (
-      <div className="w-full">
-        <div className="lg:w-10/12">
+      <div className="w-full flex flex-wrap gap-2 ">
+        <div className="lg:w-10/12 w-full">
           <LoadLink setLinkLoading={setLinkLoading} />
         </div>
-        <div className="lg:w-10/12 h-full">
+        <div className="lg:w-8/12 w-full h-full order-3 lg:order-none">
           <div
             className="w-full h-full"
             style={{ minHeight: "500px" }}
@@ -347,6 +348,9 @@ const CourseScraper = () => {
             />
           </div>
         </div>
+        <div className="lg:w-4/12 w-full order-2 lg:order-none">
+          <BookInfo disabled={!isAuthed} />
+        </div>
       </div>
     );
   };
@@ -357,17 +361,12 @@ const CourseScraper = () => {
         <div className="px-4 py-3 mb-0 bg-white rounded-t-lg flex flex-col justify-between items-center">
           <h4 className="text-xl font-semibold">Course Scraper</h4>
         </div>
-        <div className="flex-auto p-4 h-full">
-          <div className="h-full w-full overflow-hidden flex flex-row">
-            <LeftComponent authedIn={isAuthed} targetUrlSet={!!targetUrl} />
-            <div className="sm:w-1/4">
-              <BookInfo disabled={!isAuthed} />
-            </div>
-          </div>
+        <div className="flex-auto p-4 h-full overflow-scroll">
+          <LeftComponent authedIn={isAuthed} targetUrlSet={!!targetUrl} />
         </div>
       </div>
     </div>
   );
 };
 
-export default memo(CourseScraper);
+ export default memo(CourseScraper);

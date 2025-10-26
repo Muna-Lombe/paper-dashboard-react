@@ -1,3 +1,4 @@
+import TextLogo from "components/TextLogo";
 import React from "react";
 
 function Landing() {
@@ -7,11 +8,7 @@ function Landing() {
       <nav className="bg-white shadow-md p-4 flex justify-between items-center">
         <div className="flex items-center space-x-2">
           {/* <img src="/path/to/logo.png" alt="Logo" className="h-8" /> Replace with actual logo path */}
-          <span className="text-2xl flex items-start font-bold text-gray-800">
-            <span className="text-blue-400 text-xl"><i className="fas fa-info"></i></span>
-            <span className="text-blue-600 text-3xl italic">Teach</span>
-            
-          </span>
+          <TextLogo/>
         </div>
         <div className="space-x-4">
           <a href="#features" className="text-gray-600 hover:text-blue-600 font-medium">Features</a>
@@ -39,7 +36,7 @@ function Landing() {
 
       {/* Feature Section */}
       <section id="features" className="py-16 bg-white p-8">
-        <h2 className="text-4xl font-bold text-gray-800 text-center mb-12">Why Choose iTeach?</h2>
+        <h2 className="text-4xl font-bold text-gray-800 text-center mb-12">Why Choose PaperDash?</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 max-w-6xl mx-auto">
           {/* Feature Card 1 */}
           <div className="flex flex-col items-center text-center p-6 rounded-lg shadow-lg transform hover:scale-105 transition duration-300 ease-in-out bg-blue-50">
@@ -54,7 +51,7 @@ function Landing() {
           <div className="flex flex-col items-center text-center p-6 rounded-lg shadow-lg transform hover:scale-105 transition duration-300 ease-in-out bg-green-50">
             <div className="text-green-600 mb-4 text-5xl">
               <i className="fas fa-laptop-code"></i>
-            </div>
+        </div>
             <h3 className="text-2xl font-bold text-gray-800 mb-3">Build Interactive Courses</h3>
             <p className="text-gray-600">Build interactive courses with our tools.</p>
           </div>
@@ -63,18 +60,18 @@ function Landing() {
           <div className="flex flex-col items-center text-center p-6 rounded-lg shadow-lg transform hover:scale-105 transition duration-300 ease-in-out bg-purple-50">
             <div className="text-purple-600 mb-4 text-5xl">
               <i className="fas fa-users-class"></i>
-            </div>
+              </div>
             <h3 className="text-2xl font-bold text-gray-800 mb-3">Connect with Your Students</h3>
             <p className="text-gray-600">Connect with your students and get help from mentors.</p>
-          </div>
-        </div>
+              </div>
+              </div>
       </section>
 
       {/* Call to Action Section */}
       <section className="py-16 bg-blue-600 text-white text-center p-8">
         <h2 className="text-4xl font-bold mb-6">Ready to Start Your Journey?</h2>
         <p className="text-xl max-w-2xl mx-auto mb-8 opacity-90">
-          Join thousands of teachers who are achieving their goals with iTeach. Sign up today and transform your teaching experience.
+          Join thousands of teachers who are achieving their goals with PaperDash. Sign up today and transform your teaching experience.
         </p>
         <a href="/register" className="bg-white text-blue-600 hover:bg-gray-100 font-bold py-4 px-10 rounded-full text-xl shadow-lg transform hover:scale-105 transition duration-300 ease-in-out">
           Sign Up Now
@@ -83,7 +80,7 @@ function Landing() {
 
       {/* Footer */}
       <footer className="bg-gray-800 text-white p-8 text-center">
-        <p>&copy; 2024 iTeach. All rights reserved.</p>
+        <p>&copy; 2024 PaperDash. All rights reserved.</p>
       </footer>
     </div>
   );

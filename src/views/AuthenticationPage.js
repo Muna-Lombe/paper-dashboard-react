@@ -5,6 +5,7 @@ axios.defaults.withCredentials = true;
 import { endpoints } from "../config"; // Assuming config.js is in the parent directory
 import { useDispatch } from "react-redux";
 import { addError } from "../variables/slices/errorSlice";
+import useAuth from "../variables/hooks/useAuth";
 
 function AuthenticationPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -13,34 +14,34 @@ function AuthenticationPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { login, register} = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       let response;
       if (isLogin) {
-        response = await axios.post(endpoints.auth.login.url, {
-          email,
-          password,
-        },{
-          withCredentials: true,
-        });
-        console.log("Login successful:", response.data);
-        // Redirect to admin dashboard or a protected route
-        navigate("/admin/dashboard"); 
+        response = await login(email, password);
+        // console.log("Login successful:", response.data);
+        if (response.success) {  
+          navigate("/admin/dashboard")
+          dispatch(addToast("Login successful!"));
+        } else {
+          dispatch(addError(response.message || "Login failed. Please try again."));
+        }
       } else {
         if (password !== confirmPassword) {
           dispatch(addError("Passwords do not match."));
           return;
         }
-        response = await axios.post(endpoints.auth.register.url, {
-          email,
-          password,
-        });
-        console.log("Registration successful:", response.data);
-        // After successful registration, you might want to automatically log them in or redirect to login
-        setIsLogin(true); // Switch to login form after registration
-        dispatch(addError("Registration successful! Please log in."));
+        response = await register(email, password);
+        // console.log("Login successful:", response.data);
+        if (response.success) {  
+          navigate("/login")
+          dispatch(addToast("Registration successful! Please log in."));
+        } else {
+          dispatch(addError(response.message || "Registration failed. Please try again."));
+        }
       }
     } catch (error) {
       console.error("Authentication error:", error);
