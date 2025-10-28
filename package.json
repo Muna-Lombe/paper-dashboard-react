@@ -15,6 +15,7 @@
   "description": "",
   "dependencies": {
     "acorn": "^8.15.0",
+    "acorn-walk": "^8.3.4",
     "axios": "^1.12.2",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
