@@ -9,7 +9,6 @@
     "build": "node scripts/build.js",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
   },
-  
   "keywords": [],
   "author": "",
   "license": "ISC",
