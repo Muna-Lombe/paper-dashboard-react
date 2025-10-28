@@ -538,7 +538,7 @@ class CourseScraperService {
                     ),
                 );
 
-                 console.log("checkIfCanShareMessage", checkIfCanShareMessage);
+                //  console.log("checkIfCanShareMessage", checkIfCanShareMessage);
 
                 ws.send(checkIfCanShareMessage);
 
@@ -546,7 +546,7 @@ class CourseScraperService {
                     const response = JSON.parse(data.toString());
 
 
-                    console.log("can share resp:", response);
+                    // console.log("can share resp:", response);
                     
                     if (
                         response.Class === "BookWsController" &&
