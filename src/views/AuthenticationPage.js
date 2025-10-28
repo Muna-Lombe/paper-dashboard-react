@@ -37,8 +37,8 @@ function AuthenticationPage() {
         response = await register(email, password);
         // console.log("Login successful:", response.data);
         if (response.success) {  
-          navigate("/login")
           dispatch(addToast("Registration successful! Please log in."));
+          setIsLogin(true)
         } else {
           dispatch(addError(response.message || "Registration failed. Please try again."));
         }

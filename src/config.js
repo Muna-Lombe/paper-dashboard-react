@@ -10,6 +10,13 @@ export const endpoints = {
         socketUrl: "ws://localhost:5000/api/bot",
     },
     paperDashApi: {
+        authenticateUser: {
+             url: `${baseApiUrl}/api/scraper/getUserInfo`,
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+            },
+        },
         getBook: {
             url: `${baseApiUrl}/api/scraper/getbook`,
             headers: {
@@ -48,6 +55,14 @@ export const endpoints = {
                 Accept: "application/json",
             },
         },
+        logout: {
+            url: `${baseApiUrl}/api/auth/logout`,
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+            },
+        },
+        
         telegram: {
             botId: import.meta.env.VITE_TELEGRAM_BOT_ID, // Telegram Bot ID from environment variable
             authUrl: `${baseApiUrl}/api/auth/telegram`, // Endpoint for Telegram authentication

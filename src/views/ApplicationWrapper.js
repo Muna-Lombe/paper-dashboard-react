@@ -113,7 +113,7 @@ function ApplicationWrapper(props) {
 
         {/* Central Content */}
         <main className="h-[95%] w-5/6 overflow-clip">
-          <div className="h-full w-full overflow-y-scroll">
+          <div className="h-full w-full overflow-y-scroll px-2">
             {props.children}
 
           </div>

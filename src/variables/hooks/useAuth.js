@@ -5,6 +5,7 @@ import { addToast } from "../slices/toastSlice";
 import { endpoints } from "../../config";
 import { useState, useEffect } from "react";
 import axios from "axios";
+
 axios.defaults.withCredentials = true;
 
 const useAuth = () => {
@@ -50,7 +51,8 @@ const useAuth = () => {
     dispatch(clearErrors()); // Clear previous errors
     try {
       const response = await axios.post(endpoints.auth.login.url, { email, password });
-
+      // console.log("resp", response);
+      
       if (response.status === 200) {
         // Assuming HttpOnly cookie handles token, no need to store in sessionStorage
         setIsAuthenticated(true);
@@ -71,17 +73,43 @@ const useAuth = () => {
     }
   };
 
-  const logout = () => {
+  const logout = async() => {
     // Invalidate the HttpOnly cookie on the backend
     // For now, we just clear local state and assume backend will handle cookie invalidation on next request
-    setIsAuthenticated(false);
-    setUserId(null);
-    sessionStorage.removeItem("userId"); // Clear userId from sessionStorage
-    sessionStorage.removeItem("Auth-Token"); // Ensure any old tokens are cleared
-    sessionStorage.removeItem("expirableToken"); // Ensure any old tokens are cleared
-    dispatch(addToast("Logged out successfully."));
-    navigate("/login"); // Redirect to login page
+    const response = await axios.post(endpoints.auth.logout.url);
+      // console.log("resp", response);
+      
+    if (response.status === 200) {
+      setIsAuthenticated(false);
+      setUserId(null);
+      sessionStorage.removeItem("userId"); // Clear userId from sessionStorage
+      sessionStorage.removeItem("Auth-Token"); // Ensure any old tokens are cleared
+      sessionStorage.removeItem("expirableToken"); // Ensure any old tokens are cleared
+      dispatch(addToast("Logged out successfully."));
+      navigate("/login"); // Redirect to login page
+    }
   };
+
+  const getProgressmeUser = async(apiToken) => {
+    const response = await axios.post(endpoints.paperDashApi.authenticateUser.url, { apiToken });
+      // console.log("resp", response);
+      
+    if (response.status === 200) {
+      const {token, data} = response.data
+      sessionStorage.setItem("Auth-Token", token); // Ensure any old tokens are cleared
+       // Redirect to login page
+       return {
+         success: true,
+         message: "Get user info successful", 
+         data
+       }
+    } else {
+      return {
+        success: false,
+        message: "Failed to get user info"
+      }
+    }
+  }
 
   return {
     isAuthenticated,
@@ -90,6 +118,7 @@ const useAuth = () => {
     login,
     register,
     logout,
+    getProgressmeUser
   };
 }
 

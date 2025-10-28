@@ -5,6 +5,7 @@ import { addError } from "../../variables/slices/errorSlice";
 import { useDispatch } from "react-redux";
 import { endpoints } from "@/config";
 import { addToast } from "variables/slices/toastSlice";
+import useAuth from "../../variables/hooks/useAuth";
 
 const CourseScraper = () => {
   const [targetUrl, setTargetUrl] = useState(null);
@@ -12,24 +13,60 @@ const CourseScraper = () => {
   const [testUrl, setTestUrl] = useState(
     "https://progressme.ru/SharingMaterial/c172ca5c-2488-4a14-843f-8caf7c993c79",
   );
-  const [showLogin, setShowLogin] = useState(false);
+  const [currentPUID, setCurrentPUID] = useState("")
+  const {getProgressmeUser} = useAuth();
   const sess = sessionStorage;
   const dispatch = useDispatch();
 
   useEffect(() => {
     // Check if api-token exists in sessionStorage or a more robust check if needed
-    if (sessionStorage.getItem("api-token")) {
+    if (sess.getItem("api-token")) {
       setIsAuthed(true);
     } else {
       setIsAuthed(false);
     }
   }, []);
 
+  const handleAuthIn = async (event) =>{
+    event?.preventDefault(); // Use optional chaining to handle both form submission and button click
+
+    let apiToken;
+    if (event && event.target && event.target.apiToken) {
+      // Coming from form submission
+      apiToken = event.target.apiToken.value;
+    } else {
+      // Coming from "I have an Access Token" button
+      apiToken = sess.getItem("api-token");
+    }
+
+    if (!apiToken) {
+      dispatch(addError("API token is missing. Please enter it or ensure it's in session storage."));
+      return;
+    }
+
+    const response = await getProgressmeUser(apiToken);
+
+    if (response.success) {
+      setIsAuthed(true);
+      setCurrentPUID(response.data?.puid || "");
+      dispatch(addToast(response.message || "API Token set successfully!"));
+    } else {
+      setIsAuthed(false);
+      dispatch(addError(response.message || "Failed to set API Token."));
+    }
+  };
   const handleGetBook = async (e, tUrl) => {
     e.preventDefault();
     try {
       const response = await axios.get(
         `${endpoints.paperDashApi.getBook.url}?url=${btoa(targetUrl ?? tUrl) || ""}`,
+        {
+          headers:{
+            
+            'Authorization': 'Bearer ' + sess.getItem('Auth-Token')
+          },
+          // withCredentials: true,
+        }
       );
       // console.log("book response", response);
       if (response?.data) {
@@ -94,7 +131,12 @@ const CourseScraper = () => {
     try {
       await axios.post(endpoints.paperDashApi.copyCourse.url, {
         bookId,
-        userId,
+        userId: currentPUID,
+      },{
+        headers: {
+          "Authorization": "Bearer "+sess.getItem("Auth-Token"),
+        },
+        // withCredentials: true,
       });
       dispatch(addToast( "Book saved, go to your dashboard to see it"))
       setTimeout(() => {
@@ -113,10 +155,19 @@ const CourseScraper = () => {
     sess.removeItem("bookId");
     sess.removeItem("bookName");
     setTargetUrl("https://progressme.ru");
-    setShowLogin(true);
     setIsAuthed(false); // Reset authentication status
-    sessionStorage.removeItem("api-token"); // Clear any stored API token
+    sess.removeItem("api-token"); // Clear any stored API token
   };
+
+  const handleClearTokenInput = (e) => {
+    e.preventDefault();
+    if(e.target.form?.['apiToken'] ){
+      e.target.form['apiToken'].value = ""
+    }else{
+       document.getElementById('api-token-input').value = ""
+    }
+
+  }
 
   const hasNoBookUserId = () =>
     !(sess.getItem("bookId")?.length > 0 && sess.getItem("userId")?.length > 0);
@@ -134,31 +185,37 @@ const CourseScraper = () => {
       <div className="w-3/4 h-full p-4">
         <div className="mb-6">
           <h3 className="text-xl font-bold mb-2">Scraper Access Authentication</h3>
-          <p className="text-gray-700 text-sm">
+          <p className="text-gray-700 text-sm mb-4">
             To use the scraper features, you need an API token.
             <br />
             Please obtain your API token by registering through our Telegram bot.
             <br />
-            
             <a href="https://t.me/omni_lang_bot" target="_blank"  className="text-blue-500 hover:underline" onClick={() => alert("You will be redirected to the telegram bot")}>How to get an API token?</a>
           </p>
         </div>
-        {/* Optionally, add a field here to manually enter an API token if you want to support that flow */}
-        <button 
-          onClick={() => {
-            // On click, re-evaluate if the API token is now available
-            if (sessionStorage.getItem("api-token")) {
-              setIsAuthed(true); // If token is found, set authed state to true
-              setShowLogin(false); // Hide the AuthIn component
-            } else {
-              // Optionally, inform the user that the token is still missing
-              dispatch(addError("API token not found. Please ensure you have obtained it via the Telegram bot."));
-            }
-          }} 
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-        >
-          I have an Access Token
-        </button>
+
+        <form id="authForm" onSubmit={handleAuthIn} className="w-full">
+          <label htmlFor="api-token-input" className="block text-gray-700 text-sm font-bold mb-2">Enter your API Token:</label>
+          <div className=" flex justify-between items-center border rounded focus:outline-1 focus:ring-1 focus:shadow-outline">
+            <input
+              type="text"
+              id="api-token-input"
+              name="apiToken"
+              placeholder="Enter API Token"
+              className=" appearance-none  w-11/12 py-3 px-3 text-gray-700 leading-tight focus:border-0 focus:ring-0 focus:outline-0"
+            />
+            <button type="button" form="authForm" className="p-1 bg-inherit cursor-pointer" onClick={handleClearTokenInput}>
+              <i className="w-auto fas fa-xmark text-red-500 text-3xl opacity-50"></i>
+            </button>
+          </div>
+
+          <button
+            type="submit"
+            className="mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full"
+          >
+            Submit Token
+          </button>
+        </form>
       </div>
     );
   };
@@ -177,7 +234,7 @@ const CourseScraper = () => {
       <div className="w-full h-full text-center">
         <h3 className="text-2xl font-bold mb-2">Book Copied!</h3>
         <h5 className="text-lg text-gray-700">
-          Log in to
+          Log in to{" "} 
           <a
             href="https://progressme.ru/Account/Login"
             target="_blank"
@@ -187,7 +244,7 @@ const CourseScraper = () => {
             progressme.ru
             <i className="fas fa-external-link ml-1" aria-hidden="true"></i>
           </a>
-          to see the book in your personal library
+          {" "}to see the book in your personal library
         </h5>
       </div>
     </div>
@@ -235,7 +292,7 @@ const CourseScraper = () => {
           id={disabled ? "disabled-book-id" : "book-id"}
           readOnly
           defaultValue={
-            disabled ? "book id" : sessionStorage.getItem("bookId") || "book id"
+            disabled ? "book id" : sess.getItem("bookId") || "book id"
           }
         />
         <input
@@ -244,7 +301,7 @@ const CourseScraper = () => {
           id={disabled ? "disabled-book-name" : "book-name"}
           readOnly
           defaultValue={
-            disabled ? "book name" : sessionStorage.getItem("bookName") || "book name"
+            disabled ? "book name" : sess.getItem("bookName") || "book name"
           }
         />
         <input
@@ -253,7 +310,7 @@ const CourseScraper = () => {
           id={disabled ? "disabled-user-id" : "user-id"}
           readOnly
           defaultValue={
-            disabled ? "user name" : sessionStorage.getItem("userId") || "user name"
+            disabled ? "user name" : currentPUID || "user name"
           }
         />
         <button
@@ -294,22 +351,6 @@ const CourseScraper = () => {
           </div>
         ) : (
           <div className="w-full relative">
-            {!authedIn ? (
-              <div
-                className="absolute inset-0 w-full h-full bg-black bg-opacity-50 flex justify-center items-center z-10"
-              >
-                <button
-                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                  type="button"
-                  disabled={false}
-                  onClick={() => setShowLogin(true)}
-                >
-                  Login
-                </button>
-              </div>
-            ) : (
-              <></>
-            )}
             <iframe
               id="iframe_iframe"
               src={targetUrl}
@@ -348,7 +389,7 @@ const CourseScraper = () => {
             />
           </div>
         </div>
-        <div className="lg:w-4/12 w-full order-2 lg:order-none">
+        <div className="lg:w-3/12 w-xs order-2 lg:order-none">
           <BookInfo disabled={!isAuthed} />
         </div>
       </div>
