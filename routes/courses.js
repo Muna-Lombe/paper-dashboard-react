@@ -1,146 +1,190 @@
-const express = require('express');
-const router = express.Router();
 const auth = require('../middleware/auth');
-const multer = require('multer');
-const { check, validationResult } = require('express-validator');
+// const multer = require('multer'); // Not compatible with Cloudflare Workers (file system ops)
+// const { check, validationResult } = require('express-validator'); // Replaced with Hono validator
 const Course = require('../models/Course'); // Import Course model
 const CourseBlock = require('../models/CourseBlock'); // Import CourseBlock model
 const CourseCorrection = require('../models/CourseCorrection'); // Import CourseCorrection model
 // const User = require('../models/User'); // Not directly used in this file
 
-/**
- * @swagger
- * components:
- *   schemas:
- *     Course:
- *       type: object
- *       required:
- *         - title
- *         - description
- *         - pdfUrl
- *       properties:
- *         id:
- *           type: integer
- *           description: The auto-generated id of the course
- *         title:
- *           type: string
- *           description: The course title
- *         description:
- *           type: string
- *           description: Course description
- *         pdfUrl:
- *           type: string
- *           description: URL to the course PDF file
- *         progress:
- *           type: integer
- *           minimum: 0
- *           maximum: 100
- *           description: Course completion progress
- *         userId:
- *           type: integer
- *           description: ID of the user who owns the course
- *         lastAccessed:
- *           type: string
- *           format: date-time
- *           description: Last time the course was accessed
- *         createdAt:
- *           type: string
- *           format: date-time
- *           description: When the course was created
- *         updatedAt:
- *           type: string
- *           format: date-time
- *           description: When the course was last updated
- */
+const { Hono } = require('hono');
+const { validator } = require('hono/validator');
+const { z } = require('zod');
 
-// Configure multer for PDF uploads
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, 'uploads/');
-    },
-    filename: function (req, file, cb) {
-        cb(null, Date.now() + '-' + file.originalname);
-    }
+const courseRoutes = new Hono();
+
+// Swagger documentation comments are not directly supported with Hono in this setup.
+// They should be moved to a separate documentation generation process or removed.
+// /**
+//  * @swagger
+//  * components:
+//  *   schemas:
+//  *     Course:
+//  *       type: object
+//  *       required:
+//  *         - title
+//  *         - description
+//  *         - pdfUrl
+//  *       properties:
+//  *         id:
+//  *           type: integer
+//  *           description: The auto-generated id of the course
+//  *         title:
+//  *           type: string
+//  *           description: The course title
+//  *         description:
+//  *           type: string
+//  *           description: Course description
+//  *         pdfUrl:
+//  *           type: string
+//  *           description: URL to the course PDF file
+//  *         progress:
+//  *           type: integer
+//  *           minimum: 0
+//  *           maximum: 100
+//  *           description: Course completion progress
+//  *         userId:
+//  *           type: integer
+//  *           description: ID of the user who owns the course
+//  *         lastAccessed:
+//  *           type: string
+//  *           format: date-time
+//  *           description: Last time the course was accessed
+//  *         createdAt:
+//  *           type: string
+//  *           format: date-time
+//  *           description: When the course was created
+//  *         updatedAt:
+//  *           type: string
+//  *           format: date-time
+//  *           description: When the course was last updated
+//  * */
+
+// Configure multer for PDF uploads (not compatible with Cloudflare Workers)
+// const storage = multer.diskStorage({
+//     destination: function (req, file, cb) {
+//         cb(null, 'uploads/');
+//     },
+//     filename: function (req, file, cb) {
+//         cb(null, Date.now() + '-' + file.originalname);
+//     }
+// });
+
+// const upload = multer({
+//     storage: storage,
+//     fileFilter: (req, file, cb) => {
+//         if (file.mimetype === 'application/pdf') {
+//             cb(null, true);
+//         } else {
+//             cb(new Error('Only PDF files are allowed!'), false);
+//         }
+//     }
+// });
+
+// /**
+//  * @swagger
+//  * /api/courses:
+//  *   post:
+//  *     summary: Create a new course
+//  *     tags: [Courses]
+//  *     security:
+//  *       - bearerAuth: []
+//  *     requestBody:
+//  *       required: true
+//  *       content:
+//  *         multipart/form-data:
+//  *           schema:
+//  *             type: object
+//  *             required:
+//  *               - title
+//  *               - description
+//  *               - pdf
+//  *             properties:
+//  *               title:
+//  *                 type: string
+//  *               description:
+//  *                 type: string
+//  *               pdf:
+//  *                 type: string
+//  *                 format: binary
+//  *     responses:
+//  *       200:
+//  *         description: Course created successfully
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               $ref: '#/components/schemas/Course'
+//  *       400:
+//  *         description: Invalid input
+//  *       401:
+//  *         description: Not authorized
+//  *       500:
+//  *         description: Server error
+//  * */
+// router.post('/', [
+// auth,
+// upload.single('pdf'),
+//     [
+// check('title', 'Title is required').not().isEmpty(),
+// check('description', 'Description is required').not().isEmpty()
+//     ]
+// ], async (req, res) => {
+//     const errors = validationResult(req);
+//     if (!errors.isEmpty()) {
+// return res.status(400).json({ errors: errors.array() });
+//     }
+//
+//     try {
+//         const course = await Course.create({
+// title: req.body.title,
+// description: req.body.description,
+// pdfUrl: req.file ? `/uploads/${req.file.filename}` : null,
+// userId: req.user.id
+//         });
+//
+// res.json(course);
+//     } catch (err) {
+// console.error(err.message);
+// res.status(500).send('Server Error');
+//     }
+// });
+
+const createCourseSchema = z.object({
+  title: z.string().nonempty("Title is required"),
+  description: z.string().nonempty("Description is required"),
+  // For file uploads, a different strategy is needed for Workers.
+  // For now, we will expect a pdfUrl or handle file upload via a separate service.
+  pdfUrl: z.string().optional(),
 });
 
-const upload = multer({
-    storage: storage,
-    fileFilter: (req, file, cb) => {
-        if (file.mimetype === 'application/pdf') {
-            cb(null, true);
-        } else {
-            cb(new Error('Only PDF files are allowed!'), false);
-        }
+courseRoutes.post(
+  '/',
+  auth,
+  validator("json", (value, c) => {
+    const parsed = createCourseSchema.safeParse(value);
+    if (!parsed.success) {
+      return c.json({ errors: parsed.error.issues }, 400);
     }
-});
-
-/**
- * @swagger
- * /api/courses:
- *   post:
- *     summary: Create a new course
- *     tags: [Courses]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - title
- *               - description
- *               - pdf
- *             properties:
- *               title:
- *                 type: string
- *               description:
- *                 type: string
- *               pdf:
- *                 type: string
- *                 format: binary
- *     responses:
- *       200:
- *         description: Course created successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Course'
- *       400:
- *         description: Invalid input
- *       401:
- *         description: Not authorized
- *       500:
- *         description: Server error
- */
-router.post('/', [
-    auth,
-    upload.single('pdf'),
-    [
-        check('title', 'Title is required').not().isEmpty(),
-        check('description', 'Description is required').not().isEmpty()
-    ]
-], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
+    return parsed.data;
+  }),
+  async (c) => {
+    const { title, description, pdfUrl } = c.req.valid("json");
+    const user = c.get('user'); // Get user from Hono context
 
     try {
-        const course = await Course.create({
-            title: req.body.title,
-            description: req.body.description,
-            pdfUrl: req.file ? `/uploads/${req.file.filename}` : null,
-            userId: req.user.id
-        });
+      const course = await Course.create({
+        title,
+        description,
+        pdfUrl: pdfUrl || null, // Assuming pdfUrl is provided in the body or handled externally
+        userId: user.id,
+      });
 
-        res.json(course);
+      return c.json(course);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+      console.error(err.message);
+      return c.json({ msg: "Server Error" }, 500);
     }
-});
+  },
+);
 
 /**
  * @swagger
@@ -164,16 +208,17 @@ router.post('/', [
  *       500:
  *         description: Server error
  */
-router.get('/', auth, async (req, res) => {
+courseRoutes.get('/', auth, async (c) => {
     try {
+        const user = c.get('user');
         const courses = await Course.findAll({
-            where: { userId: req.user.id },
+            where: { userId: user.id },
             order: [['createdAt', 'DESC']]
         });
-        res.json(courses);
+        return c.json(courses);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server Error');
+        return c.json({ msg: "Server Error" }, 500);
     }
 });
 
@@ -206,24 +251,30 @@ router.get('/', auth, async (req, res) => {
  *       500:
  *         description: Server error
  */
-router.get('/:id', auth, async (req, res) => {
+courseRoutes.get('/:id', auth, async (c) => {
     try {
+        const user = c.get('user');
+        const courseId = c.req.param('id');
         const course = await Course.findOne({
             where: {
-                id: req.params.id,
-                userId: req.user.id
+                id: courseId,
+                userId: user.id
             }
         });
         
         if (!course) {
-            return res.status(404).json({ msg: 'Course not found' });
+            return c.json({ msg: 'Course not found' }, 404);
         }
 
-        res.json(course);
+        return c.json(course);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server Error');
+        return c.json({ msg: "Server Error" }, 500);
     }
+});
+
+const updateCourseProgressSchema = z.object({
+  progress: z.number().int().min(0).max(100, "Progress must be between 0 and 100"),
 });
 
 /**
@@ -270,35 +321,40 @@ router.get('/:id', auth, async (req, res) => {
  *       500:
  *         description: Server error
  */
-router.put('/:id', [
-    auth,
-    check('progress', 'Progress must be between 0 and 100').isFloat({ min: 0, max: 100 })
-], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+courseRoutes.put('/:id', 
+  auth,
+  validator("json", (value, c) => {
+    const parsed = updateCourseProgressSchema.safeParse(value);
+    if (!parsed.success) {
+      return c.json({ errors: parsed.error.issues }, 400);
     }
+    return parsed.data;
+  }),
+  async (c) => {
+    const user = c.get('user');
+    const courseId = c.req.param('id');
+    const { progress } = c.req.valid("json");
 
     try {
         const course = await Course.findOne({
             where: {
-                id: req.params.id,
-                userId: req.user.id
+                id: courseId,
+                userId: user.id
             }
         });
         
         if (!course) {
-            return res.status(404).json({ msg: 'Course not found' });
+            return c.json({ msg: 'Course not found' }, 404);
         }
 
-        course.progress = req.body.progress;
-        course.lastAccessed = Date.now();
+        course.progress = progress;
+        course.lastAccessed = new Date();
         await course.save();
 
-        res.json(course);
+        return c.json(course);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server Error');
+        return c.json({ msg: "Server Error" }, 500);
     }
 });
 
@@ -334,25 +390,33 @@ router.put('/:id', [
  *       500:
  *         description: Server error
  */
-router.delete('/:id', auth, async (req, res) => {
+courseRoutes.delete('/:id', auth, async (c) => {
     try {
+        const user = c.get('user');
+        const courseId = c.req.param('id');
         const course = await Course.findOne({
             where: {
-                id: req.params.id,
-                userId: req.user.id
+                id: courseId,
+                userId: user.id
             }
         });
         
         if (!course) {
-            return res.status(404).json({ msg: 'Course not found' });
+            return c.json({ msg: 'Course not found' }, 404);
         }
 
         await course.destroy();
-        res.json({ msg: 'Course removed' });
+        return c.json({ msg: 'Course removed' });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server Error');
+        return c.json({ msg: "Server Error" }, 500);
     }
+});
+
+const createCourseBlockSchema = z.object({
+  type: z.enum(["text", "image", "video", "quiz"]),
+  content: z.string().nonempty("Content is required"),
+  order: z.number().int().min(0),
 });
 
 /**
@@ -420,39 +484,52 @@ router.delete('/:id', auth, async (req, res) => {
  *       500:
  *         description: Server error
  */
-router.post('/:courseId/blocks', auth, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const { courseId } = req.params;
-  const { type, content, order } = req.body;
-
-  try {
-    const course = await Course.findOne({
-      where: {
-        id: courseId,
-        userId: req.user.id,
-      },
-    });
-
-    if (!course) {
-      return res.status(404).json({ msg: 'Course not found' });
+courseRoutes.post(
+  '/:courseId/blocks',
+  auth,
+  validator("json", (value, c) => {
+    const parsed = createCourseBlockSchema.safeParse(value);
+    if (!parsed.success) {
+      return c.json({ errors: parsed.error.issues }, 400);
     }
+    return parsed.data;
+  }),
+  async (c) => {
+    const { courseId } = c.req.param();
+    const { type, content, order } = c.req.valid("json");
+    const user = c.get('user');
 
-    const newBlock = await CourseBlock.create({
-      courseId,
-      type,
-      content,
-      order,
-    });
+    try {
+      const course = await Course.findOne({
+        where: {
+          id: courseId,
+          userId: user.id,
+        },
+      });
 
-    res.status(201).json({ msg: 'Content block added successfully', block: newBlock });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
-  }
+      if (!course) {
+        return c.json({ msg: 'Course not found' }, 404);
+      }
+
+      const newBlock = await CourseBlock.create({
+        courseId,
+        type,
+        content,
+        order,
+      });
+
+      return c.json({ msg: 'Content block added successfully', block: newBlock }, 201);
+    } catch (err) {
+      console.error(err.message);
+      return c.json({ msg: "Server Error" }, 500);
+    }
+  },
+);
+
+const updateCourseBlockSchema = z.object({
+  type: z.enum(["text", "image", "video", "quiz"]).optional(),
+  content: z.string().nonempty("Content is required").optional(),
+  order: z.number().int().min(0).optional(),
 });
 
 /**
@@ -524,49 +601,56 @@ router.post('/:courseId/blocks', auth, async (req, res) => {
  *       500:
  *         description: Server error
  */
-router.put('/:courseId/blocks/:blockId', auth, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const { courseId, blockId } = req.params;
-  const { type, content, order } = req.body;
-
-  try {
-    const course = await Course.findOne({
-      where: {
-        id: courseId,
-        userId: req.user.id,
-      },
-    });
-
-    if (!course) {
-      return res.status(404).json({ msg: 'Course not found' });
+courseRoutes.put(
+  '/:courseId/blocks/:blockId',
+  auth,
+  validator("json", (value, c) => {
+    const parsed = updateCourseBlockSchema.safeParse(value);
+    if (!parsed.success) {
+      return c.json({ errors: parsed.error.issues }, 400);
     }
+    return parsed.data;
+  }),
+  async (c) => {
+    const user = c.get('user');
+    const { courseId, blockId } = c.req.param();
+    const { type, content, order } = c.req.valid("json");
 
-    const block = await CourseBlock.findOne({
-      where: {
-        id: blockId,
-        courseId: courseId,
-      },
-    });
+    try {
+      const course = await Course.findOne({
+        where: {
+          id: courseId,
+          userId: user.id,
+        },
+      });
 
-    if (!block) {
-      return res.status(404).json({ msg: 'Content block not found' });
+      if (!course) {
+        return c.json({ msg: 'Course not found' }, 404);
+      }
+
+      const block = await CourseBlock.findOne({
+        where: {
+          id: blockId,
+          courseId: courseId,
+        },
+      });
+
+      if (!block) {
+        return c.json({ msg: 'Content block not found' }, 404);
+      }
+
+      block.type = type || block.type;
+      block.content = content || block.content;
+      block.order = order || block.order;
+      await block.save();
+
+      return c.json({ msg: 'Content block updated successfully', block });
+    } catch (err) {
+      console.error(err.message);
+      return c.json({ msg: "Server Error" }, 500);
     }
-
-    block.type = type || block.type;
-    block.content = content || block.content;
-    block.order = order || block.order;
-    await block.save();
-
-    res.json({ msg: 'Content block updated successfully', block });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
-  }
-});
+  },
+);
 
 /**
  * @swagger
@@ -607,19 +691,20 @@ router.put('/:courseId/blocks/:blockId', auth, async (req, res) => {
  *       500:
  *         description: Server error
  */
-router.delete('/:courseId/blocks/:blockId', auth, async (req, res) => {
-  const { courseId, blockId } = req.params;
+courseRoutes.delete('/:courseId/blocks/:blockId', auth, async (c) => {
+  const { courseId, blockId } = c.req.param();
+  const user = c.get('user');
 
   try {
     const course = await Course.findOne({
       where: {
         id: courseId,
-        userId: req.user.id,
+        userId: user.id,
       },
     });
 
     if (!course) {
-      return res.status(404).json({ msg: 'Course not found' });
+      return c.json({ msg: 'Course not found' }, 404);
     }
 
     const block = await CourseBlock.findOne({
@@ -630,15 +715,20 @@ router.delete('/:courseId/blocks/:blockId', auth, async (req, res) => {
     });
 
     if (!block) {
-      return res.status(404).json({ msg: 'Content block not found' });
+      return c.json({ msg: 'Content block not found' }, 404);
     }
 
     await block.destroy();
-    res.json({ msg: 'Content block deleted successfully' });
+    return c.json({ msg: 'Content block deleted successfully' });
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    return c.json({ msg: "Server Error" }, 500);
   }
+});
+
+const createCorrectionSchema = z.object({
+  blockId: z.number().int().optional(),
+  correctionText: z.string().nonempty("Correction text is required"),
 });
 
 /**
@@ -700,39 +790,50 @@ router.delete('/:courseId/blocks/:blockId', auth, async (req, res) => {
  *       500:
  *         description: Server error
  */
-router.post('/:courseId/corrections', auth, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const { courseId } = req.params;
-  const { blockId, correctionText } = req.body;
-
-  try {
-    const course = await Course.findOne({
-      where: {
-        id: courseId,
-        userId: req.user.id,
-      },
-    });
-
-    if (!course) {
-      return res.status(404).json({ msg: 'Course not found' });
+courseRoutes.post(
+  '/:courseId/corrections',
+  auth,
+  validator("json", (value, c) => {
+    const parsed = createCorrectionSchema.safeParse(value);
+    if (!parsed.success) {
+      return c.json({ errors: parsed.error.issues }, 400);
     }
+    return parsed.data;
+  }),
+  async (c) => {
+    const { courseId } = c.req.param();
+    const { blockId, correctionText } = c.req.valid("json");
+    const user = c.get('user');
 
-    const newCorrection = await CourseCorrection.create({
-      courseId,
-      blockId,
-      correctionText,
-      // You might want to add req.user.id here for who made the correction
-    });
+    try {
+      const course = await Course.findOne({
+        where: {
+          id: courseId,
+          userId: user.id,
+        },
+      });
 
-    res.status(201).json({ msg: 'Correction added successfully', correction: newCorrection });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
-  }
+      if (!course) {
+        return c.json({ msg: 'Course not found' }, 404);
+      }
+
+      const newCorrection = await CourseCorrection.create({
+        courseId,
+        blockId,
+        correctionText,
+      });
+
+      return c.json({ msg: 'Correction added successfully', correction: newCorrection }, 201);
+    } catch (err) {
+      console.error(err.message);
+      return c.json({ msg: "Server Error" }, 500);
+    }
+  },
+);
+
+const updateCorrectionSchema = z.object({
+  blockId: z.number().int().optional(),
+  correctionText: z.string().nonempty("Correction text is required").optional(),
 });
 
 /**
@@ -796,48 +897,55 @@ router.post('/:courseId/corrections', auth, async (req, res) => {
  *       500:
  *         description: Server error
  */
-router.put('/:courseId/corrections/:correctionId', auth, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const { courseId, correctionId } = req.params;
-  const { blockId, correctionText } = req.body;
-
-  try {
-    const course = await Course.findOne({
-      where: {
-        id: courseId,
-        userId: req.user.id,
-      },
-    });
-
-    if (!course) {
-      return res.status(404).json({ msg: 'Course not found' });
+courseRoutes.put(
+  '/:courseId/corrections/:correctionId',
+  auth,
+  validator("json", (value, c) => {
+    const parsed = updateCorrectionSchema.safeParse(value);
+    if (!parsed.success) {
+      return c.json({ errors: parsed.error.issues }, 400);
     }
+    return parsed.data;
+  }),
+  async (c) => {
+    const user = c.get('user');
+    const { courseId, correctionId } = c.req.param();
+    const { blockId, correctionText } = c.req.valid("json");
 
-    const correction = await CourseCorrection.findOne({
-      where: {
-        id: correctionId,
-        courseId: courseId,
-      },
-    });
+    try {
+      const course = await Course.findOne({
+        where: {
+          id: courseId,
+          userId: user.id,
+        },
+      });
 
-    if (!correction) {
-      return res.status(404).json({ msg: 'Correction not found' });
+      if (!course) {
+        return c.json({ msg: 'Course not found' }, 404);
+      }
+
+      const correction = await CourseCorrection.findOne({
+        where: {
+          id: correctionId,
+          courseId: courseId,
+        },
+      });
+
+      if (!correction) {
+        return c.json({ msg: 'Correction not found' }, 404);
+      }
+
+      correction.correctionText = correctionText || correction.correctionText;
+      correction.blockId = blockId || correction.blockId;
+      await correction.save();
+
+      return c.json({ msg: 'Correction updated successfully', correction });
+    } catch (err) {
+      console.error(err.message);
+      return c.json({ msg: "Server Error" }, 500);
     }
-
-    correction.correctionText = correctionText || correction.correctionText;
-    correction.blockId = blockId || correction.blockId;
-    await correction.save();
-
-    res.json({ msg: 'Correction updated successfully', correction });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
-  }
-});
+  },
+);
 
 /**
  * @swagger
@@ -878,19 +986,20 @@ router.put('/:courseId/corrections/:correctionId', auth, async (req, res) => {
  *       500:
  *         description: Server error
  */
-router.delete('/:courseId/corrections/:correctionId', auth, async (req, res) => {
-  const { courseId, correctionId } = req.params;
+courseRoutes.delete('/:courseId/corrections/:correctionId', auth, async (c) => {
+  const { courseId, correctionId } = c.req.param();
+  const user = c.get('user');
 
   try {
     const course = await Course.findOne({
       where: {
         id: courseId,
-        userId: req.user.id,
+        userId: user.id,
       },
     });
 
     if (!course) {
-      return res.status(404).json({ msg: 'Course not found' });
+      return c.json({ msg: 'Course not found' }, 404);
     }
 
     const correction = await CourseCorrection.findOne({
@@ -901,15 +1010,15 @@ router.delete('/:courseId/corrections/:correctionId', auth, async (req, res) => 
     });
 
     if (!correction) {
-      return res.status(404).json({ msg: 'Correction not found' });
+      return c.json({ msg: 'Correction not found' }, 404);
     }
 
     await correction.destroy();
-    res.json({ msg: 'Correction deleted successfully' });
+    return c.json({ msg: 'Correction deleted successfully' });
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    return c.json({ msg: "Server Error" }, 500);
   }
 });
 
-module.exports = router; 
+module.exports = courseRoutes; 

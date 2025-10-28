@@ -4,12 +4,20 @@ compatibility_date = "2025-10-28"
 
 
 
-[vars]
-# ... your environment variables ...
+[[d1_databases]]
+binding = "DB" # This is the binding name you'll use in your Worker code
+DATABASE_NAME = "paper-dash-db" # The name of your D1 database
+
+
+
+
+
+
+
 
 [placement]
 mode = "off"
 
 # Add this section or modify an existing one
 # if you have other compatibility_flags, add "nodejs_compat" to the array
-compatibility_flags = ["nodejs_compat"]
+compatibility_flags = ["nodejs_compat_v2"]

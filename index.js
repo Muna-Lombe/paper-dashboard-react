@@ -1,117 +1,112 @@
-const express = require("express");
-const cors = require("cors");
-const http = require("http");
-const socketIo = require("socket.io");
-const path = require("path");
-const swaggerUi = require("swagger-ui-express");
-const swaggerSpecs = require("./config/swagger");
-const cookieParser = require("cookie-parser");
+// const express = require("express"); // Replaced with Hono
+// const cors = require("cors"); // Replaced with Hono's cors middleware
+// const http = require("http"); // Not needed for Workers
+// const socketIo = require("socket.io"); // Not supported in Workers
+// // const path = require("path"); // Not available in Cloudflare Workers
+// const swaggerUi = require("swagger-ui-express"); // Not supported in Workers
+// const swaggerSpecs = require("./config/swagger"); // Not supported in Workers
+// const cookieParser = require("cookie-parser"); // Replaced with Hono's cookie middleware
 const auth = require("./middleware/auth"); // Import auth middleware
-const telegramBot = require("./config/telegramBot"); // Import telegramBot
-// const { connectDB } = require("./config/database");
+const telegramBotFactory = require("./config/telegramBot"); // Renamed for clarity
+const { sequelize } = require("./config/database");
 require("dotenv").config();
 
-const app = express();
-const server = http.createServer(app);
-const io = socketIo(server, {
-    cors: {
-        origin: process.env.CLIENT_URL || "https://0.0.0.0:$1",
-        methods: ["GET", "POST"],
-    },
+const { Hono } = require('hono');
+const { cors } = require('hono/cors');
+const { json } = require('hono/json');
+const { logger } = require('hono/logger');
+const { poweredBy } = require('hono/powered-by');
+const { secureHeaders } = require('hono/secure-headers');
+const { handle } = require('hono/cloudflare-pages');
+const { getCookie, setCookie, deleteCookie } = require('hono/cookie');
+
+const app = new Hono();
+
+// Hono Middleware
+app.use(logger());
+app.use(poweredBy());
+app.use(secureHeaders());
+app.use(json());
+app.use(cors({
+  origin: ["https://paperdash.katundu.org", "http://localhost:3000"],
+  credentials: true,
+  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowHeaders: ["Content-Type", "Authorization"],
+}));
+
+// Custom middleware to attach D1 binding to context and initialize Sequelize
+app.use(async (c, next) => {
+  if (c.env && c.env.DB) {
+    sequelize.options.dialectOptions = {
+      bindings: c.env.DB,
+    };
+    // You might need to sync models here or ensure they are already synced via migrations
+    await sequelize.sync({ alter: true });
+  }
+  c.set('env', c.env); // Make env accessible in the Hono context
+  await next();
 });
-
-
-// Connect to Database
-const { connectDB } = require("./config/database");
-connectDB();
-
-// Middleware
-app.use(
-    cors({
-        origin: [
-            "https://paper-dashboard-react.onrender.com",
-            "http://localhost:3000",
-        ], // Allows all origins
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"],
-    }),
-);
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-
 
 // health check
-app.get("/health", (req, res) => {
-    res.status(200).send({ message: "OK" });
+app.get("/health", (c) => {
+    return c.text("OK");
 });
-
-// Serve uploaded files
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
-// Create uploads directory if it doesn't exist
-const fs = require("fs");
-const uploadDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir);
-}
-
-// API Documentation
-app.use(
-    "/api-docs",
-    swaggerUi.serve,
-    swaggerUi.setup(swaggerSpecs, {
-        explorer: true,
-        customCss: ".swagger-ui .topbar { display: none }",
-        customSiteTitle: "Course Manager API Documentation",
-    }),
-);
 
 // Routes
-app.use("/api/auth", require("./routes/auth"));
-app.use("/api/courses", auth, require("./routes/courses")); // Protect with auth middleware
-app.use("/api/scraper", auth, require("./routes/scraper")); // Protect with auth middleware
-app.use("/api/telegram", require("./routes/telegram")); // Add Telegram bot routes
-app.use("/api/dashboard", auth, require("./routes/dashboard")); // Add Dashboard routes, protected by auth middleware
-app.use("/api/user", auth, require("./routes/user")); // Add User routes, protected by auth middleware
-app.use("/api/schedule", auth, require("./routes/schedule")); // Add Schedule routes, protected by auth middleware
-app.use("/api/integrations", auth, require("./routes/integrations")); // Add Integrations routes, protected by auth middleware
-app.use("/api/assistant", auth, require("./routes/assistant")); // Add Assistant routes, protected by auth middleware
+const authRoutes = require("./routes/auth");
+app.route("/api/auth", authRoutes);
 
-// WebSocket connection
-io.on("connection", (socket) => {
-    // // // console.log('New client connected');
+const courseRoutes = require("./routes/courses");
+app.route("/api/courses", courseRoutes); // Mount course routes
 
-    socket.on("disconnect", () => {
-        // // // console.log('Client disconnected');
-    });
+const scraperRoutes = require("./routes/scraper");
+app.route("/api/scraper", scraperRoutes); // Mount scraper routes
 
-    // Handle course updates
-    socket.on("courseUpdate", (data) => {
-        io.emit("courseUpdated", data);
-    });
+const telegramRoutes = require("./routes/telegram");
+app.route("/api/telegram", telegramRoutes); // Mount telegram routes
+
+const dashboardRoutes = require("./routes/dashboard");
+app.route("/api/dashboard", dashboardRoutes); // Mount dashboard routes
+
+const userRoutes = require("./routes/user");
+app.route("/api/user", userRoutes); // Mount user routes
+
+const scheduleRoutes = require("./routes/schedule");
+app.route("/api/schedule", scheduleRoutes); // Mount schedule routes
+
+const integrationsRoutes = require("./routes/integrations");
+app.route("/api/integrations", integrationsRoutes); // Mount integrations routes
+
+const assistantRoutes = require("./routes/assistant");
+app.route("/api/assistant", assistantRoutes); // Mount assistant routes
+
+// Initialize the Telegram bot with the env object
+const telegramBot = telegramBotFactory(process.env); // Pass process.env here for local testing, Cloudflare will provide c.env
+
+// app.use("/api/courses", auth, require("./routes/courses")); // Protect with auth middleware
+// app.use("/api/scraper", auth, require("./routes/scraper")); // Protect with auth middleware
+// app.use("/api/telegram", require("./routes/telegram")); // Add Telegram bot routes
+// app.use("/api/dashboard", auth, require("./routes/dashboard")); // Add Dashboard routes, protected by auth middleware
+// app.use("/api/user", auth, require("./routes/user")); // Add User routes, protected by auth middleware
+// app.use("/api/schedule", auth, require("./routes/schedule")); // Add Schedule routes, protected by auth middleware
+// app.use("/api/integrations", auth, require("./routes/integrations")); // Add Integrations routes, protected by auth middleware
+// app.use("/api/assistant", auth, require("./routes/assistant")); // Add Assistant routes, protected by auth middleware
+
+// Telegram Webhook
+app.post('/telegram-webhook', async (c) => {
+  try {
+    const update = await c.req.json();
+    // For local development, process.env might be used. In Cloudflare Worker, c.env is available.
+    // Ensure telegramBotFactory can handle either.
+    await telegramBot(update, c.env); // Pass c.env to the bot's webhook handler
+    return c.text('OK');
+  } catch (error) {
+    console.error('Telegram webhook error:', error);
+    return c.text('Error', 500);
+  }
 });
 
-// Start Telegram Bot
-telegramBot.launch(()=>(console.info(`Bot:${telegramBot.botInfo.id} started!`)));
-
-telegramBot.telegram.setMyCommands([
-  { command: 'start', description: 'Start the bot and see the main menu' },
-  { command: 'help', description: 'Get help with using the bot' },
-  { command: 'register', description: 'Start the registration process to get service access' },
-  { command: 'dashboard', description: 'Access your personalized dashboard' },
-  { command: 'get_token', description: 'Get your access token if registered and approved' },
-]);
-
-// Enable graceful stop
-process.once("SIGINT", () => telegramBot.stop("SIGINT"));
-process.once("SIGTERM", () => telegramBot.stop("SIGTERM"));
-
-const PORT = process.env.PORT || 5000;
-
-server.listen(PORT, () => {
-    // // // console.log(`Server running on port ${PORT}`);
-    // // // console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
-});
+// Export the Hono app as a Cloudflare Worker handler
+module.exports = {
+    fetch: handle(app),
+};

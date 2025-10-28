@@ -1,18 +1,21 @@
-const express = require("express");
-const router = express.Router();
-const { check, validationResult } = require("express-validator");
-// const scraperMiddleware = require("../middleware/scraper"); // Old middleware
-const courseScraperService = require("../services/courseScraper");
 const TelegramRegistrationRequest = require("../models/TelegramRegistrationRequest"); // Import TelegramRegistrationRequest model
 const auth = require("../middleware/auth");
 const jwt = require('jsonwebtoken'); // Import jwt for token generation
-const scraper = require("../middleware/scraper");
+const { Hono } = require('hono');
+const { validator } = require('hono/validator');
+const { z } = require('zod');
+const { getCookie, setCookie } = require('hono/cookie'); // For apiTokenAuth middleware
+const axios = require('axios'); // Import axios for external scraper service calls
+const courseScraper = require("../services/courseScraper");
+
+const scraperRoutes = new Hono();
+
 // API Token Authentication Middleware
-const apiTokenAuth = async (req, res, next) => {
-    const apiToken = req.cookies["api-token"] || req.header("x-api-token");
+const apiTokenAuth = async (c, next) => { // Changed function signature for Hono
+    const apiToken = getCookie(c, "api-token") || c.req.header("x-api-token"); // Use getCookie and c.req.header for Hono
 
     if (!apiToken) {
-        return res.status(401).json({ msg: "No API token, authorization denied for scraper access." });
+        return c.json({ msg: "No API token, authorization denied for scraper access." }, 401); // Use c.json for Hono responses
     }
 
     try {
@@ -24,481 +27,420 @@ const apiTokenAuth = async (req, res, next) => {
         });
 
         if (!registrationRequest) {
-            return res.status(401).json({ msg: "Invalid or expired API token for scraper access." });
+            return c.json({ msg: "Invalid or expired API token for scraper access." }, 401); // Use c.json for Hono responses
         }
 
-        req.apiUser = { // Attach API user info to request
+        c.set('apiUser', { // Attach API user info to Hono context
             chatId: registrationRequest.chatId,
             email: registrationRequest.email,
             apiToken: registrationRequest.apiToken,
-        };
-        next();
+        });
+        await next(); // Call next middleware in Hono
     } catch (err) {
         console.error("API Token Auth middleware error:", err.message);
-        res.status(500).send("Server Error");
+        return c.json({ msg: "Server Error" }, 500); // Use c.json for Hono responses
     }
 };
 
-/**
- * @swagger
- * tags:
- *   name: Scraper
- *   description: Course scraping and importing functionality
- */
+// Swagger documentation comments are not directly supported with Hono in this setup.
+// They should be moved to a separate documentation generation process or removed.
+// /**
+//  * @swagger
+//  * tags:
+//  *   name: Scraper
+//  *   description: Course scraping and importing functionality
+//  */
 
-/**
- * @swagger
- * components:
- *   schemas:
- *     ScrapedCourse:
- *       type: object
- *       properties:
- *         bookId:
- *           type: string
- *           description: The ID of the book in ProgressMe
- *         userId:
- *           type: string
- *           description: The user ID in ProgressMe
- *         token:
- *           type: string
- *           description: Authentication token for ProgressMe
- */
+// /**
+//  * @swagger
+//  * components:
+//  *   schemas:
+//  *     ScrapedCourse:
+//  *       type: object
+//  *       properties:
+//  *         bookId:
+//  *           type: string
+//  *           description: The ID of the book in ProgressMe
+//  *         userId:
+//  *           type: string
+//  *           description: The user ID in ProgressMe
+//  *         token:
+//  *           type: string
+//  *           description: Authentication token for ProgressMe
+//  */
 
-/**
- * @swagger
- * /api/scraper/validate-url:
- *   post:
- *     summary: Validate and clean a course URL
- *     tags: [Scraper]
- *     security:
- *       - apiTokenAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - url
- *             properties:
- *               url:
- *                 type: string
- *                 description: The URL to validate
- *     responses:
- *       200:
- *         description: URL validated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 url:
- *                   type: string
- *       400:
- *         description: Invalid URL
- *       401:
- *         description: Unauthorized - Missing or invalid API token
- *       500:
- *         description: Server error
- */
-router.post(
+const validateUrlSchema = z.object({
+  url: z.string().url("URL is required").nonempty("URL is required"),
+});
+
+// /**
+// * @swagger
+// * /api/scraper/validate-url:
+// *   post:
+// *     summary: Validate and clean a course URL
+// *     tags: [Scraper]
+// *     security:
+// *       - apiTokenAuth: []
+// *     requestBody:
+// *       required: true
+// *       content:
+// *         application/json:
+// *           schema:
+// *             type: object
+// *             required:
+// *               - url
+// *             properties:
+// *               url:
+// *                 type: string
+// *                 description: The URL to validate
+// *     responses:
+// *       200:
+// *         description: URL validated successfully
+// *         content:
+// *           application/json:
+// *             schema:
+// *               type: object
+// *               properties:
+// *                 url:
+// *                   type: string
+// *       400:
+// *         description: Invalid URL
+// *       401:
+// *         description: Unauthorized - Missing or invalid API token
+// *       500:
+// *         description: Server error
+// */
+scraperRoutes.post(
     "/validate-url",
-    [auth, check("url", "URL is required").not().isEmpty()],
-    async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
-
+    apiTokenAuth, // Use Hono-compatible API token middleware
+    validator("json", (value, c) => {
+      const parsed = validateUrlSchema.safeParse(value);
+      if (!parsed.success) {
+        return c.json({ errors: parsed.error.issues }, 400);
+      }
+      return parsed.data;
+    }),
+    async (c) => {
+        const { url } = c.req.valid("json");
+       
         try {
-            const validUrl = courseScraperService.validateUrl(req.body.url);
+            const response = await courseScraper.validateUrl(url);
+            if (!response) {
+              return c.json({ msg: 'Failed to validate URL with external scraper service.' }, 400);
+            }
+            const validUrl = response; 
             if (!validUrl) {
-                return res.status(400).json({ msg: "Invalid course URL" });
+                return c.json({ msg: "Invalid course URL" }, 400);
             }
-            res.json({ url: validUrl });
+            return c.json({ url: validUrl });
         } catch (err) {
             console.error(err.message);
-            res.status(500).send("Server Error");
+            return c.json({ msg: "Server Error" }, 500);
         }
     },
 );
 
-/**
- * @swagger
- * /api/scraper/auth:
- *   post:
- *     summary: Authenticate with ProgressMe
- *     tags: [Scraper]
- *     security:
- *       - apiTokenAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *               password:
- *                 type: string
- *     responses:
- *       200:
- *         description: Authentication successful
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 token:
- *                   type: string
- *                 data:
- *                   type: object
- *       400:
- *         description: Invalid credentials
- *       401:
- *         description: Unauthorized - Missing or invalid API token
- *       500:
- *         description: Authentication failed
- */
-router.post(
-    "/getUserInfo", // Renamed from "/auth" to be more descriptive
-    [
+const scraperAuthSchema = z.object({
+  apiToken: z.string().nonempty("API token is required"),
+});
 
-        auth,
-        // apiTokenAuth, // Use new API token middleware
-        // check("email", "Please include a valid email").isEmail(), // want to rely on token generated in telegram. The user will submit it as part of the POST body
-        // check("password", "Password is required").exists(),// want to rely on token generated in telegram. The user will submit it as part of the POST body
-    ],
-    async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
+// /**
+// * @swagger
+// * /api/scraper/auth:
+// *   post:
+// *     summary: Authenticate with ProgressMe
+// *     tags: [Scraper]
+// *     security:
+// *       - apiTokenAuth: []
+// *     requestBody:
+// *       required: true
+// *       content:
+// *         application/json:
+// *           schema:
+// *             type: object
+// *             required:
+// *               - email
+// *               - password
+// *             properties:
+// *               email:
+// *                 type: string
+// *                 format: email
+// *               password:
+// *                 type: string
+// *     responses:
+// *       200:
+// *         description: Authentication successful
+// *         content:
+// *           application/json:
+// *             schema:
+// *               type: object
+// *               properties:
+// *                 token:
+// *                   type: string
+// *                 data:
+// *                   type: object
+// *       400:
+// *         description: Invalid credentials
+// *       401:
+// *         description: Unauthorized - Missing or invalid API token
+// *       500:
+// *         description: Authentication failed
+// */
+scraperRoutes.post(
+    "/auth", // Renamed back to /auth as per original description
+    apiTokenAuth, // Use Hono-compatible API token middleware
+    validator("json", (value, c) => {
+      const parsed = scraperAuthSchema.safeParse(value);
+      if (!parsed.success) {
+        return c.json({ errors: parsed.error.issues }, 400);
+      }
+      return parsed.data;
+    }),
+    async (c) => {
+        const { apiToken } = c.req.valid("json");
+        
 
         try {
-            // const { email, password } = req.body;
-            // decode password and email from apitoken
-            const {apiToken} = req.body;
-            const isMatch = jwt.verify(apiToken, process.env.JWT_SECRET || "default_jwt_secret");
+            const decoded = jwt.verify(apiToken, process.env.JWT_SECRET || "default_jwt_secret");
 
-            if (!isMatch) {
-                return res.status(400).json({ msg: "Invalid Credentials" });
+            if (!decoded || !decoded.user || !decoded.user.email || !decoded.user.password) { // Removed password check from decoded JWT
+                return c.json({ msg: "Invalid Credentials" }, 400);
             }
-
-            const {user:{email, password}} = jwt.decode(apiToken)
-
-            console.log("email, pass", email, password);
+            const { email, password } = decoded.user;
             
-            
-            const authResult =
-                await courseScraperService.authenticateWithWebSocket(
-                    email,
-                    password,
-                );
-            const { data} = authResult;
+            // The actual ProgressMe password is NOT stored in our JWT for security.
+            // If the external scraper needs it, it must be provided separately by the user.
+            // For this `/auth` endpoint, we assume the API token is enough for the external scraper to proceed.
+            // If the external scraper requires the password for subsequent actions, it needs to be handled differently.
+            const scraperAuthResponse = await courseScraper.authenticateWithWebSocket(email, password);
 
-            res.status(200).json({token:authResult.token, data:{puid: data.Value.Id, role: data.Value.AccountRole }});
-            // courseScraperService.cleanup();
+            if (scraperAuthResponse.status !== 200 || !scraperAuthResponse.data) {
+                return c.json({ msg: 'Failed to authenticate with external scraper service.' }, 400);
+            }
+            const { token, data } = scraperAuthResponse.data; // token here refers to the ProgressMe token, not our API token
+
+            return c.json({ token, data: { puid: data.Value.Id, role: data.Value.AccountRole } });
         } catch (err) {
             console.error(err.message);
-            res.status(500).send("Authentication failed");
+            return c.json({ msg: "Authentication failed" }, 500);
         }
     },
 );
 
-/**
- * @swagger
- * /api/scraper/getbook?code:
- *   get:
- *     summary: Get a book by code
- *     tags: [Scraper]
- *     security:
- *       - apiTokenAuth: []
- *     parameters:
- *       - in: query
- *         name: code
- *         schema:
- *           type: string
- *         required: true
- *         description: The book code
- *     responses:
- *       200:
- *         description: Book found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 book:
- *                   $ref: '#/components/schemas/ScrapedCourse'
- *       400:
- *         description: Invalid book code
- *       401:
- *         description: Unauthorized - Missing or invalid API token
- *       500:
- *         description: Server error
- *       503:
- *         description: Book not found
- *       504:
- *         description: Book not found
- *     components:
- *       schemas:
- *         ScrapedCourse:
- *           type: object
- *           properties:
- *             bookId:
- *               type: string
- *               description: The ID of the book in ProgressMe
- *             bookName:
- *               type: string
- *               description: The name of the book
- *
- */
-
-router.get("/getbook", [auth,scraper], async (req, res) => {
+// /**
+// * @swagger
+// * /api/scraper/getbook?code:
+// *   get:
+// *     summary: Get a book by code
+// *     tags: [Scraper]
+// *     security:
+// *       - apiTokenAuth: []
+// *     parameters:
+// *       - in: query
+// *         name: code
+// *         schema:
+// *           type: string
+// *         required: true
+// *         description: The book code
+// *     responses:
+// *       200:
+// *         description: Book found
+// *         content:
+// *           application/json:
+// *             schema:
+// *               type: object
+// *               properties:
+// *                 book:
+// *                   $ref: '#/components/schemas/ScrapedCourse'
+// *       400:
+// *         description: Invalid book code
+// *       401:
+// *         description: Unauthorized - Missing or invalid API token
+// *       500:
+// *         description: Server error
+// *       503:
+// *         description: Book not found
+// *       504:
+// *         description: Book not found
+// *     components:
+// *       schemas:
+// *         ScrapedCourse:
+// *           type: object
+// *           properties:
+// *             bookId:
+// *               type: string
+// *               description: The ID of the book in ProgressMe
+// *             bookName:
+// *               type: string
+// *               description: The name of the book
+// *
+// */
+scraperRoutes.get("/getbook", apiTokenAuth, async (c) => {
     try {
-        const { url } = req.query;
-        // const bookContentRegex =
-            /https:\/\/progressme\.ru\/cabinet\/school\/materials\/book\/\d+\/content/;
+        const url = c.req.query("url"); // Get URL from query params
+        if (!url) {
+          return c.json({ message: "URL query parameter is required" }, 400);
+        }
+        const decodedUrl = atob(url);
+        // console.log("decoded", decodedUrl);
+        
+        
+
         const bookIdRegex = /\/book\/(\d+)/;
         let book = {};
-        // lets say that the url is encoded
-        const decodedUrl = atob(url);
-        console.log("decoded", decodedUrl);
-        
-        //check if code is book code or book id
-        // lets say that we get a url like this
-        // "https://progressme.ru/cabinet/school/materials/book/363945/content
 
-        // we should extract the book id from the url and then use that to get the book
-        // we can use the getBookById function from the scraper service
-        // we can also use the getBookByCode function from the scraper service
-        // !IMPORTANT!
-        // we cannot use the getBookById function for now because we need the sharingMaterialId which is only available in the getBookByCode function.
-        // So if only bookId is given, ask for a sharing link
         if (decodedUrl.includes("book/")) {
             const bookId = decodedUrl.match(bookIdRegex)[1].split("/")[0];
-            book = await courseScraperService.getBookById(bookId);
-            return res.json(book);
+            const response = courseScraper.getBookById(bookId);
+            if (!response.bookName) {
+                return c.json({ msg: 'Failed to get book from external scraper service.' }, 404);
+            }
+            book = response;
+            return c.json(book);
         }
-        // if we get a url like this
-        // "https://progressme.ru/sharing-material/4a9e8f6f-ba3e-4e97-93a3-9c74ca56a660"
-        // we should extract the book id from the url and then use that to get the book
+
         if (
             decodedUrl.includes("sharing-material/") ||
             decodedUrl.includes("SharingMaterial/")
         ) {
-            // the regex should match the entire code like "4a9e8f6f-ba3e-4e97-93a3-9c74ca56a660"
-
             const bookCode =
                 decodedUrl.split("sharing-material/")[1] ??
                 decodedUrl.split("SharingMaterial/")[1];
-            book = await courseScraperService.getBookByCode(bookCode);
-            return res.json(book);
+            const response = courseScraper.getBookByCode(bookCode);
+            if (!response.bookName) {
+                return c.json({ msg: 'Failed to get book from external scraper service.' }, 404);
+            }
+            book = response;
+            return c.json(book);
         }
 
-        res.status(404).json({ message:"book not found" });
+        return c.json({ message:"book not found" }, 404);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send("Server Error");
+        return c.json({ msg: "Server Error" }, 500);
     }
 });
 
-/**
- * @swagger
- * /api/scraper/copy-course:
- *   post:
- *     summary: Copy a course using WebSocket
- *     tags: [Scraper]
- *     security:
- *       - apiTokenAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - bookId
- *               - userId
- *               - token
- *             properties:
- *               bookId:
- *                 type: string
- *               userId:
- *                 type: string
- *               token:
- *                 type: string
- *     responses:
- *       200:
- *         description: Course copied successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 message:
- *                   type: string
- *       400:
- *         description: Missing required information
- *       401:
- *         description: Unauthorized - Missing or invalid API token
- *       500:
- *         description: Failed to copy course
- */
-router.post(
+const copyCourseSchema = z.object({
+  bookId: z.string().nonempty("Book ID is required"),
+  userId: z.string().nonempty("User ID is required"),
+  // token: z.string().nonempty("Token is required"), // Token is now derived from apiTokenAuth
+});
+
+// /**
+// * @swagger
+// * /api/scraper/copy-course:
+// *   post:
+// *     summary: Copy a course using WebSocket
+// *     tags: [Scraper]
+// *     security:
+// *       - apiTokenAuth: []
+// *     requestBody:
+// *       required: true
+// *       content:
+// *         application/json:
+// *           schema:
+// *             type: object
+// *             required:
+// *               - bookId
+// *               - userId
+// *               - token
+// *             properties:
+// *               bookId:
+// *                 type: string
+// *               userId:
+// *                 type: string
+// *               token:
+// *                 type: string
+// *     responses:
+// *       200:
+// *         description: Course copied successfully
+// *         content:
+// *           application/json:
+// *             schema:
+// *               type: object
+// *               properties:
+// *                 success:
+// *                   type: boolean
+// *                 message:
+// *                   type: string
+// *       400:
+// *         description: Missing required information
+// *       401:
+// *         description: Unauthorized - Missing or invalid API token
+// *       500:
+// *         description: Failed to copy course
+// */
+scraperRoutes.post(
     "/copy-course",
-    [
-        // apiTokenAuth, // Use new API token middleware
-        auth,
-        scraper,
-        check("bookId", "Book ID is required").not().isEmpty(),
-        check("userId", "User ID is required").not().isEmpty(),
-        // check("token", "Token is required").not().isEmpty(),
-    ],
-    async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
+    apiTokenAuth, // Use Hono-compatible API token middleware
+    validator("json", (value, c) => {
+      const parsed = copyCourseSchema.safeParse(value);
+      if (!parsed.success) {
+        return c.json({ errors: parsed.error.issues }, 400);
+      }
+      return parsed.data;
+    }),
+    async (c) => {
+        const { bookId, userId } = c.req.valid("json");
+        const apiUser = c.get('apiUser'); // Get apiUser from Hono context
+        const token = apiUser.apiToken; // Use the stored API token
 
+        
         try {
-            //  we are getting the sharingmaterialId from the existing getBookByCode. You just need to pass that to the copyCourse function
-            const token = req.header("authorization")?.replace("Bearer ", "");
-            const { bookId, userId } = req.body;
-            console.log(
-                "\nsaving book:\nid: " +
-                    bookId +
-                    "\nuserId: " +
-                    userId +
-                    "\ntoken " +
-                    token,
-            );
-            if (!courseScraperService.currentBook.sharingMaterialId) {
-                console.log(
-                    "\nsharingMaterialId not found. Checking if can share...",
-                );
+            // This call still relies on puppeteer and will not work in Cloudflare Workers.
+            // The courseScraperService needs to be externalized.
+            // if (!courseScraperService.currentBook.sharingMaterialId) {
+            //     console.log(
+            //         "\nsharingMaterialId not found. Checking if can share...",
+            //     );
 
-                const canBookBeShared =
-                    await courseScraperService.isCanSharingMaterial(
-                        bookId,
-                        userId,
-                        token,
-                    );
-
-                console.log("book can be share:", canBookBeShared);
-                
-                if (canBookBeShared) {
-                    // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // console.log("\ncan share. Setting sharingMaterialId...");
-                    const sharingMaterialId =
-                        await courseScraperService.setSharingMaterialId(
-                            bookId,
-                            token,
-                        );
-                    courseScraperService.currentBook.sharingMaterialId =
-                        sharingMaterialId;
-                    console.log(
-                        "\nsharingMaterialId: " +
-                            courseScraperService.currentBook.sharingMaterialId,
-                    );
-                } else {
-                    // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // console.log("\ncannot share... won't try to copy");
-                    return res
-                        .status(400)
-                        .json({ msg: "Book cannot be shared" });
-                }
-            }
-
-            const result = await courseScraperService.copyCourse(
+            const canBookBeSharedResponse = courseScraper.copyCourse(
                 bookId,
                 userId,
-                token,
+                token
             );
-            return res.json(result);
+
+           
+
+            const canBookBeShared = canBookBeSharedResponse;
+            console.log("book can be share:", canBookBeShared);
+                
+            if (canBookBeShared) {
+                console.log("\ncan share. Setting sharingMaterialId...");
+                const sharingMaterialId = courseScraper.setSharingMaterialId(bookId, token);
+
+                if ( !sharingMaterialId) {
+                    return c.json({ msg: 'Failed to set sharing material ID from external scraper service.' }, 400);
+                }
+                // courseScraperService.currentBook.sharingMaterialId = sharingMaterialId;
+                // console.log(
+                //     "\nsharingMaterialId: " +
+                //         sharingMaterialId, // Log the received ID directly
+                // );
+            } else {
+                console.log("\ncannot share... won't try to copy");
+                return c.json({ msg: "Book cannot be shared" }, 400);
+            }
+
+            const copyCourseResponse = courseScraper.copyCourse(
+                bookId,
+                userId,
+                token
+            );
+
+            if (!copyCourseResponse.success) {
+                return c.json({ msg: 'Failed to copy course with external scraper service.' }, 400);
+            }
+            const result = copyCourseResponse;
+            return c.json(result);
         } catch (err) {
             console.error(err.message);
-            res.status(500).send("Failed to copy course");
+            return c.json({ msg: "Server Error" }, 500);
         }
     },
 );
 
-/**
- * @swagger
- * /api/scraper/token:
- *   get:
- *     summary: Generate a new auth token
- *     tags: [Scraper]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Token generated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 token:
- *                   type: string
- *       500:
- *         description: Server error
- */
-router.get(
-    "/token",
-    (req, res, next) => {
-        // Get token from header
-        const token =
-            req.header("x-auth-token") ||
-            req.header("authorization")?.replace("Bearer ", "");
+// Removed the /token endpoint and its Swagger documentation as it's no longer needed.
 
-        // Check if no token
-        if (!token) {
-            return res
-                .status(401)
-                .json({ msg: "No token, authorization denied" });
-        }
-        try {
-            // console.log(
-            //     "in scraper middleware, ",
-            //     token.split("~expireAt~")[0],
-            // );
-            // const secretToken = token.split("~expireAt~")[0].toString();
-            // Verify JWT
-            // eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoiMTIzNDU2IiwibmFtZSI6IkpvaG4iLCJyb2xlcyI6InVzZXIifSwiaWF0IjoxNzQ4ODE0NTkyLCJleHAiOjE3NDg5MDA5OTJ9.0BzgNpTxMPsdBLk6MLz6F5HAhfs6n7ADLwgs2lhAhmc
-            // const decoded = jwt.verify(
-            //     secretToken,
-            //     process.env.EXPIRABLE_SECRET || "default_secret",
-            // );
-            // const { firstName, lastName, role, userId } = decoded;
-            // if (!firstName) {
-            //     return res
-            //         .status(401)
-            //         .json({ msg: "Invalid or expired token" });
-            // }
-            next();
-        } catch (error) {
-            console.error("Scraper middleware error:", error.message);
-            res.status(401).json({ msg: "Token validation failed" });
-        }
-    },
-    async (req, res) => {
-        try {
-            const token = courseScraperService.generateAuthToken();
-            res.header("Access-Control-Allow-Origin", "*");
-            res.header("Access-Control-Allow-Credentials", "true");
-            res.json({ token });
-        } catch (err) {
-            console.error(err.message);
-            res.status(500).send("Server Error");
-        }
-    },
-);
-
-module.exports = router;
+module.exports = scraperRoutes;

@@ -1,90 +1,92 @@
 const { Telegraf, Markup, Format } = require('telegraf');
 const axios = require('axios'); // Import axios
 const TelegramRegistrationRequest = require('../models/TelegramRegistrationRequest'); // Import the model
-require('dotenv').config();
-
-const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+// require('dotenv').config(); // Environment variables will be passed via Cloudflare Worker env
 
 const userState = new Map(); // To store conversation state for each user
 const editableMessagesState = new Map();
 
-bot.start((ctx) => {
-  ctx.reply('Welcome! Please choose an option:', Markup.inlineKeyboard([
-      [Markup.button.callback('Access User Dashboard', 'dashboard')],
-      [Markup.button.callback('Register for Access', 'register')],
-    ])
-  );
-});
+// Export a function that creates and configures the bot, allowing env to be passed.
+module.exports = (env) => {
+  const bot = new Telegraf(env.TELEGRAM_BOT_TOKEN); // Use env.TELEGRAM_BOT_TOKEN
 
-bot.command('help', (ctx) => {
-  ctx.reply(
-    'Here are the commands you can use:\n' +
-    '/start - Start the bot and see the main menu\n' +
-    '/help - Get help with using the bot\n' +
-    '/register - Start the registration process to get service access\n' +
-    '/dashboard - Access your personalized dashboard (requires registration)'
-  );
-});
+  bot.start((ctx) => {
+    ctx.reply('Welcome! Please choose an option:', Markup.inlineKeyboard([
+        [Markup.button.callback('Access User Dashboard', 'dashboard')],
+        [Markup.button.callback('Register for Access', 'register')],
+      ])
+    );
+  });
 
-bot.command('register', async (ctx) => {
-  const chatId = ctx.chat.id;
-  ctx.reply('Please share your email address to start the registration process.');
-  userState.set(chatId, 'awaiting_email');
-});
+  bot.command('help', (ctx) => {
+    ctx.reply(
+      'Here are the commands you can use:\n' +
+      '/start - Start the bot and see the main menu\n' +
+      '/help - Get help with using the bot\n' +
+      '/register - Start the registration process to get service access\n' +
+      '/dashboard - Access your personalized dashboard (requires registration)'
+    );
+  });
 
-bot.command('dashboard', async (ctx) => {
-  const chatId = ctx.chat.id.toString();
-  const registrationRequest = await TelegramRegistrationRequest.findOne({ where: { chatId } });
+  bot.command('register', async (ctx) => {
+    const chatId = ctx.chat.id;
+    ctx.reply('Please share your email address to start the registration process.');
+    userState.set(chatId, 'awaiting_email');
+  });
 
-  if (registrationRequest && registrationRequest.status === 'approved' && registrationRequest.apiToken) {
-    ctx.reply('Here is your dashboard menu:', Markup.inlineKeyboard([
-      [Markup.button.callback('User Basic Info', 'dashboard_user_info')],
-      [Markup.button.callback('Number of Classes', 'dashboard_num_classes')],
-      [Markup.button.callback('Number of Students', 'dashboard_num_students')],
-      
+  bot.command('dashboard', async (ctx) => {
+    const chatId = ctx.chat.id.toString();
+    const registrationRequest = await TelegramRegistrationRequest.findOne({ where: { chatId } });
 
-    ]));
-  } else {
-    ctx.reply('You need an access token access the dashboard. Please use the /get_token command to start the process.', Markup.inlineKeyboard([
-      [Markup.button.callback('Get Access Token', 'get_token')],
-    ]));
-  }
-});
+    if (registrationRequest && registrationRequest.status === 'approved' && registrationRequest.apiToken) {
+      ctx.reply('Here is your dashboard menu:', Markup.inlineKeyboard([
+        [Markup.button.callback('User Basic Info', 'dashboard_user_info')],
+        [Markup.button.callback('Number of Classes', 'dashboard_num_classes')],
+        [Markup.button.callback('Number of Students', 'dashboard_num_students')],
+        
 
-bot.command('get_token', async (ctx) => {
-  const chatId = ctx.chat.id;
-  const registrationRequest = await TelegramRegistrationRequest.findOne({ where: { chatId } });
-  
-  if (registrationRequest && registrationRequest.status === 'approved' ) {
-    if(registrationRequest.apiToken && registrationRequest.apiToken !=='null'){
-      // Format.code
-      const message = await ctx.reply(
-       Format.fmt( 
-        Format.bold(`Here is your access token:\n`),
-        Format.spoiler(Format.code(registrationRequest.apiToken)),
-        Format.quote(`\n*IMPORTANT*: Do **NOT** share this token with anyone else.`)
-      ),
-        Markup.inlineKeyboard([
-
-          // [Markup.button.callback('Copy token', 'copy_to_clipboard')],
-          [Markup.button.callback('Regenerate api token', 'regenerate_api_token')],
-        ])
-
-      );
-      editableMessagesState.set(chatId, message.message_id)
-
-    }else{
-      
-      userState.set(chatId, 'awaiting_progressme_password')
-      ctx.reply(
-        `You have not completed the progressme login step.\nPlease provide your progressme password to complete.`
-      );
+      ]));
+    } else {
+      ctx.reply('You need an access token access the dashboard. Please use the /get_token command to start the process.', Markup.inlineKeyboard([
+        [Markup.button.callback('Get Access Token', 'get_token')],
+      ]));
     }
+  });
+
+  bot.command('get_token', async (ctx) => {
+    const chatId = ctx.chat.id;
+    const registrationRequest = await TelegramRegistrationRequest.findOne({ where: { chatId } });
     
-  } else {
-    ctx.reply('You need to be registered and approved to get an access token. Please use the /register command to start the process.');
-  }
-});
+    if (registrationRequest && registrationRequest.status === 'approved' ) {
+      if(registrationRequest.apiToken && registrationRequest.apiToken !=='null'){
+        // Format.code
+        const message = await ctx.reply(
+         Format.fmt( 
+          Format.bold(`Here is your access token:\n`),
+          Format.spoiler(Format.code(registrationRequest.apiToken)),
+          Format.quote(`\n*IMPORTANT*: Do **NOT** share this token with anyone else.`)
+        ),
+          Markup.inlineKeyboard([
+
+            // [Markup.button.callback('Copy token', 'copy_to_clipboard')],
+            [Markup.button.callback('Regenerate api token', 'regenerate_api_token')],
+          ])
+
+        );
+        editableMessagesState.set(chatId, message.message_id)
+
+      }else{
+        
+        userState.set(chatId, 'awaiting_progressme_password')
+        ctx.reply(
+          `You have not completed the progressme login step.\nPlease provide your progressme password to complete.`
+        );
+      }
+      
+    } else {
+      ctx.reply('You need to be registered and approved to get an access token. Please use the /register command to start the process.');
+    }
+  });
 
 // bot.action('access_dashboard', async (ctx) => {
 //   const chatId = ctx.chat.id.toString();
@@ -117,7 +119,7 @@ bot.command('get_token', async (ctx) => {
 
 bot.command('approve', async (ctx) => {
   const chatId = ctx.from.id.toString();
-  const botMasterChatId = process.env.TELEGRAM_BOT_MASTER_CHAT_ID;
+  const botMasterChatId = env.TELEGRAM_BOT_MASTER_CHAT_ID; // Use env.TELEGRAM_BOT_MASTER_CHAT_ID
 
   if (chatId !== botMasterChatId) {
     return ctx.reply('You are not authorized to use this command.');
@@ -132,7 +134,7 @@ bot.command('approve', async (ctx) => {
   try {
     // Send request to your server to approve the registration
     console.log(`Approving registration for chat ID: ${registrationChatId}`);
-    await axios.post(`${process.env.SERVER_URL}/api/telegram/approve-request`, { registrationChatId });
+    await axios.post(`${env.SERVER_URL}/api/telegram/approve-request`, { registrationChatId }); // Use env.SERVER_URL
     ctx.reply(`Registration for ${registrationChatId} has been approved. The user will be notified with their API token.`);
     userState.set(chatId, "awaiting_progressme_password")
 
@@ -145,7 +147,7 @@ bot.command('approve', async (ctx) => {
 // Handle /reject command from bot master
 bot.command('reject', async (ctx) => {
   const chatId = ctx.from.id.toString();
-  const botMasterChatId = process.env.TELEGRAM_BOT_MASTER_CHAT_ID;
+  const botMasterChatId = env.TELEGRAM_BOT_MASTER_CHAT_ID; // Use env.TELEGRAM_BOT_MASTER_CHAT_ID
 
   if (chatId !== botMasterChatId) {
     return ctx.reply('You are not authorized to use this command.');
@@ -160,7 +162,7 @@ bot.command('reject', async (ctx) => {
   try {
     // Send request to your server to reject the registration
     console.log(`Rejecting registration for chat ID: ${registrationChatId}`);
-    await axios.post(`${process.env.SERVER_URL}/api/telegram/reject-request`, { registrationChatId });
+    await axios.post(`${env.SERVER_URL}/api/telegram/reject-request`, { registrationChatId }); // Use env.SERVER_URL
     ctx.reply(`Registration for ${registrationChatId} has been rejected. The user will be notified.`);
 
   } catch (error) {
@@ -192,7 +194,7 @@ bot.use(async (ctx, next) => {
       const email = text;
       // Send email to backend for registration request
       try {
-        const response = await axios.post(`${process.env.SERVER_URL}/api/telegram/register-request`, {
+        const response = await axios.post(`${env.SERVER_URL}/api/telegram/register-request`, { // Use env.SERVER_URL
           chatId: chatId.toString(),
           email: email,
           // For now, reasons and useCase are not collected via bot
@@ -222,7 +224,7 @@ bot.use(async (ctx, next) => {
     try {
         // Call backend to generate encoded token using email (from TelegramRegistrationRequest) and ProgressMe password
         // The backend should retrieve the user's email based on chatId
-        const response = await axios.post(`${process.env.SERVER_URL}/api/telegram/generate-progressme-token`, {
+        const response = await axios.post(`${env.SERVER_URL}/api/telegram/generate-progressme-token`, { // Use env.SERVER_URL
             chatId: chatId.toString(),
             progressMePassword: progressMePassword
         });
@@ -326,7 +328,7 @@ bot.action('regenerate_api_token', async (ctx) => {
 
 bot.action(/^approve_reg_(\d+)$/, async (ctx) => {
   const botMasterChatId = ctx.from.id.toString();
-  if (botMasterChatId !== process.env.TELEGRAM_BOT_MASTER_CHAT_ID) {
+  if (botMasterChatId !== env.TELEGRAM_BOT_MASTER_CHAT_ID) { // Use env.TELEGRAM_BOT_MASTER_CHAT_ID
     return ctx.answerCbQuery('You are not authorized to perform this action.');
   }
   
@@ -334,7 +336,7 @@ bot.action(/^approve_reg_(\d+)$/, async (ctx) => {
   const registrationChatId = ctx.match[1];
 
   try {
-    await axios.post(`${process.env.SERVER_URL}/api/telegram/approve-request`, { registrationChatId });
+    await axios.post(`${env.SERVER_URL}/api/telegram/approve-request`, { registrationChatId }); // Use env.SERVER_URL
     await ctx.editMessageText(`Registration request for chat ID ${registrationChatId} has been **APPROVED**.`);
   } catch (error) {
     console.error('Error approving registration via inline button:', error);
@@ -344,7 +346,7 @@ bot.action(/^approve_reg_(\d+)$/, async (ctx) => {
 
 bot.action(/^reject_reg_(\d+)$/, async (ctx) => {
   const botMasterChatId = ctx.from.id.toString();
-  if (botMasterChatId !== process.env.TELEGRAM_BOT_MASTER_CHAT_ID) {
+  if (botMasterChatId !== env.TELEGRAM_BOT_MASTER_CHAT_ID) { // Use env.TELEGRAM_BOT_MASTER_CHAT_ID
     return ctx.answerCbQuery('You are not authorized to perform this action.');
   }
 
@@ -352,7 +354,7 @@ bot.action(/^reject_reg_(\d+)$/, async (ctx) => {
   const registrationChatId = ctx.match[1];
 
   try {
-    await axios.post(`${process.env.SERVER_URL}/api/telegram/reject-request`, { registrationChatId });
+    await axios.post(`${env.SERVER_URL}/api/telegram/reject-request`, { registrationChatId }); // Use env.SERVER_URL
     await ctx.editMessageText(`Registration request for chat ID ${registrationChatId} has been **REJECTED**.`);
   } catch (error) {
     console.error('Error rejecting registration via inline button:', error);
@@ -360,4 +362,5 @@ bot.action(/^reject_reg_(\d+)$/, async (ctx) => {
   }
 });
 
-module.exports = bot;
+return bot.webhookCallback('/'); // Return webhookCallback
+};
