@@ -2,9 +2,7 @@ name = "paper-dash-server"
 main = "index.js"
 compatibility_date = "2025-10-28"
 
-[build]
-command = "pnpm run build" # Or whatever your build command is
-# ... other build settings ...
+
 
 [vars]
 # ... your environment variables ...
