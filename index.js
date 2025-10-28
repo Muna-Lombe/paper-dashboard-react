@@ -95,7 +95,16 @@ io.on("connection", (socket) => {
 });
 
 // Start Telegram Bot
-telegramBot.launch();
+telegramBot.launch(()=>(console.info(`Bot:${telegramBot.botInfo.id} started!`)));
+
+telegramBot.telegram.setMyCommands([
+  { command: 'start', description: 'Start the bot and see the main menu' },
+  { command: 'help', description: 'Get help with using the bot' },
+  { command: 'register', description: 'Start the registration process to get service access' },
+  { command: 'dashboard', description: 'Access your personalized dashboard' },
+  { command: 'get_token', description: 'Get your access token if registered and approved' },
+]);
+
 // Enable graceful stop
 process.once("SIGINT", () => telegramBot.stop("SIGINT"));
 process.once("SIGTERM", () => telegramBot.stop("SIGTERM"));

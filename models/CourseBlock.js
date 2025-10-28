@@ -1,11 +1,12 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, UUIDV4 } = require('sequelize');
 const { sequelize } = require('../config/database');
 const Course = require('./Course');
 
 const CourseBlock = sequelize.define('CourseBlock', {
   id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
+    type: DataTypes.UUID,
+    defaultValue: UUIDV4,
+    // autoIncrement: true,
     primaryKey: true,
   },
   courseId: {

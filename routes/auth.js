@@ -234,9 +234,28 @@ router.post(
             expires: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
             
           });
-          res.json({ msg: "Login successful" });
+          res.json({ msg: "Login successful", ...payload });
         },
       );
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).send("Server error");
+    }
+  },
+);
+
+router.post(
+  "/logout",
+  async (req, res) => {
+    const errors = validationResult(req);
+    const url = new URL(req.headers.referer)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+      res.clearCookie('access-token');
+      res.json({ msg: "Logout successful" });
     } catch (err) {
       console.error(err.message);
       res.status(500).send("Server error");

@@ -48,6 +48,7 @@ router.get('/profile', async (req, res) => {
     });
 
     if (!user) {
+      res.clearCookie('access-token')
       return res.status(404).json({ msg: 'User not found' });
     }
 

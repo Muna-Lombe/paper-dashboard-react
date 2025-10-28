@@ -1,5 +1,5 @@
 
-const { DataTypes } = require('sequelize');
+const { DataTypes, UUIDV4 } = require('sequelize');
 const { sequelize } = require('../config/database');
 
 const Token = sequelize.define('Token', {

@@ -1,10 +1,11 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, UUIDV4 } = require('sequelize');
 const { sequelize } = require('../config/database');
 
 const Course = sequelize.define('Course', {
   id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
+    type: DataTypes.UUID,
+    defaultValue: UUIDV4,
+    // autoIncrement: true,
     primaryKey: true,
   },
   title: {

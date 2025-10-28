@@ -1,10 +1,11 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, UUIDV4 } = require('sequelize');
 const { sequelize } = require('../config/database');
 
 const TelegramRegistrationRequest = sequelize.define('TelegramRegistrationRequest', {
   id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
+      type: DataTypes.UUID,
+    defaultValue: UUIDV4,
+    // autoIncrement: true,
     primaryKey: true,
   },
   chatId: {

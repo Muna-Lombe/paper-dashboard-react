@@ -4,7 +4,9 @@ const { check, validationResult } = require("express-validator");
 // const scraperMiddleware = require("../middleware/scraper"); // Old middleware
 const courseScraperService = require("../services/courseScraper");
 const TelegramRegistrationRequest = require("../models/TelegramRegistrationRequest"); // Import TelegramRegistrationRequest model
-
+const auth = require("../middleware/auth");
+const jwt = require('jsonwebtoken'); // Import jwt for token generation
+const scraper = require("../middleware/scraper");
 // API Token Authentication Middleware
 const apiTokenAuth = async (req, res, next) => {
     const apiToken = req.cookies["api-token"] || req.header("x-api-token");
@@ -101,7 +103,7 @@ const apiTokenAuth = async (req, res, next) => {
  */
 router.post(
     "/validate-url",
-    [apiTokenAuth, check("url", "URL is required").not().isEmpty()],
+    [auth, check("url", "URL is required").not().isEmpty()],
     async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
@@ -166,9 +168,11 @@ router.post(
 router.post(
     "/getUserInfo", // Renamed from "/auth" to be more descriptive
     [
-        apiTokenAuth, // Use new API token middleware
-        check("email", "Please include a valid email").isEmail(),
-        check("password", "Password is required").exists(),
+
+        auth,
+        // apiTokenAuth, // Use new API token middleware
+        // check("email", "Please include a valid email").isEmail(), // want to rely on token generated in telegram. The user will submit it as part of the POST body
+        // check("password", "Password is required").exists(),// want to rely on token generated in telegram. The user will submit it as part of the POST body
     ],
     async (req, res) => {
         const errors = validationResult(req);
@@ -177,13 +181,28 @@ router.post(
         }
 
         try {
-            const { email, password } = req.body;
+            // const { email, password } = req.body;
+            // decode password and email from apitoken
+            const {apiToken} = req.body;
+            const isMatch = jwt.verify(apiToken, process.env.JWT_SECRET || "default_jwt_secret");
+
+            if (!isMatch) {
+                return res.status(400).json({ msg: "Invalid Credentials" });
+            }
+
+            const {user:{email, password}} = jwt.decode(apiToken)
+
+            console.log("email, pass", email, password);
+            
+            
             const authResult =
                 await courseScraperService.authenticateWithWebSocket(
                     email,
                     password,
                 );
-            res.json(authResult);
+            const { data} = authResult;
+
+            res.status(200).json({token:authResult.token, data:{puid: data.Value.Id, role: data.Value.AccountRole }});
             // courseScraperService.cleanup();
         } catch (err) {
             console.error(err.message);
@@ -241,7 +260,7 @@ router.post(
  *
  */
 
-router.get("/getbook", [apiTokenAuth], async (req, res) => {
+router.get("/getbook", [auth,scraper], async (req, res) => {
     try {
         const { url } = req.query;
         // const bookContentRegex =
@@ -250,6 +269,8 @@ router.get("/getbook", [apiTokenAuth], async (req, res) => {
         let book = {};
         // lets say that the url is encoded
         const decodedUrl = atob(url);
+        console.log("decoded", decodedUrl);
+        
         //check if code is book code or book id
         // lets say that we get a url like this
         // "https://progressme.ru/cabinet/school/materials/book/363945/content
@@ -281,7 +302,7 @@ router.get("/getbook", [apiTokenAuth], async (req, res) => {
             return res.json(book);
         }
 
-        res.json({ ...book });
+        res.status(404).json({ message:"book not found" });
     } catch (err) {
         console.error(err.message);
         res.status(500).send("Server Error");
@@ -335,10 +356,12 @@ router.get("/getbook", [apiTokenAuth], async (req, res) => {
 router.post(
     "/copy-course",
     [
-        apiTokenAuth, // Use new API token middleware
+        // apiTokenAuth, // Use new API token middleware
+        auth,
+        scraper,
         check("bookId", "Book ID is required").not().isEmpty(),
         check("userId", "User ID is required").not().isEmpty(),
-        check("token", "Token is required").not().isEmpty(),
+        // check("token", "Token is required").not().isEmpty(),
     ],
     async (req, res) => {
         const errors = validationResult(req);
@@ -348,7 +371,8 @@ router.post(
 
         try {
             //  we are getting the sharingmaterialId from the existing getBookByCode. You just need to pass that to the copyCourse function
-            const { bookId, userId, token } = req.body;
+            const token = req.header("authorization")?.replace("Bearer ", "");
+            const { bookId, userId } = req.body;
             console.log(
                 "\nsaving book:\nid: " +
                     bookId +
@@ -369,6 +393,8 @@ router.post(
                         token,
                     );
 
+                console.log("book can be share:", canBookBeShared);
+                
                 if (canBookBeShared) {
                     // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // console.log("\ncan share. Setting sharingMaterialId...");
                     const sharingMaterialId =
@@ -403,6 +429,76 @@ router.post(
     },
 );
 
-// Removed the /api/scraper/token endpoint as it's replaced by API token generation during Telegram registration approval.
+/**
+ * @swagger
+ * /api/scraper/token:
+ *   get:
+ *     summary: Generate a new auth token
+ *     tags: [Scraper]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *       500:
+ *         description: Server error
+ */
+router.get(
+    "/token",
+    (req, res, next) => {
+        // Get token from header
+        const token =
+            req.header("x-auth-token") ||
+            req.header("authorization")?.replace("Bearer ", "");
+
+        // Check if no token
+        if (!token) {
+            return res
+                .status(401)
+                .json({ msg: "No token, authorization denied" });
+        }
+        try {
+            // console.log(
+            //     "in scraper middleware, ",
+            //     token.split("~expireAt~")[0],
+            // );
+            // const secretToken = token.split("~expireAt~")[0].toString();
+            // Verify JWT
+            // eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoiMTIzNDU2IiwibmFtZSI6IkpvaG4iLCJyb2xlcyI6InVzZXIifSwiaWF0IjoxNzQ4ODE0NTkyLCJleHAiOjE3NDg5MDA5OTJ9.0BzgNpTxMPsdBLk6MLz6F5HAhfs6n7ADLwgs2lhAhmc
+            // const decoded = jwt.verify(
+            //     secretToken,
+            //     process.env.EXPIRABLE_SECRET || "default_secret",
+            // );
+            // const { firstName, lastName, role, userId } = decoded;
+            // if (!firstName) {
+            //     return res
+            //         .status(401)
+            //         .json({ msg: "Invalid or expired token" });
+            // }
+            next();
+        } catch (error) {
+            console.error("Scraper middleware error:", error.message);
+            res.status(401).json({ msg: "Token validation failed" });
+        }
+    },
+    async (req, res) => {
+        try {
+            const token = courseScraperService.generateAuthToken();
+            res.header("Access-Control-Allow-Origin", "*");
+            res.header("Access-Control-Allow-Credentials", "true");
+            res.json({ token });
+        } catch (err) {
+            console.error(err.message);
+            res.status(500).send("Server Error");
+        }
+    },
+);
 
 module.exports = router;
