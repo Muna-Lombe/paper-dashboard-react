@@ -1,0 +1,17 @@
+name = "paper-dash-server"
+main = "index.js"
+compatibility_date = "2025-10-28"
+
+[build]
+command = "pnpm run build" # Or whatever your build command is
+# ... other build settings ...
+
+[vars]
+# ... your environment variables ...
+
+[placement]
+mode = "off"
+
+# Add this section or modify an existing one
+# if you have other compatibility_flags, add "nodejs_compat" to the array
+compatibility_flags = ["nodejs_compat"]
