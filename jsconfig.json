@@ -3,7 +3,8 @@
     "baseUrl": "src",
     "paths": {
       "*": ["src/*"],
-      "assets": ["src/assets"]
+      "assets": ["src/assets"],
+      "external":["typescript","pg-hstore"]
     }
   }
 }
