@@ -7,7 +7,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "cf:dev": "wrangler dev",
-    "build": "node scripts/build.js",
+    "build": "webpack",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
   },
   "keywords": [],
@@ -15,10 +15,12 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@cfworker/web": "^5.1.0",
     "acorn": "^8.15.0",
     "acorn-walk": "^8.3.4",
     "axios": "^1.12.2",
     "bcryptjs": "^3.0.2",
+    "cfworker-middware-telegraf": "^2.0.0",
     "dotenv": "^16.6.1",
     "hono": "^4.4.11",
     "jsonwebtoken": "^9.0.2",
@@ -28,6 +30,12 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "@cloudflare/workers-types": "^4.20251014.0",
+    "node-polyfill-webpack-plugin": "^4.1.0",
+    "nodemon": "^3.1.10",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.5.3",
+    "webpack": "^5.102.1",
+    "webpack-cli": "^6.0.1"
   }
 }

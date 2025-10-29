@@ -1,5 +1,5 @@
 const { DataTypes, UUIDV4 } = require('sequelize');
-const { sequelize } = require('../config/database');
+const { sequelize } = require('../config/database').default;
 
 const TelegramRegistrationRequest = sequelize.define('TelegramRegistrationRequest', {
   id: {

@@ -1,6 +1,6 @@
 
 const { DataTypes, UUIDV4 } = require('sequelize');
-const { sequelize } = require('../config/database');
+const { sequelize } = require('../config/database').default;
 
 const Token = sequelize.define('Token', {
     id: {

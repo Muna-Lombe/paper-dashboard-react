@@ -1,5 +1,5 @@
 
-const { Sequelize } = require('sequelize');
+import { Sequelize } from 'sequelize';
 // const path = require('path'); // Path is not available in Cloudflare Workers for file system operations
 
 // Configure Sequelize for Cloudflare D1 or an external database.
@@ -36,4 +36,4 @@ const connectDB = async () => {
   }
 };
 
-module.exports = { sequelize, connectDB };
+export { sequelize, connectDB };

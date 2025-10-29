@@ -362,5 +362,5 @@ bot.action(/^reject_reg_(\d+)$/, async (ctx) => {
   }
 });
 
-return bot.webhookCallback('/'); // Return webhookCallback
+return bot; // Return the bot instance instead of webhookCallback
 };

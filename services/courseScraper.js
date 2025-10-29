@@ -1,11 +1,11 @@
-const WebSocket = require("ws");
-const puppeteer = require("puppeteer-extra");
-const StealthPlugin = require("puppeteer-extra-plugin-stealth");
-const randomUseragent = require("random-useragent");
-const dns = require("dns");
-const { promisify } = require("util");
+// const WebSocket = require("ws");
+// const puppeteer = require("puppeteer-extra");
+// const StealthPlugin = require("puppeteer-extra-plugin-stealth");
+// const randomUseragent = require("random-useragent");
+// const dns = require("dns");
+// const { promisify } = require("util");
 
-puppeteer.default.use(StealthPlugin());
+// puppeteer.default.use(StealthPlugin());
 
 class CourseScraperService {
     constructor() {
@@ -107,27 +107,27 @@ class CourseScraperService {
         };
     }
 
-    async resolveHostname(hostname) {
-        for (const dnsServer of this.dnsServers) {
-            try {
-                const resolver = new dns.Resolver();
-                resolver.setServers([dnsServer]);
-                const resolve4 = promisify(resolver.resolve4.bind(resolver));
-                const addresses = await resolve4(hostname);
-                console.log(
-                    `Successfully resolved ${hostname} to ${addresses[0]} using ${dnsServer}`,
-                );
-                return addresses[0];
-            } catch (error) {
-                console.log(
-                    `DNS resolution failed with ${dnsServer}:`,
-                    error.message,
-                );
-                continue;
-            }
-        }
-        throw new Error("Failed to resolve hostname with all DNS servers");
-    }
+    // async resolveHostname(hostname) {
+    //     for (const dnsServer of this.dnsServers) {
+    //         try {
+    //             const resolver = new dns.Resolver();
+    //             resolver.setServers([dnsServer]);
+    //             const resolve4 = dns.promisify(resolver.resolve4.bind(resolver));
+    //             const addresses = await resolve4(hostname);
+    //             console.log(
+    //                 `Successfully resolved ${hostname} to ${addresses[0]} using ${dnsServer}`,
+    //             );
+    //             return addresses[0];
+    //         } catch (error) {
+    //             console.log(
+    //                 `DNS resolution failed with ${dnsServer}:`,
+    //                 error.message,
+    //             );
+    //             continue;
+    //         }
+    //     }
+    //     throw new Error("Failed to resolve hostname with all DNS servers");
+    // }
 
     async createWebSocketConnection(url, maxRetries = 3) {
         const urlObj = new URL(url);

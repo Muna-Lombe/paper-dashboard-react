@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const { sequelize } = require('../config/database');
+const { sequelize } = require('../config/database').default;
 const User = require('./User'); // Assuming you have a User model
 
 const Schedule = sequelize.define('Schedule', {

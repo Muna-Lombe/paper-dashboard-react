@@ -1,6 +1,6 @@
 const TelegramRegistrationRequest = require('../models/TelegramRegistrationRequest');
 const bot = require('../config/telegramBot');
-const crypto = require('crypto'); // Import crypto for token generation
+// const crypto = require('crypto'); // Import crypto for token generation
 const jwt = require('jsonwebtoken'); // Import jwt for token generation
 const { Markup } = require('telegraf'); // Import Markup for inline keyboards
 // const courseScraper = require('../services/courseScraper'); // This service uses puppeteer and is not compatible with Workers

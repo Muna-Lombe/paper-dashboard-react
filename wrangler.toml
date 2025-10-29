@@ -1,5 +1,5 @@
 name = "paper-dash-server"
-main = "index.js"
+main = "dist/worker.js"
 compatibility_date = "2025-10-28"
 
 
@@ -20,4 +20,4 @@ mode = "off"
 
 # Add this section or modify an existing one
 # if you have other compatibility_flags, add "nodejs_compat" to the array
-compatibility_flags = ["nodejs_compat_v2"]
+compatibility_flags = ["nodejs_compat"]
