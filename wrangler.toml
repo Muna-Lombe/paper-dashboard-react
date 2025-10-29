@@ -12,4 +12,6 @@ compatibility_date = "2025-10-28"
 [placement]
 mode = "off"
 
+node_compat = true
+
 # Add this section or modify an existing one
