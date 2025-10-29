@@ -6,7 +6,7 @@ const { validator } = require('hono/validator');
 const { z } = require('zod');
 const { getCookie, setCookie } = require('hono/cookie'); // For apiTokenAuth middleware
 const axios = require('axios'); // Import axios for external scraper service calls
-const courseScraper = require("../services/courseScraper");
+const courseScraper = require("../../services/courseScraper");
 
 const scraperRoutes = new Hono();
 

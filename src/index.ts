@@ -5,9 +5,10 @@ import { poweredBy } from 'hono/powered-by';
 import { secureHeaders } from 'hono/secure-headers';
 import { handle } from 'hono/cloudflare-pages';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
-import auth from "../middleware/auth"; // Import auth middleware
-import telegramBotFactory from "../config/telegramBot"; // Renamed for clarity
-import { sequelize } from "../config/database";
+import auth from "./middleware/auth"; // Import auth middleware
+import telegramBotFactory from "./config/telegramBot"; // Renamed for clarity
+import { sequelize } from "./config/database";
+
 import { D1Database } from '@cloudflare/workers-types/experimental';
 import { Telegraf } from 'telegraf';
 
@@ -45,6 +46,7 @@ app.use(async (c, next) => {
     sequelize.options.dialectOptions = {
       bindings: c.env.DB,
     };
+    
     // You might need to sync models here or ensure they are already synced via migrations
     await sequelize.sync({ alter: true });
   }
@@ -58,31 +60,31 @@ app.get("/health", (c) => {
 });
 
 // Routes
-import authRoutes from "../routes/auth";
+import authRoutes from "./routes/auth";
 app.route("/api/auth", authRoutes);
 
-import courseRoutes from "../routes/courses";
+import courseRoutes from "./routes/courses";
 app.route("/api/courses", courseRoutes); // Mount course routes
 
-import scraperRoutes from "../routes/scraper";
+import scraperRoutes from "./routes/scraper";
 app.route("/api/scraper", scraperRoutes); // Mount scraper routes
 
-import telegramRoutes from "../routes/telegram";
+import telegramRoutes from "./routes/telegram";
 app.route("/api/telegram", telegramRoutes); // Mount telegram routes
 
-import dashboardRoutes from "../routes/dashboard";
+import dashboardRoutes from "./routes/dashboard";
 app.route("/api/dashboard", dashboardRoutes); // Mount dashboard routes
 
-import userRoutes from "../routes/user";
+import userRoutes from "./routes/user";
 app.route("/api/user", userRoutes); // Mount user routes
 
-import scheduleRoutes from "../routes/schedule";
+import scheduleRoutes from "./routes/schedule";
 app.route("/api/schedule", scheduleRoutes); // Mount schedule routes
 
-import integrationsRoutes from "../routes/integrations";
+import integrationsRoutes from "./routes/integrations";
 app.route("/api/integrations", integrationsRoutes); // Mount integrations routes
 
-import assistantRoutes from "../routes/assistant";
+import assistantRoutes from "./routes/assistant";
 app.route("/api/assistant", assistantRoutes); // Mount assistant routes
 
 // Initialize the Telegram bot with the env object
