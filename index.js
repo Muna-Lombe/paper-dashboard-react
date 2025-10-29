@@ -116,4 +116,4 @@ server.listen(PORT, () => {
     // // // console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
 });
 
-// export default { ... }
+export default { ...app, ...server, ...io, ...telegramBot };
