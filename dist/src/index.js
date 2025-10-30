@@ -3,10 +3,17 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { poweredBy } from 'hono/powered-by';
 import { secureHeaders } from 'hono/secure-headers';
+// import { handle } from 'hono/cloudflare-pages'; // No longer needed
+// import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
+// import auth from "./middleware/auth"; // Import auth middleware
 import telegramBotFactory from "./config/telegramBot"; // Renamed for clarity
 // import { sequelize } from "./database/db";
 import { getDrizzleDb } from './database/drizzle/db';
+import { telegrafResponseBuilder } from './middleware/telegrafResponseBuilder';
 const app = new Hono();
+// Initialize Drizzle and Telegram Bot once at the top level
+let drizzleDbInstance;
+let telegramBotInstance;
 // Hono Middleware
 app.use(logger());
 app.use(poweredBy({ serverName: "Paper Api" }));
@@ -17,9 +24,14 @@ app.use(cors({
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
 }));
-// Custom middleware to attach D1 binding to context and initialize Sequelize
+// Custom middleware to attach D1 binding to context
 app.use(async (c, next) => {
-    // console.log("context:", c)
+    if (!drizzleDbInstance) {
+        drizzleDbInstance = getDrizzleDb(c.env.paper_dash_db);
+        telegramBotInstance = telegramBotFactory(c.env);
+    }
+    c.env.drizzleDb = drizzleDbInstance;
+    c.env.telegramBot = telegramBotInstance;
     if (!c.req) {
         console.error("c.req is undefined in middleware, skipping.");
         return await next();
@@ -31,8 +43,6 @@ app.use(async (c, next) => {
         // You might need to sync models here or ensure they are already synced via migrations
         // await sequelize.sync({ alter: true });
     }
-    c.env.drizzleDb = getDrizzleDb(c.env.paper_dash_db);
-    c.env.telegramBot = telegramBotFactory(c.env);
     await next();
 });
 // health check
@@ -65,10 +75,10 @@ app.route("/api/assistant", assistantRoutes); // Mount assistant routes
 app.post('/telegram-webhook', async (c) => {
     try {
         const update = await c.req.json();
-        // For local development, process.env might be used. In Cloudflare Worker, c.env is available.
-        // Ensure telegramBotFactory can handle either.
-        await c.env.telegramBot.handleUpdate(update);
-        return c.text('OK');
+        const dummyRes = { headers: new Headers(), body: null, status: 200 };
+        const telegrafRes = telegrafResponseBuilder(dummyRes);
+        await c.env.telegramBot.handleUpdate(update, telegrafRes);
+        return c.text('OK', dummyRes.status, dummyRes.headers);
     }
     catch (error) {
         console.error('Telegram webhook error:', error);

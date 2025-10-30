@@ -1,0 +1,42 @@
+{
+  "name": "cfworker-middleware-telegraf",
+  "version": "2.0.2",
+  "description": "Make telegraf (a telegram bot framework) useable in Cloudflare Workers",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "repository": "https://github.com/Tsuk1ko/cfworker-middleware-telegraf",
+  "author": "神代綺凜 <i@loli.best>",
+  "license": "MIT",
+  "keywords": [
+    "cfworker",
+    "cloudflare",
+    "workers",
+    "serverless",
+    "telegraf",
+    "telegram",
+    "bot"
+  ],
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "webpack -c test/webpack.config.js"
+  },
+  "devDependencies": {
+    "@cfworker/web": "^1.12.0",
+    "dotenv": "^14.1.0",
+    "node-polyfill-webpack-plugin": "^1.1.4",
+    "telegraf": "^4.6.0",
+    "webpack": "^5.66.0",
+    "webpack-cli": "^4.9.1"
+  },
+  "peerDependencies": {
+    "@cfworker/web": "^1.12.0",
+    "telegraf": "^4.6.0"
+  },
+  "dependencies": {
+    "abortcontroller-polyfill": "^1.7.3"
+  }
+}

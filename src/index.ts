@@ -4,14 +4,16 @@ import { logger } from 'hono/logger';
 import { poweredBy } from 'hono/powered-by';
 import { secureHeaders } from 'hono/secure-headers';
 // import { handle } from 'hono/cloudflare-pages'; // No longer needed
-import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
-import auth from "./middleware/auth"; // Import auth middleware
+// import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
+// import auth from "./middleware/auth"; // Import auth middleware
 import telegramBotFactory from "./config/telegramBot"; // Renamed for clarity
 // import { sequelize } from "./database/db";
 import { getDrizzleDb } from './database/drizzle/db';
 
 import { D1Database } from '@cloudflare/workers-types/experimental';
 import { Telegraf } from 'telegraf';
+// import { telegrafResponseBuilder } from './middleware/telegrafResponseBuilder'; // No longer needed
+// import { createTelegrafMiddleware } from './middleware/telegrafMiddleware'; // No longer needed
 
 
 export interface Env {
@@ -31,6 +33,10 @@ export interface Env {
 
 const app = new Hono<{ Bindings: Env }>();
 
+// Initialize Drizzle and Telegram Bot once at the top level
+let drizzleDbInstance: ReturnType<typeof getDrizzleDb>; // Restore these
+let telegramBotInstance: Telegraf; // Restore these
+
 // Hono Middleware
 app.use(logger());
 app.use(poweredBy({serverName: "Paper Api"}));
@@ -42,9 +48,17 @@ app.use(cors({
   allowHeaders: ["Content-Type", "Authorization"],
 }));
 
-// Custom middleware to attach D1 binding to context and initialize Sequelize
+// Custom middleware to attach D1 binding to context
 app.use(async (c, next) => {
-  // console.log("context:", c)
+  if (!drizzleDbInstance) {
+    drizzleDbInstance = getDrizzleDb(c.env.paper_dash_db);
+    telegramBotInstance = telegramBotFactory(c.env);
+    // Ensure the bot factory's initialiseBot method is called once.
+    // Since telegramBotFactory already handles this, no explicit call here.
+  }
+  c.env.drizzleDb = drizzleDbInstance;
+  c.env.telegramBot = telegramBotInstance;
+
   if (!c.req) {
     console.error("c.req is undefined in middleware, skipping.");
     return await next();
@@ -58,10 +72,11 @@ app.use(async (c, next) => {
     // You might need to sync models here or ensure they are already synced via migrations
     // await sequelize.sync({ alter: true });
   }
-  c.env.drizzleDb = getDrizzleDb(c.env.paper_dash_db);
-  c.env.telegramBot = telegramBotFactory(c.env);
   await next();
 });
+
+// Apply the Telegraf middleware for webhook handling
+// app.use(createTelegrafMiddleware(telegramBotFactory(app.env as Env))); // Pass env directly from app
 
 // health check
 app.get("/health", (c) => {
@@ -97,18 +112,31 @@ import assistantRoutes from "./routes/assistant";
 // import { drizzle } from 'drizzle-orm/singlestore/driver';
 app.route("/api/assistant", assistantRoutes); // Mount assistant routes
 
-// Initialize the Telegram bot with the env object
-// const telegramBot = telegramBotFactory(process.env); // Pass process.env here for local testing, Cloudflare will provide c.env
 
 // Telegram Webhook
 app.post('/telegram-webhook', async (c) => {
   try {
     const update = await c.req.json();
-    // For local development, process.env might be used. In Cloudflare Worker, c.env is available.
-    // Ensure telegramBotFactory can handle either.
-    await c.env.telegramBot.handleUpdate(update);
-    return c.text('OK');
-  } catch (error) {
+
+    const honoRes = { headers: new Headers(), body: null, status: 200 };
+    let writableEnded = false;
+    const telegrafRes = Object.assign(honoRes, {
+      headersSent: false,
+      setHeader: (name: string, value: string) => honoRes.headers.set(name, value),
+      end: (data: any) => {
+        if (writableEnded) return;
+        honoRes.body = data;
+        writableEnded = true;
+      },
+    });
+    Object.defineProperty(telegrafRes, 'writableEnded', {
+      get: () => writableEnded,
+    });
+    
+    await c.env.telegramBot.handleUpdate(update, telegrafRes as any);
+    
+    return new Response(honoRes.body, { status: honoRes.status, headers: honoRes.headers });
+  } catch (error: any) {
     console.error('Telegram webhook error:', error);
     return c.text('Error', 500);
   }

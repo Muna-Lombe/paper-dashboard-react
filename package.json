@@ -8,7 +8,8 @@
     "dev": "nodemon index.js",
     "cf:dev": "wrangler dev",
     "build": "tsc",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "set-webhook": "tsx scripts/setWebhook.ts"
   },
   "keywords": [],
   "author": "",
