@@ -1,23 +1,18 @@
 name = "paper-dash-server"
-main = "dist/worker.js"
-compatibility_date = "2025-10-28"
+main = "dist/src/index.js"
+compatibility_date = "2025-10-11"
+compatibility_flags = ["nodejs_compat"]
 
+[build]
+command = "npm run build"
 
+[vars]
 
 [[d1_databases]]
-binding = "DB" # This is the binding name you'll use in your Worker code
-DATABASE_NAME = "paper-dash-db" # The name of your D1 database
-
-
-
-
-
-
-
+binding = "paper_dash_db"
+database_name = "paper-dash-db"
+database_id = "d6cf09c0-7cc5-4133-bcc7-3b47ffade8b1"
+migrations_dir = "drizzle"
 
 [placement]
 mode = "off"
-
-# Add this section or modify an existing one
-# if you have other compatibility_flags, add "nodejs_compat" to the array
-compatibility_flags = ["nodejs_compat"]

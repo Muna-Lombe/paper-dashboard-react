@@ -1,6 +1,6 @@
 const { Telegraf, Markup, Format } = require('telegraf');
 const axios = require('axios'); // Import axios
-const TelegramRegistrationRequest = require('../models/TelegramRegistrationRequest'); // Import the model
+const TelegramRegistrationRequest = require('../database/models/TelegramRegistrationRequest'); // Import the model
 // require('dotenv').config(); // Environment variables will be passed via Cloudflare Worker env
 
 const userState = new Map(); // To store conversation state for each user
