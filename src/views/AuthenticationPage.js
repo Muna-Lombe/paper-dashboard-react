@@ -6,6 +6,7 @@ import { endpoints } from "../config"; // Assuming config.js is in the parent di
 import { useDispatch } from "react-redux";
 import { addError } from "../variables/slices/errorSlice";
 import useAuth from "../variables/hooks/useAuth";
+import TextLogo from "../components/TextLogo";
 
 function AuthenticationPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -60,14 +61,10 @@ function AuthenticationPage() {
         <div className="w-full flex justify-center items-center space-x-2">
           {/* <img src="/path/to/logo.png" alt="Logo" className="h-8" /> Replace with actual logo path */}
           <Link to="/">
-            <span className="text-2xl flex items-start font-bold text-gray-800">
-              <span className="text-blue-400 text-xl"><i className="fas fa-info"></i></span>
-              <span className="text-blue-600 text-3xl italic">Teach</span>
-              
-            </span>
+            <TextLogo className="h-20"/>
           
           </Link>
-          <span className="text-2xl flex items-start font-bold text-gray-800">|</span>
+          <span className="h-full text-2xl flex items-start font-bold text-gray-600">|</span>
           <span className="text-2xl flex items-start font-bold text-gray-800">
             {isLogin ? "Login" : "Register"}
           </span>

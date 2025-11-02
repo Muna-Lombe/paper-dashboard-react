@@ -1,4 +1,4 @@
-import TextLogo from 'components/TextLogo';
+import TextLogo from '../components/TextLogo';
 import React from 'react'
 import { Link } from 'react-router-dom';
 import useAuth from '../variables/hooks/useAuth';
