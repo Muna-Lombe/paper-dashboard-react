@@ -1,7 +1,4 @@
-// const baseApiUrl = "https://de885a4b-d886-4a17-9372-6791449191cc-00-sk4u39m5xe4b.picard.replit.dev:5000"//"https://paper-dash-api.onrender.com";
 
-
-// const baseApiUrl = "https://paper-dash-api.onrender.com"
 const baseApiUrl = import.meta.env.VITE_API_URL;
 const wsUrl = import.meta.env.VITE_WS_URL;
 
