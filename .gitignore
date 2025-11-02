@@ -9,6 +9,7 @@ package-lock.json
 
 # production
 /build
+/dist
 
 # misc
 .DS_Store
@@ -18,7 +19,10 @@ package-lock.json
 .env.test.local
 .env.production.local
 .dev.vars
+/.wrangler
 /no_commit
+/cfworker-middleware-telegraf-2.0.2
+
 
 npm-debug.log*
 yarn-debug.log*

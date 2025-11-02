@@ -350,13 +350,13 @@ const telegramBotFactory = (env: Env) => {
   console.log("starting bot...")
   // bot.launch(() => (console.info(`Bot:${bot.botInfo?.id} started!`)));
 
-  // bot.telegram.setMyCommands([
-  //   { command: 'start', description: 'Start the bot and see the main menu' },
-  //   { command: 'help', description: 'Get help with using the bot' },
-  //   { command: 'register', description: 'Start the registration process to get service access' },
-  //   { command: 'dashboard', description: 'Access your personalized dashboard' },
-  //   { command: 'get_token', description: 'Get your access token if registered and approved' },
-  // ]);
+  bot.telegram.setMyCommands([
+    { command: 'start', description: 'Start the bot and see the main menu' },
+    { command: 'help', description: 'Get help with using the bot' },
+    { command: 'register', description: 'Start the registration process to get service access' },
+    { command: 'dashboard', description: 'Access your personalized dashboard' },
+    { command: 'get_token', description: 'Get your access token if registered and approved' },
+  ]);
 
   // Enable graceful stop
   process.once("SIGINT", () => bot.stop("SIGINT"));
