@@ -76,6 +76,8 @@ const useAuth = () => {
   const logout = async() => {
     // Invalidate the HttpOnly cookie on the backend
     // For now, we just clear local state and assume backend will handle cookie invalidation on next request
+    console.log("url", endpoints.auth.logout.url);
+    
     const response = await axios.post(endpoints.auth.logout.url);
       // console.log("resp", response);
       

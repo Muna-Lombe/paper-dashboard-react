@@ -2,12 +2,13 @@
 
 
 // const baseApiUrl = "https://paper-dash-api.onrender.com"
-const baseApiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000"
+const baseApiUrl = import.meta.env.VITE_API_URL;
+const wsUrl = import.meta.env.VITE_WS_URL;
 
 
 export const endpoints = {
     bot: {
-        socketUrl: "ws://localhost:5000/api/bot",
+        socketUrl: `${wsUrl}/api/bot`,
     },
     paperDashApi: {
         authenticateUser: {
@@ -62,11 +63,7 @@ export const endpoints = {
                 Accept: "application/json",
             },
         },
-        
-        telegram: {
-            botId: import.meta.env.VITE_TELEGRAM_BOT_ID, // Telegram Bot ID from environment variable
-            authUrl: `${baseApiUrl}/api/auth/telegram`, // Endpoint for Telegram authentication
-        },
+    
     },
 
     user: {

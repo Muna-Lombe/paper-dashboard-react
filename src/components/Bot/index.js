@@ -213,7 +213,6 @@ export default ({onNotify, hookedNotify}) => {
 
     const handleBotRegister = async (e) => {
       e?.preventDefault();
-      // const url = 'http://localhost:5000/bot/connect'
       
       setConnection(ps => ({ ...ps, isConnecting: true, gettingQr: false }));
 
