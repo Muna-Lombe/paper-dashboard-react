@@ -44,7 +44,8 @@ class TelegramBot {
             const db = this.env.drizzleDb;
             const registrationRequest = await db.select()
                 .from(telegramRegistrationRequests)
-                .where(eq(telegramRegistrationRequests.chatId, chatId)).limit(1);
+                .where(eq(telegramRegistrationRequests.chatId, chatId))
+                .limit(1);
             if (registrationRequest.length > 0 && registrationRequest[0].status === 'approved' && registrationRequest[0].apiToken) {
                 ctx.reply('Here is your dashboard menu:', Markup.inlineKeyboard([
                     [Markup.button.callback('User Basic Info', 'dashboard_user_info')],
@@ -176,7 +177,7 @@ class TelegramBot {
                         progressMePassword: progressMePassword
                     });
                     if (response.status === 200 && response.data.encodedToken) {
-                        ctx.reply(Format.fmt(Format.bold(`Here is your new access token:\n`), Format.spoiler(Format.fmt(Format.code(response.data.encodedToken))), 'Click the token to copy', Format.quote(`\n\nIMPORTANT: Do NOT share this token with anyone else.`)));
+                        ctx.reply(Format.fmt(Format.bold(`Here is your new access token:\n`), Format.spoiler(Format.fmt(Format.code(response.data.encodedToken))), '\nClick the token to copy', Format.quote(`\n\nIMPORTANT: Do NOT share this token with anyone else.`)));
                         userState.delete(chatId);
                     }
                     else {
@@ -287,14 +288,14 @@ const telegramBotFactory = (env) => {
     const bot = telegramBotInstance.bot;
     // Start Telegram Bot
     console.log("starting bot...");
-    bot.launch(() => (console.info(`Bot:${bot.botInfo?.id} started!`)));
-    bot.telegram.setMyCommands([
-        { command: 'start', description: 'Start the bot and see the main menu' },
-        { command: 'help', description: 'Get help with using the bot' },
-        { command: 'register', description: 'Start the registration process to get service access' },
-        { command: 'dashboard', description: 'Access your personalized dashboard' },
-        { command: 'get_token', description: 'Get your access token if registered and approved' },
-    ]);
+    // bot.launch(() => (console.info(`Bot:${bot.botInfo?.id} started!`)));
+    // bot.telegram.setMyCommands([
+    //   { command: 'start', description: 'Start the bot and see the main menu' },
+    //   { command: 'help', description: 'Get help with using the bot' },
+    //   { command: 'register', description: 'Start the registration process to get service access' },
+    //   { command: 'dashboard', description: 'Access your personalized dashboard' },
+    //   { command: 'get_token', description: 'Get your access token if registered and approved' },
+    // ]);
     // Enable graceful stop
     process.once("SIGINT", () => bot.stop("SIGINT"));
     process.once("SIGTERM", () => bot.stop("SIGTERM"));

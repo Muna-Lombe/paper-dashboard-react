@@ -5,6 +5,8 @@
 // const dns = require("dns");
 // const { promisify } = require("util");
 
+const { WebSocket, WebSocketPair } = require("@cloudflare/workers-types/experimental");
+
 // puppeteer.default.use(StealthPlugin());
 
 class CourseScraperService {

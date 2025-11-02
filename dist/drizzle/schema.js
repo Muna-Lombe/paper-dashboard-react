@@ -41,15 +41,14 @@ export const courses = sqliteTable('courses', {
 export const courseCorrections = sqliteTable('course_corrections', {
     id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
     courseId: text('course_id').notNull().references(() => courses.id),
-    blockId: integer('block_id'),
+    blockId: integer('block_id').notNull().references(() => courseBlocks.id),
     correctionText: text('correction_text').notNull(),
-}, () => []);
+});
 export const tokens = sqliteTable('tokens', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     token: text('token').notNull().unique(),
+    tgRequestId: text('tg_request_id').references(() => telegramRegistrationRequests.id),
     userId: text('user_id').references(() => users.id),
-    userName: text('user_name'),
-    userRoles: text('user_roles'),
     expiresAt: text('expires_at').notNull(),
     isActive: integer('is_active', { mode: 'boolean' }).default(true),
     createdAt: text('created_at').default(sql `CURRENT_TIMESTAMP`).notNull(),
@@ -61,4 +60,4 @@ export const courseBlocks = sqliteTable('course_blocks', {
     type: text('type', { enum: ['text', 'image', 'video', 'quiz'] }).notNull(),
     content: text('content'),
     order: integer('order').notNull(),
-});
+}, () => []);

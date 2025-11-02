@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { validator } from 'hono/validator';
 import { z } from 'zod';
 import { deleteCookie } from 'hono/cookie';
-import auth from '../middleware/auth';
+import { auth } from '../middleware/auth';
 import { users } from '../../drizzle/schema'; // Import Drizzle schema
 import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';

@@ -1,11 +1,11 @@
-import { telegramRegistrationRequests } from '../../drizzle/schema'; // Import Drizzle schema
+import { telegramRegistrationRequests, tokens } from '../../drizzle/schema'; // Import Drizzle schema
 import jwt from 'jsonwebtoken';
 import { Markup } from 'telegraf';
-import axios from 'axios';
 import { Hono } from 'hono';
 import { validator } from 'hono/validator';
 import { z } from 'zod';
 import { eq, and } from 'drizzle-orm';
+import courseScraper from '../../services/courseScraper';
 const telegramRoutes = new Hono();
 // The requestMessages Map is specific to a Node.js server context and bot.telegram.deleteMessage.
 // In a serverless Worker, this state management would need to be rethought (e.g., using durable objects or external storage).
@@ -167,23 +167,20 @@ telegramRoutes.post('/generate-progressme-token', validator("json", (value, c) =
         // WARNING: courseScraper uses puppeteer, which is not compatible with Cloudflare Workers.
         // This part of the code will still fail upon deployment to Cloudflare Workers.
         // It needs to be externalized to a separate service.
-        // const authResult = await courseScraper.authenticateWithWebSocket(
+        const authResult = await courseScraper.authenticateWithWebSocket(email, progressMePassword);
+        // const externalScraperUrl = c.env.EXTERNAL_SCRAPER_SERVICE_URL; // Access from Hono context
+        // if (!externalScraperUrl) {
+        //   console.error('EXTERNAL_SCRAPER_SERVICE_URL is not defined in environment variables.');
+        //   return c.json({ msg: 'Scraper service not configured.' }, 500);
+        // }
+        // const scraperAuthResponse = await axios.post(`${externalScraperUrl}/authenticate`, {
         //   email,
-        //   progressMePassword
-        // );
-        const externalScraperUrl = c.env.EXTERNAL_SCRAPER_SERVICE_URL; // Access from Hono context
-        if (!externalScraperUrl) {
-            console.error('EXTERNAL_SCRAPER_SERVICE_URL is not defined in environment variables.');
-            return c.json({ msg: 'Scraper service not configured.' }, 500);
-        }
-        const scraperAuthResponse = await axios.post(`${externalScraperUrl}/authenticate`, {
-            email,
-            password: progressMePassword,
-        });
-        if (scraperAuthResponse.status !== 200 || !scraperAuthResponse.data) {
-            return c.json({ msg: 'Failed to authenticate with external scraper service.' }, 400);
-        }
-        const { token, data } = scraperAuthResponse.data;
+        //   password: progressMePassword,
+        // });
+        // if (scraperAuthResponse.status !== 200 || !scraperAuthResponse.data) {
+        //   return c.json({ msg: 'Failed to authenticate with external scraper service.' }, 400);
+        // }
+        const { token, data } = authResult;
         const isProgressMeAuthSuccessful = token || null;
         if (!isProgressMeAuthSuccessful) {
             return c.json({ msg: 'Invalid ProgressMe credentials.' }, 400);
@@ -204,6 +201,13 @@ telegramRoutes.post('/generate-progressme-token', validator("json", (value, c) =
             });
         });
         await db.update(telegramRegistrationRequests).set({ apiToken: serviceToken }).where(eq(telegramRegistrationRequests.id, registrationRequest[0].id));
+        await db.insert(tokens).values({
+            tgRequestId: registrationRequest[0].id,
+            token: serviceToken,
+            // userId: crypto.randomUUID(),
+            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString(),
+            isActive: true,
+        });
         return c.json({ encodedToken: serviceToken }, 200);
     }
     catch (err) {

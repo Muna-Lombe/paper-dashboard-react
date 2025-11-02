@@ -1,12 +1,15 @@
 import { sqliteTable, text, uniqueIndex, integer } from "drizzle-orm/sqlite-core"
-  import { sql } from "drizzle-orm"
+import { sql } from "drizzle-orm"
 
 export const users = sqliteTable('users', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   email: text('email').unique().notNull(),
   password: text('password').notNull(),
   progressMeSerialToken: text('progress_me_serial_token'),
+
+
 }, () => []);
+
 
 export const telegramRegistrationRequests = sqliteTable('telegram_registration_requests', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -27,8 +30,8 @@ export const schedules = sqliteTable('schedules', {
   selectedMonths: text('selected_months', { mode: 'json' }), // Assuming JSON stored as text
   selectAll: integer('select_all', { mode: 'boolean' }),
   language: text('language'),
-  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`).notNull(),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP` as any).notNull(),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP` as any).notNull(),
 }, (schedules) => [
   uniqueIndex('user_id_idx').on(schedules.userId),
 ]);
@@ -40,26 +43,25 @@ export const courses = sqliteTable('courses', {
   pdfUrl: text('pdf_url'),
   progress: integer('progress').notNull().default(0),
   userId: text('user_id').notNull().references(() => users.id),
-  lastAccessed: text('last_accessed').default(sql`CURRENT_TIMESTAMP`).notNull(),
+  lastAccessed: text('last_accessed').default(sql`CURRENT_TIMESTAMP` as any).notNull(),
 }, () => []);
 
 export const courseCorrections = sqliteTable('course_corrections', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   courseId: text('course_id').notNull().references(() => courses.id),
-  blockId: integer('block_id'),
+  blockId: integer('block_id').notNull().references(() => courseBlocks.id),
   correctionText: text('correction_text').notNull(),
-}, () => []);
+});
 
 export const tokens = sqliteTable('tokens', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   token: text('token').notNull().unique(),
+  tgRequestId: text('tg_request_id').references(() => telegramRegistrationRequests.id),
   userId: text('user_id').references(() => users.id),
-  userName: text('user_name'),
-  userRoles: text('user_roles'),
   expiresAt: text('expires_at').notNull(),
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
-  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`).notNull(),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`as any).notNull(),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`as any).notNull(),
 }, () => []);
 
 export const courseBlocks = sqliteTable('course_blocks', {
@@ -68,7 +70,7 @@ export const courseBlocks = sqliteTable('course_blocks', {
   type: text('type', { enum: ['text', 'image', 'video', 'quiz'] }).notNull(),
   content: text('content'),
   order: integer('order').notNull(),
-});
+}, () => []);
 
 
 

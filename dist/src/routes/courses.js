@@ -1,4 +1,4 @@
-import auth from '../middleware/auth';
+import { auth } from '../middleware/auth';
 import { Hono } from 'hono';
 import { validator } from 'hono/validator';
 import { z } from 'zod';
@@ -455,7 +455,7 @@ courseRoutes.post('/:courseId/blocks', auth, validator("json", (value, c) => {
             return c.json({ msg: 'Course not found' }, 404);
         }
         const newBlock = await db.insert(courseBlocks).values({
-            courseId,
+            courseId: courseId,
             type,
             content,
             order,
@@ -712,8 +712,8 @@ courseRoutes.post('/:courseId/corrections', auth, validator("json", (value, c) =
             return c.json({ msg: 'Course not found' }, 404);
         }
         const newCorrection = await db.insert(courseCorrections).values({
-            courseId,
-            blockId,
+            courseId: courseId,
+            blockId: blockId,
             correctionText,
         }).returning();
         return c.json({ msg: 'Correction added successfully', correction: newCorrection[0] }, 201);

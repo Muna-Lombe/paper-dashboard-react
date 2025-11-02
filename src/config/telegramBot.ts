@@ -53,10 +53,11 @@ class TelegramBot {
       if (!chatId) { // Handle undefined chatId
         return ctx.reply('Could not determine your chat ID. Please try again.');
       }
-      const db = this.env.drizzleDb;
+      const db = this.env.drizzleDb as any;
       const registrationRequest = await db.select()
       .from(telegramRegistrationRequests)
-      .where(eq(telegramRegistrationRequests.chatId, chatId)).limit(1);
+      .where(eq(telegramRegistrationRequests.chatId as any, chatId))
+      .limit(1);
 
       if (registrationRequest.length > 0 && registrationRequest[0].status === 'approved' && registrationRequest[0].apiToken) {
         ctx.reply('Here is your dashboard menu:', Markup.inlineKeyboard([
@@ -77,10 +78,10 @@ class TelegramBot {
       if (!chatId) { // Handle undefined chatId
         return ctx.reply('Could not determine your chat ID. Please try again.');
       }
-      const db = this.env.drizzleDb;
+      const db = this.env.drizzleDb as any;
       const registrationRequest = await db.select()
       .from(telegramRegistrationRequests)
-      .where(eq(telegramRegistrationRequests.chatId, chatId))
+      .where(eq(telegramRegistrationRequests.chatId as any, chatId))
       .limit(1);
       
       if (registrationRequest.length > 0 && registrationRequest[0].status === 'approved') {
@@ -347,15 +348,15 @@ const telegramBotFactory = (env: Env) => {
 
   // Start Telegram Bot
   console.log("starting bot...")
-  bot.launch(() => (console.info(`Bot:${bot.botInfo?.id} started!`)));
+  // bot.launch(() => (console.info(`Bot:${bot.botInfo?.id} started!`)));
 
-  bot.telegram.setMyCommands([
-    { command: 'start', description: 'Start the bot and see the main menu' },
-    { command: 'help', description: 'Get help with using the bot' },
-    { command: 'register', description: 'Start the registration process to get service access' },
-    { command: 'dashboard', description: 'Access your personalized dashboard' },
-    { command: 'get_token', description: 'Get your access token if registered and approved' },
-  ]);
+  // bot.telegram.setMyCommands([
+  //   { command: 'start', description: 'Start the bot and see the main menu' },
+  //   { command: 'help', description: 'Get help with using the bot' },
+  //   { command: 'register', description: 'Start the registration process to get service access' },
+  //   { command: 'dashboard', description: 'Access your personalized dashboard' },
+  //   { command: 'get_token', description: 'Get your access token if registered and approved' },
+  // ]);
 
   // Enable graceful stop
   process.once("SIGINT", () => bot.stop("SIGINT"));

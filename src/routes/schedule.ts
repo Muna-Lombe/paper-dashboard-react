@@ -1,4 +1,4 @@
-import auth from '../middleware/auth';
+import {auth, AuthVariables} from '../middleware/auth';
 import { Hono } from 'hono';
 import { validator } from 'hono/validator';
 import { z } from 'zod';
@@ -9,7 +9,7 @@ import { User } from '../database/models/User'; // Import User interface
 
 export type Schedule = InferSelectModel<typeof schedules>;
 
-const scheduleRoutes = new Hono<{ Bindings: Env; Variables: { user: User; }; }>();
+const scheduleRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
 // Swagger documentation comments are not directly supported with Hono in this setup.
 // They should be moved to a separate documentation generation process or removed.

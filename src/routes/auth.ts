@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { validator } from 'hono/validator';
 import { z } from 'zod'; // For schema validation
-import auth from "../middleware/auth";
+import { auth, AuthVariables } from "../middleware/auth"; // Updated import for auth middleware
 import { InferSelectModel } from 'drizzle-orm';
 // import { users } from '../../../drizzle/schema'; // Import Drizzle schema
 import { hashUserPassword } from '../database/models/User'; // Import hashUserPassword utility
@@ -14,7 +14,7 @@ import { Env } from '..';
 
 export type User = InferSelectModel<typeof users>;
 
-const authRoutes = new Hono();
+const authRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>(); // Updated Hono context to include AuthVariables
 
 // Define validation schemas using Zod
 const registerSchema = z.object({

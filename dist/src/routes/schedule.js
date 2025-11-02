@@ -1,4 +1,4 @@
-import auth from '../middleware/auth';
+import { auth } from '../middleware/auth';
 import { Hono } from 'hono';
 import { validator } from 'hono/validator';
 import { z } from 'zod';

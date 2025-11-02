@@ -9,11 +9,10 @@ import { secureHeaders } from 'hono/secure-headers';
 import telegramBotFactory from "./config/telegramBot"; // Renamed for clarity
 // import { sequelize } from "./database/db";
 import { getDrizzleDb } from './database/drizzle/db';
-import { telegrafResponseBuilder } from './middleware/telegrafResponseBuilder';
 const app = new Hono();
 // Initialize Drizzle and Telegram Bot once at the top level
-let drizzleDbInstance;
-let telegramBotInstance;
+let drizzleDbInstance; // Restore these
+let telegramBotInstance; // Restore these
 // Hono Middleware
 app.use(logger());
 app.use(poweredBy({ serverName: "Paper Api" }));
@@ -29,6 +28,8 @@ app.use(async (c, next) => {
     if (!drizzleDbInstance) {
         drizzleDbInstance = getDrizzleDb(c.env.paper_dash_db);
         telegramBotInstance = telegramBotFactory(c.env);
+        // Ensure the bot factory's initialiseBot method is called once.
+        // Since telegramBotFactory already handles this, no explicit call here.
     }
     c.env.drizzleDb = drizzleDbInstance;
     c.env.telegramBot = telegramBotInstance;
@@ -45,6 +46,8 @@ app.use(async (c, next) => {
     }
     await next();
 });
+// Apply the Telegraf middleware for webhook handling
+// app.use(createTelegrafMiddleware(telegramBotFactory(app.env as Env))); // Pass env directly from app
 // health check
 app.get("/health", (c) => {
     return c.text("OK");
@@ -69,16 +72,27 @@ app.route("/api/integrations", integrationsRoutes); // Mount integrations routes
 import assistantRoutes from "./routes/assistant";
 // import { drizzle } from 'drizzle-orm/singlestore/driver';
 app.route("/api/assistant", assistantRoutes); // Mount assistant routes
-// Initialize the Telegram bot with the env object
-// const telegramBot = telegramBotFactory(process.env); // Pass process.env here for local testing, Cloudflare will provide c.env
 // Telegram Webhook
 app.post('/telegram-webhook', async (c) => {
     try {
         const update = await c.req.json();
-        const dummyRes = { headers: new Headers(), body: null, status: 200 };
-        const telegrafRes = telegrafResponseBuilder(dummyRes);
+        const honoRes = { headers: new Headers(), body: null, status: 200 };
+        let writableEnded = false;
+        const telegrafRes = Object.assign(honoRes, {
+            headersSent: false,
+            setHeader: (name, value) => honoRes.headers.set(name, value),
+            end: (data) => {
+                if (writableEnded)
+                    return;
+                honoRes.body = data;
+                writableEnded = true;
+            },
+        });
+        Object.defineProperty(telegrafRes, 'writableEnded', {
+            get: () => writableEnded,
+        });
         await c.env.telegramBot.handleUpdate(update, telegrafRes);
-        return c.text('OK', dummyRes.status, dummyRes.headers);
+        return new Response(honoRes.body, { status: honoRes.status, headers: honoRes.headers });
     }
     catch (error) {
         console.error('Telegram webhook error:', error);

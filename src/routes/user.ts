@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { validator } from 'hono/validator';
 import { z } from 'zod';
 import { setCookie, deleteCookie } from 'hono/cookie';
-import auth from '../middleware/auth';
+import { auth, AuthVariables } from '../middleware/auth';
 import { InferSelectModel } from 'drizzle-orm';
 import { users } from '../../drizzle/schema'; // Import Drizzle schema
 import bcrypt from 'bcryptjs';
@@ -11,7 +11,7 @@ import { Env } from '..';
 
 export type User = InferSelectModel<typeof users>;
 
-const userRoutes = new Hono<{ Bindings: Env; Variables: { user: User; }; }>();
+const userRoutes = new Hono<{ Bindings: Env; Variables: { user: User; } & AuthVariables }>();
 
 // Swagger documentation comments are not directly supported with Hono in this setup.
 // They should be moved to a separate documentation generation process or removed.

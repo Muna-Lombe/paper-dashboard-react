@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import auth from '../middleware/auth';
+import { auth } from '../middleware/auth';
 import { users, courses } from '../../drizzle/schema'; // Import Drizzle schemas
 import { sql } from 'drizzle-orm';
 const dashboardRoutes = new Hono();

@@ -1,36 +1,13 @@
-import { telegramRegistrationRequests } from '../../drizzle/schema'; // Import Drizzle schema
+import { tokens } from '../../drizzle/schema'; // Import Drizzle schema
+import { auth } from "../middleware/auth"; // Updated import for auth middleware
 import jwt from 'jsonwebtoken';
 import { Hono } from 'hono';
 import { validator } from 'hono/validator';
 import { z } from 'zod';
-import { getCookie } from 'hono/cookie';
 import courseScraper from "../../services/courseScraper";
-import { eq, and } from 'drizzle-orm';
-const scraperRoutes = new Hono();
-// API Token Authentication Middleware
-const apiTokenAuth = async (c, next) => {
-    const apiToken = getCookie(c, "api-token") || c.req.header("x-api-token");
-    if (!apiToken) {
-        return c.json({ msg: "No API token, authorization denied for scraper access." }, 401);
-    }
-    try {
-        const db = c.env.drizzleDb;
-        const registrationRequest = await db.select().from(telegramRegistrationRequests).where(and(eq(telegramRegistrationRequests.apiToken, apiToken), eq(telegramRegistrationRequests.status, 'approved'))).limit(1);
-        if (registrationRequest.length === 0) {
-            return c.json({ msg: "Invalid or expired API token for scraper access." }, 401);
-        }
-        c.set('apiUser', {
-            chatId: registrationRequest[0].chatId,
-            email: registrationRequest[0].email,
-            apiToken: registrationRequest[0].apiToken,
-        });
-        await next();
-    }
-    catch (err) {
-        console.error("API Token Auth middleware error:", err.message);
-        return c.json({ msg: "Server Error" }, 500);
-    }
-};
+import { eq } from 'drizzle-orm';
+import { apiTokenAuth } from '../middleware/scraper'; // Import the new middleware
+const scraperRoutes = new Hono(); // Updated Hono context to include AuthVariables
 // Swagger documentation comments are not directly supported with Hono in this setup.
 // They should be moved to a separate documentation generation process or removed.
 // /**
@@ -96,7 +73,7 @@ const validateUrlSchema = z.object({
 // *       500:
 // *         description: Server error
 // */
-scraperRoutes.post("/validate-url", apiTokenAuth, // Use Hono-compatible API token middleware
+scraperRoutes.post("/validate-url", auth, apiTokenAuth, // Use Hono-compatible API token middleware
 validator("json", (value, c) => {
     const parsed = validateUrlSchema.safeParse(value);
     if (!parsed.success) {
@@ -167,7 +144,7 @@ const scraperAuthSchema = z.object({
 // *         description: Authentication failed
 // */
 scraperRoutes.post("/getUserInfo", // Renamed back to /auth as per original description
-apiTokenAuth, // Use Hono-compatible API token middleware
+auth, apiTokenAuth, // Use Hono-compatible API token middleware
 validator("json", (value, c) => {
     const parsed = scraperAuthSchema.safeParse(value);
     if (!parsed.success) {
@@ -191,6 +168,9 @@ validator("json", (value, c) => {
             return c.json({ msg: 'Failed to authenticate with external scraper service.' }, 400);
         }
         const { token, data } = scraperAuthResponse.data; // token here refers to the ProgressMe token, not our API token
+        // associate telegram registration request with user
+        const db = c.env.drizzleDb;
+        await db.update(tokens).set({ userId: data.Value.Id }).where(eq(tokens.token, apiToken));
         return c.json({ token, data: { puid: data.Value.Id, role: data.Value.AccountRole } });
     }
     catch (err) {
@@ -246,7 +226,7 @@ validator("json", (value, c) => {
 // *               description: The name of the book
 // *
 // */
-scraperRoutes.get("/getbook", apiTokenAuth, async (c) => {
+scraperRoutes.get("/getbook", auth, apiTokenAuth, async (c) => {
     try {
         const url = c.req.query("url"); // Get URL from query params
         if (!url) {
@@ -336,7 +316,7 @@ const copyCourseSchema = z.object({
 // *       500:
 // *         description: Failed to copy course
 // */
-scraperRoutes.post("/copy-course", apiTokenAuth, // Use Hono-compatible API token middleware
+scraperRoutes.post("/copy-course", auth, apiTokenAuth, // Use Hono-compatible API token middleware
 validator("json", (value, c) => {
     const parsed = copyCourseSchema.safeParse(value);
     if (!parsed.success) {

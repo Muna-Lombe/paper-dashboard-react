@@ -22,6 +22,13 @@
       "when": 1761767235366,
       "tag": "0002_unique_index_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1762021343492,
+      "tag": "0003_create_relations",
+      "breakpoints": true
     }
   ]
 }

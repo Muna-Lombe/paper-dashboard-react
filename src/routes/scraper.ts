@@ -1,6 +1,6 @@
 import { InferSelectModel } from 'drizzle-orm';
-import { telegramRegistrationRequests } from '../../drizzle/schema'; // Import Drizzle schema
-import auth from "../middleware/auth";
+import { telegramRegistrationRequests, tokens } from '../../drizzle/schema'; // Import Drizzle schema
+import { auth, AuthVariables } from "../middleware/auth"; // Updated import for auth middleware
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { Hono, Context, Next } from 'hono';
 import { validator } from 'hono/validator';
@@ -11,38 +11,11 @@ import courseScraper from "../../services/courseScraper";
 import { eq, and } from 'drizzle-orm';
 import { Env } from '..'; // Import Env interface
 import { User } from '../database/models/User'; // Import User interface
+import { apiTokenAuth } from '../middleware/scraper'; // Import the new middleware
 
 export type TelegramRegistrationRequest = InferSelectModel<typeof telegramRegistrationRequests>;
 
-const scraperRoutes = new Hono<{ Bindings: Env; Variables: { apiUser: { chatId: string; email: string; apiToken: string | null; }; }; }>();
-
-// API Token Authentication Middleware
-const apiTokenAuth = async (c: Context<{ Bindings: Env; Variables: { apiUser: { chatId: string; email: string; apiToken: string | null; }; }; }>, next: Next) => {
-    const apiToken = getCookie(c, "api-token") || c.req.header("x-api-token");
-
-    if (!apiToken) {
-        return c.json({ msg: "No API token, authorization denied for scraper access." }, 401);
-    }
-
-    try {
-        const db = c.env.drizzleDb;
-        const registrationRequest = await db.select().from(telegramRegistrationRequests).where(and(eq(telegramRegistrationRequests.apiToken, apiToken), eq(telegramRegistrationRequests.status, 'approved'))).limit(1);
-
-        if (registrationRequest.length === 0) {
-            return c.json({ msg: "Invalid or expired API token for scraper access." }, 401);
-        }
-
-        c.set('apiUser', {
-            chatId: registrationRequest[0].chatId,
-            email: registrationRequest[0].email,
-            apiToken: registrationRequest[0].apiToken,
-        } as { chatId: string; email: string; apiToken: string | null; });
-        await next();
-    } catch (err: any) {
-        console.error("API Token Auth middleware error:", err.message);
-        return c.json({ msg: "Server Error" }, 500);
-    }
-};
+const scraperRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables & { apiUser: { chatId: string; email: string; apiToken: string | null; }; }; }>(); // Updated Hono context to include AuthVariables
 
 // Swagger documentation comments are not directly supported with Hono in this setup.
 // They should be moved to a separate documentation generation process or removed.
@@ -114,6 +87,7 @@ const validateUrlSchema = z.object({
 // */
 scraperRoutes.post(
     "/validate-url",
+    auth,
     apiTokenAuth, // Use Hono-compatible API token middleware
     validator("json", (value, c) => {
       const parsed = validateUrlSchema.safeParse(value);
@@ -145,6 +119,7 @@ scraperRoutes.post(
 const scraperAuthSchema = z.object({
   apiToken: z.string().nonempty("API token is required"),
 });
+type ScraperAuthData = z.infer<typeof scraperAuthSchema>; // Define a type for the validated data
 
 // /**
 // * @swagger
@@ -190,6 +165,7 @@ const scraperAuthSchema = z.object({
 // */
 scraperRoutes.post(
     "/getUserInfo", // Renamed back to /auth as per original description
+    auth,
     apiTokenAuth, // Use Hono-compatible API token middleware
     validator("json", (value, c) => {
       const parsed = scraperAuthSchema.safeParse(value);
@@ -199,7 +175,7 @@ scraperRoutes.post(
       return parsed.data;
     }),
     async (c) => {
-        const { apiToken } = c.req.valid("json");
+        const { apiToken } = c.req.valid("json") as ScraperAuthData;
         
 
         try {
@@ -221,6 +197,11 @@ scraperRoutes.post(
             }
             const { token, data } = scraperAuthResponse.data; // token here refers to the ProgressMe token, not our API token
 
+
+            // associate telegram registration request with user
+            const db = c.env.drizzleDb as any;
+            await db.update(tokens).set({ userId: data.Value.Id }).where(eq(tokens.token as any, apiToken));
+            
             return c.json({ token, data: { puid: data.Value.Id, role: data.Value.AccountRole } });
         } catch (err: any) {
             console.error(err.message);
@@ -277,7 +258,7 @@ scraperRoutes.post(
 // *               description: The name of the book
 // *
 // */
-scraperRoutes.get("/getbook", apiTokenAuth, async (c) => {
+scraperRoutes.get("/getbook",auth, apiTokenAuth, async (c) => {
     try {
         const url = c.req.query("url"); // Get URL from query params
         if (!url) {
@@ -379,6 +360,7 @@ const copyCourseSchema = z.object({
 // */
 scraperRoutes.post(
     "/copy-course",
+    auth,
     apiTokenAuth, // Use Hono-compatible API token middleware
     validator("json", (value, c) => {
       const parsed = copyCourseSchema.safeParse(value);

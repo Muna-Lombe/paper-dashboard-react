@@ -1,4 +1,4 @@
-import auth from '../middleware/auth';
+import { auth, AuthVariables } from '../middleware/auth';
 import { Hono } from 'hono';
 import { validator } from 'hono/validator';
 import { z } from 'zod';
@@ -13,7 +13,7 @@ export type Course = InferSelectModel<typeof courses>;
 export type CourseBlock = InferSelectModel<typeof courseBlocks>;
 export type CourseCorrection = InferSelectModel<typeof courseCorrections>;
 
-const courseRoutes = new Hono<{ Bindings: Env; Variables: { user: User; }; }>();
+const courseRoutes = new Hono<{ Bindings: Env; Variables: { user: User; } & AuthVariables }>();
 
 // Swagger documentation comments are not directly supported with Hono in this setup.
 // They should be moved to a separate documentation generation process or removed.
@@ -498,7 +498,7 @@ courseRoutes.post(
       }
 
       const newBlock = await db.insert(courseBlocks).values({
-        courseId,
+        courseId: courseId as any,
         type,
         content,
         order,
@@ -782,8 +782,8 @@ courseRoutes.post(
       }
 
       const newCorrection = await db.insert(courseCorrections).values({
-        courseId,
-        blockId,
+        courseId: courseId as any,
+        blockId: blockId as any,
         correctionText,
       }).returning();
 
