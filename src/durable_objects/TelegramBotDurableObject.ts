@@ -12,7 +12,7 @@ import { Update } from 'telegraf/types'; // Import Telegram Update type
 type UserState = Map<string, string>; // Define type for userState
 type EditableMessagesState = Map<string, number>; // Define type for editableMessagesState
 
-export class TelegramBotDO implements DurableObject {
+export class TelegramBotDurableObject implements DurableObject {
   state: DurableObjectState;
   env: Env; // We'll pass the environment to the DO
   bot: Telegraf; // Telegraf instance will live here
