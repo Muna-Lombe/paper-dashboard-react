@@ -150,5 +150,5 @@ app.post('/telegram-webhook', async (c) => {
   }
 });
 
-export { TelegramBotDurableObject }; // Export the Durable Object class for Wrangler
 export default app;
+export { TelegramBotDurableObject }; // Export the Durable Object class for Wrangler

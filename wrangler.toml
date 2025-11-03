@@ -35,5 +35,9 @@ database_name = "paper-dash-db"
 database_id = "d6cf09c0-7cc5-4133-bcc7-3b47ffade8b1"
 migrations_dir = "drizzle"
 
+[[migrations]]
+tag = "v1_telegram_bot_do"
+new_sqlite_classes = ["TelegramBotDurableObject"]
+
 [placement]
 mode = "off"
