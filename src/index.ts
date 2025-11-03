@@ -14,7 +14,7 @@ import { D1Database, DurableObjectNamespace } from '@cloudflare/workers-types/ex
 import { Telegraf } from 'telegraf';
 // import { telegrafResponseBuilder } from './middleware/telegrafResponseBuilder'; // No longer needed
 // import { createTelegrafMiddleware } from './middleware/telegrafMiddleware'; // No longer needed
-import { TelegramBotDO } from './durable_objects/TelegramBotDO'; // Import Durable Object class
+import { TelegramBotDO } from './durable_objects/TelegramBotDurableObject'; // Import Durable Object class
 
 export interface Env {
   paper_dash_db: D1Database;
