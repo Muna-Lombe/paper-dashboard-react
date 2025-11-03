@@ -3,19 +3,48 @@ import { Env } from "..";
 import axios from "axios";
 import { telegramRegistrationRequests } from "../../drizzle/schema";
 import { eq, and } from 'drizzle-orm';
+import { getDrizzleDb } from "../database/drizzle/db"; // Import getDrizzleDb
+import { DrizzleD1Database } from 'drizzle-orm/d1'; // Import DrizzleD1Database type
+import { DurableObject, DurableObjectState } from '@cloudflare/workers-types/experimental'; // Keep DurableObject, DurableObjectState
+import { Update } from 'telegraf/types'; // Import Telegram Update type
 
-const userState = new Map();
-const editableMessagesState = new Map();
 
-class TelegramBot {
-  public bot: Telegraf;
-  private env: Env;
+type UserState = Map<string, string>; // Define type for userState
+type EditableMessagesState = Map<string, number>; // Define type for editableMessagesState
 
-  constructor(env: Env) {
+export class TelegramBotDO implements DurableObject {
+  state: DurableObjectState;
+  env: Env; // We'll pass the environment to the DO
+  bot: Telegraf; // Telegraf instance will live here
+  userState: UserState;
+  editableMessagesState: EditableMessagesState;
+  drizzleDb: DrizzleD1Database; // Drizzle DB instance for this DO
+
+  constructor(state: DurableObjectState, env: Env) {
+    this.state = state;
     this.env = env;
-    const bot = new Telegraf(env.TELEGRAM_BOT_TOKEN);
-    this.bot = bot;
+    this.userState = new Map();
+    this.editableMessagesState = new Map();
+    this.drizzleDb = getDrizzleDb(this.env.paper_dash_db) as any; // Initialize Drizzle DB, casting to any to bypass type conflict
+
+    this.bot = new Telegraf(this.env.TELEGRAM_BOT_TOKEN);
+    this.initialiseBot(); // Initialize bot handlers
+
+    // Restore any persisted state for the bot here if needed
+    this.state.blockConcurrencyWhile(async () => {
+      const storedUserState = await this.state.storage.get<Map<string, string>>("userState");
+      if (storedUserState) {
+        this.userState = new Map(storedUserState);
+        console.log("Restored user state:", this.userState);
+      }
+      const storedEditableMessagesState = await this.state.storage.get<Map<string, number>>("editableMessagesState");
+      if (storedEditableMessagesState) {
+        this.editableMessagesState = new Map(storedEditableMessagesState);
+        console.log("Restored editable messages state:", this.editableMessagesState);
+      }
+    });
   }
+
   initialiseBot() {
     // Start Command
     this.bot.start((ctx: Context) => {
@@ -44,7 +73,7 @@ class TelegramBot {
         return ctx.reply('Could not determine your chat ID. Please try again.');
       }
       ctx.reply('Please share your email address to start the registration process.');
-      userState.set(chatId, 'awaiting_email');
+      this.userState.set(chatId, 'awaiting_email');
     });
 
     // Dashboard Command
@@ -53,7 +82,7 @@ class TelegramBot {
       if (!chatId) { // Handle undefined chatId
         return ctx.reply('Could not determine your chat ID. Please try again.');
       }
-      const db = this.env.drizzleDb as any;
+      const db = this.drizzleDb as any; // Use the DO's drizzleDb instance
       const registrationRequest = await db.select()
       .from(telegramRegistrationRequests)
       .where(eq(telegramRegistrationRequests.chatId as any, chatId))
@@ -78,7 +107,7 @@ class TelegramBot {
       if (!chatId) { // Handle undefined chatId
         return ctx.reply('Could not determine your chat ID. Please try again.');
       }
-      const db = this.env.drizzleDb as any;
+      const db = this.drizzleDb as any; // Use the DO's drizzleDb instance
       const registrationRequest = await db.select()
       .from(telegramRegistrationRequests)
       .where(eq(telegramRegistrationRequests.chatId as any, chatId))
@@ -97,10 +126,10 @@ class TelegramBot {
             ])
 
           );
-          editableMessagesState.set(chatId, message.message_id)
+          this.editableMessagesState.set(chatId, message.message_id)
 
         } else {
-          userState.set(chatId, 'awaiting_progressme_password')
+          this.userState.set(chatId, 'awaiting_progressme_password')
           ctx.reply(
             `You have not completed the progressme login step.\\nPlease provide your progressme password to complete.`
           );
@@ -128,9 +157,22 @@ class TelegramBot {
       const registrationChatId = args[1];
       try {
         console.log(`Approving registration for chat ID: ${registrationChatId}`);
-        await axios.post(`${this.env.SERVER_URL}/api/telegram/approve-request`, { registrationChatId });
-        ctx.reply(`Registration for ${registrationChatId} has been approved. The user will be notified with their API token.`);
-        userState.set(chatId, "awaiting_progressme_password")
+        const response = await axios.post(`${this.env.SERVER_URL}/api/telegram/approve-request`, { registrationChatId });
+        if (response.status === 200) {
+          ctx.reply(`Registration for ${response.data.email}(Chat ID: ${registrationChatId}) has been approved. The user will be notified with their API token.`);
+          await ctx.telegram.sendMessage(
+            registrationChatId,
+            `Your registration request has been approved! Proceed to get your access token.\n\n*IMPORTANT*:\n1. We **DO NOT** store your ProgressMe email and password, and we do not have access to your ProgressMe account.\n2. Do **NOT** share your access token with anyone else.`,
+            Markup.inlineKeyboard([
+              [Markup.button.callback('Proceed', 'get_token')],
+            ])
+          );
+
+          
+          this.userState.set(chatId, "awaiting_progressme_password")
+
+
+        }
 
       } catch (error: any) {
         console.error('Error approving registration:', error);
@@ -155,8 +197,14 @@ class TelegramBot {
       const registrationChatId = args[1];
       try {
         console.log(`Rejecting registration for chat ID: ${registrationChatId}`);
-        await axios.post(`${this.env.SERVER_URL}/api/telegram/reject-request`, { registrationChatId });
-        ctx.reply(`Registration for ${registrationChatId} has been rejected. The user will be notified.`);
+        const response = await axios.post(`${this.env.SERVER_URL}/api/telegram/reject-request`, { registrationChatId });
+        if (response.status === 200) {
+          ctx.reply(`Registration for ${response.data.email}(Chat ID: ${registrationChatId}) has been rejected. The user will be notified.`);
+          await ctx.telegram.sendMessage(
+            registrationChatId,
+            `Your registration request has been rejected. Please contact support if you have any questions.`
+          );
+        }
 
       } catch (error: any) {
         console.error('Error rejecting registration:', error);
@@ -173,7 +221,7 @@ class TelegramBot {
       if (!chatId) { // Handle undefined chatId
         return next(); // Or ctx.reply('Could not determine your chat ID. Please try again.');
       }
-      const state = userState.get(chatId);
+      const state = this.userState.get(chatId);
       const text = ctx.message && ctx.text ? ctx.text?.trim() : "";
       const actionData = (ctx.callbackQuery ? "no_regenerate"  : "none");//ctx.callbackQuery ? ctx.callbackQuery.data : null;
       
@@ -189,7 +237,23 @@ class TelegramBot {
             });
             if (response.status === 201) {
               ctx.reply('Your registration request has been submitted. The bot master will review it.');
-              userState.delete(chatId);
+              // Notify bot master with inline buttons
+              const botMasterChatId = this.env.TELEGRAM_BOT_MASTER_CHAT_ID; // Access env from c.env
+              if (botMasterChatId) {
+                // The bot.telegram.sendMessage uses the Telegraf instance.
+                // In a Worker, you'd likely use the Telegram Bot API directly or ensure `bot` is properly initialized with fetch capabilities.
+                // For now, assume `bot` can send messages via its webhook handler.
+                const message = await ctx.telegram.sendMessage(
+                  botMasterChatId,
+                  `New registration request from ${email} (Chat ID: ${chatId}).\nReasons: ${response.data.reasons}. Use Case: ${response.data.useCase}.`,
+                  Markup.inlineKeyboard([
+                    [Markup.button.callback('Approve', `approve_reg_${chatId}`)],
+                    [Markup.button.callback('Reject', `reject_reg_${chatId}`)],
+                  ])
+                );
+                // requestMessages.set(`${botMasterChatId}-${chatId}`, message.message_id);
+              }
+              this.userState.delete(chatId);
             } else {
               ctx.reply('Failed to submit registration request. Please try again.');
             }
@@ -216,7 +280,7 @@ class TelegramBot {
                   '\nClick the token to copy',
               Format.quote(`\n\nIMPORTANT: Do NOT share this token with anyone else.`)
                 ),);
-            userState.delete(chatId);
+            this.userState.delete(chatId);
             } else {
                 ctx.reply('Failed to generate ProgressMe token. Please check your password and try again.');
             }
@@ -230,13 +294,13 @@ class TelegramBot {
           case "no_regenerate":
             await ctx.answerCbQuery();
           ctx.editMessageText('Token regeneration cancelled.');
-          userState.delete(chatId);
+          this.userState.delete(chatId);
             break;
           // case "yes_regenerate":
           //   await ctx.answerCbQuery();
 
           //   ctx.editMessageText('Please provide your ProgressMe password to regenerate your access token.');
-          //   userState.set(chatId, 'awaiting_progressme_password');
+          //   this.userState.set(chatId, 'awaiting_progressme_password');
           //   break;
           default:
             console.log("no action")
@@ -284,48 +348,12 @@ class TelegramBot {
             [Markup.button.callback('No', 'no_regenerate')],
           ])
         )
-        userState.set(chatId, 'awaiting_regenerate_confirmation');
+        this.userState.set(chatId?.toString() || '', 'awaiting_regenerate_confirmation');
       } catch (error: any) {
         console.error('Error initiating token regeneration:', error);
         ctx.reply('An error occurred while trying to regenerate your token. Please try again later.');
       }
     });
-
-    // this.bot.action(/^approve_reg_(\d+)$/, async (ctx: Context) => {
-    //   // const botMasterChatId = ctx.from.id.toString();
-    //   // if (botMasterChatId !== this.env.TELEGRAM_BOT_MASTER_CHAT_ID) {
-    //   //   return ctx.answerCbQuery('You are not authorized to perform this action.');
-    //   // }
-      
-    //   // await ctx.answerCbQuery('Approving request...');
-    //   // const registrationChatId = ctx.match[1];
-
-    //   // try {
-    //   //   await axios.post(`${this.env.SERVER_URL}/api/telegram/approve-request`, { registrationChatId });
-    //   //   await ctx.editMessageText(`Registration request for chat ID ${registrationChatId} has been **APPROVED**.`);
-    //   // } catch (error: any) {
-    //   //   console.error('Error approving registration via inline button:', error);
-    //   //   await ctx.editMessageText(`Failed to approve registration for chat ID ${registrationChatId}.`);
-    //   // }
-    // });
-
-    // this.bot.action(/^reject_reg_(\d+)$/, async (ctx: Context) => {
-    //   // const botMasterChatId = ctx.from.id.toString();
-    //   // if (botMasterChatId !== this.env.TELEGRAM_BOT_MASTER_CHAT_ID) {
-    //   //   return ctx.answerCbQuery('You are not authorized to perform this action.');
-    //   // }
-
-    //   // await ctx.answerCbQuery('Rejecting request...');
-    //   // const registrationChatId = ctx.match[1];
-
-    //   // try {
-    //   //   await axios.post(`${this.env.SERVER_URL}/api/telegram/reject-request`, { registrationChatId });
-    //   //   await ctx.editMessageText(`Registration request for chat ID ${registrationChatId} has been **REJECTED**.`);
-    //   // } catch (error: any) {
-    //   //   console.error('Error rejecting registration via inline button:', error);
-    //   //   await ctx.editMessageText(`Failed to reject registration for chat ID ${registrationChatId}.`);
-    //   // }
-    // });
 
     this.bot.telegram.setMyCommands([
   { command: 'start', description: 'Start the bot and see the main menu' },
@@ -334,36 +362,99 @@ class TelegramBot {
   { command: 'dashboard', description: 'Access your personalized dashboard' },
   { command: 'get_token', description: 'Get your access token if registered and approved' },
   ]);
-
-    return this.bot;
   }
 
-};
+  // @ts-ignore - Type conflict between global Request and Cloudflare's CfRequest, but runtime behavior is correct
+  fetch = async (request: Request): Promise<Response> => {
+    // This is where incoming requests for this DO instance will be handled.
+    // For Telegram webhooks, we'll forward the update to our Telegraf bot.
+    try {
+      const url = new URL(request.url);
+      const path = url.pathname;
 
-const telegramBotFactory = (env: Env) => {
-  const telegramBotInstance = new TelegramBot(env);
-  telegramBotInstance.initialiseBot();
-  const bot = telegramBotInstance.bot
-  
+      if (path === "/telegram-webhook") {
+        const update = await request.json() as Update; // Cast to Update type
 
-  // Start Telegram Bot
-  console.log("starting bot...")
-  // bot.launch(() => (console.info(`Bot:${bot.botInfo?.id} started!`)));
+        const honoRes = { headers: new Headers(), body: null, status: 200 };
+        let writableEnded = false;
+        const telegrafRes = Object.assign(honoRes, {
+          headersSent: false,
+          setHeader: (name: string, value: string) => honoRes.headers.set(name, value),
+          end: (data: any) => {
+            if (writableEnded) return;
+            honoRes.body = data;
+            writableEnded = true;
+          },
+        });
+        Object.defineProperty(telegrafRes, 'writableEnded', {
+          get: () => writableEnded,
+        });
 
-  bot.telegram.setMyCommands([
-    { command: 'start', description: 'Start the bot and see the main menu' },
-    { command: 'help', description: 'Get help with using the bot' },
-    { command: 'register', description: 'Start the registration process to get service access' },
-    { command: 'dashboard', description: 'Access your personalized dashboard' },
-    { command: 'get_token', description: 'Get your access token if registered and approved' },
-  ]);
+        await this.bot.handleUpdate(update, telegrafRes as any);
 
-  // Enable graceful stop
-  process.once("SIGINT", () => bot.stop("SIGINT"));
-  process.once("SIGTERM", () => bot.stop("SIGTERM"));
+        // Persist any relevant state after handling the update
+        // For example, if your bot tracks conversation steps or user preferences
+        await this.state.storage.put("userState", Array.from(this.userState.entries()));
+        await this.state.storage.put("editableMessagesState", Array.from(this.editableMessagesState.entries()));
 
+        const responseHeaders = new Headers();
+        honoRes.headers.forEach((value, key) => {
+          responseHeaders.set(key, value);
+        });
+        return new Response(honoRes.body, { status: honoRes.status, headers: responseHeaders as any }); // Use global Response and cast headers to any
 
-  return bot;
-};
+      } else if (path === "/signal-registration-request") {
+        const { chatId, email, reasons, useCase } = await request.json();
+        await this.bot.telegram.sendMessage(
+          this.env.TELEGRAM_BOT_MASTER_CHAT_ID,
+          `New registration request from ${email} (Chat ID: ${chatId}).\nReasons: ${reasons}. Use Case: ${useCase}.`,
+          Markup.inlineKeyboard([
+            [Markup.button.callback('Approve', `approve_reg_${chatId}`)],
+            [Markup.button.callback('Reject', `reject_reg_${chatId}`)],
+          ])
+        );
+        return new Response("OK", { status: 200 }); // Use global Response
 
-export default telegramBotFactory;
+      } else if (path === "/signal-approval") {
+        const { chatId, email } = await request.json();
+        await this.bot.telegram.sendMessage(
+          chatId,
+          `Your registration request has been approved! Proceed to get your access token.\n\n*IMPORTANT*:\n1. We **DO NOT** store your ProgressMe email and password, and we do not have access to your ProgressMe account.\n2. Do **NOT** share your access token with anyone else.`,
+          Markup.inlineKeyboard([
+            [Markup.button.callback('Proceed', 'get_token')],
+          ])
+        );
+        return new Response("OK", { status: 200 }); // Use global Response
+
+      } else if (path === "/signal-rejection") {
+        const { chatId, email } = await request.json();
+        await this.bot.telegram.sendMessage(
+          chatId,
+          'Your registration request has been rejected. Please contact support if you have any questions.'
+        );
+        return new Response("OK", { status: 200 }); // Use global Response
+
+      } else if (path === "/signal-botmaster-notification") {
+        const { type, email, chatId } = await request.json();
+        if (type === 'approval') {
+          await this.bot.telegram.sendMessage(
+            this.env.TELEGRAM_BOT_MASTER_CHAT_ID,
+            `Registration request from ${email} (Chat ID: ${chatId}) approved!`,
+          );
+        } else if (type === 'rejection') {
+          await this.bot.telegram.sendMessage(
+            this.env.TELEGRAM_BOT_MASTER_CHAT_ID,
+            `Registration request from ${email} (Chat ID: ${chatId}) rejected!`,
+          );
+        }
+        return new Response("OK", { status: 200 }); // Use global Response
+
+      } else {
+        return new Response("Not found", { status: 404 }); // Use global Response
+      }
+    } catch (error: any) {
+      console.error("Durable Object fetch error:", error.message);
+      return new Response("Internal Server Error", { status: 500 }); // Use global Response
+    }
+  }
+}

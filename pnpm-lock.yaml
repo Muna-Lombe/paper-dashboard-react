@@ -81,6 +81,9 @@ importers:
       webpack-cli:
         specifier: ^6.0.1
         version: 6.0.1(webpack@5.102.1)
+      workers-types:
+        specifier: link:@types/@cloudflare/workers-types
+        version: link:@types/@cloudflare/workers-types
 
 packages:
 

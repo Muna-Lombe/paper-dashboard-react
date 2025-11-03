@@ -6,15 +6,15 @@ import { secureHeaders } from 'hono/secure-headers';
 // import { handle } from 'hono/cloudflare-pages'; // No longer needed
 // import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 // import auth from "./middleware/auth"; // Import auth middleware
-import telegramBotFactory from "./config/telegramBot"; // Renamed for clarity
+// import telegramBotFactory from "./config/telegramBot"; // Renamed for clarity - NO LONGER NEEDED
 // import { sequelize } from "./database/db";
 import { getDrizzleDb } from './database/drizzle/db';
 
-import { D1Database } from '@cloudflare/workers-types/experimental';
+import { D1Database, DurableObjectNamespace } from '@cloudflare/workers-types/experimental';
 import { Telegraf } from 'telegraf';
 // import { telegrafResponseBuilder } from './middleware/telegrafResponseBuilder'; // No longer needed
 // import { createTelegrafMiddleware } from './middleware/telegrafMiddleware'; // No longer needed
-
+import { TelegramBotDO } from './durable_objects/TelegramBotDO'; // Import Durable Object class
 
 export interface Env {
   paper_dash_db: D1Database;
@@ -28,14 +28,15 @@ export interface Env {
   TELEGRAM_BOT_MASTER_CHAT_ID: string;
   SERVER_URL: string;
   EXTERNAL_SCRAPER_SERVICE_URL: string; // Add this type
-  telegramBot: Telegraf;
+  TELEGRAM_BOT_DO: DurableObjectNamespace; // Durable Object binding
+  // telegramBot: Telegraf; // No longer initialized at top level
 }
 
 const app = new Hono<{ Bindings: Env }>();
 
-// Initialize Drizzle and Telegram Bot once at the top level
+// Initialize Drizzle once at the top level
 let drizzleDbInstance: ReturnType<typeof getDrizzleDb>; // Restore these
-let telegramBotInstance: Telegraf; // Restore these
+// let telegramBotInstance: Telegraf; // No longer initialized at top level
 
 // Hono Middleware
 app.use(logger());
@@ -52,12 +53,12 @@ app.use(cors({
 app.use(async (c, next) => {
   if (!drizzleDbInstance) {
     drizzleDbInstance = getDrizzleDb(c.env.paper_dash_db);
-    telegramBotInstance = telegramBotFactory(c.env);
+    // telegramBotInstance = telegramBotFactory(c.env); // No longer initialized at top level
     // Ensure the bot factory's initialiseBot method is called once.
     // Since telegramBotFactory already handles this, no explicit call here.
   }
   c.env.drizzleDb = drizzleDbInstance;
-  c.env.telegramBot = telegramBotInstance;
+  // c.env.telegramBot = telegramBotInstance; // No longer initialized at top level
 
   if (!c.req) {
     console.error("c.req is undefined in middleware, skipping.");
@@ -117,25 +118,32 @@ app.route("/api/assistant", assistantRoutes); // Mount assistant routes
 app.post('/telegram-webhook', async (c) => {
   try {
     const update = await c.req.json();
+    // Telegram updates have a chat ID in various places, we need to find it
+    const chatId = update.message?.chat.id || update.callback_query?.message?.chat.id || update.my_chat_member?.chat.id;
 
-    const honoRes = { headers: new Headers(), body: null, status: 200 };
-    let writableEnded = false;
-    const telegrafRes = Object.assign(honoRes, {
-      headersSent: false,
-      setHeader: (name: string, value: string) => honoRes.headers.set(name, value),
-      end: (data: any) => {
-        if (writableEnded) return;
-        honoRes.body = data;
-        writableEnded = true;
-      },
+    if (!chatId) {
+      console.error("Could not determine chatId from Telegram update:", update);
+      return c.text("Bad Request: Missing chat_id", 400);
+    }
+
+    // Get a Durable Object ID for this specific chat.
+    // Each chat will have its own DO instance to manage state.
+    const id = c.env.TELEGRAM_BOT_DO.idFromName(chatId.toString());
+    const stub = c.env.TELEGRAM_BOT_DO.get(id);
+
+    // Forward the original request to the Durable Object
+    // The DO will handle the Telegraf bot logic and state.
+    const doRequest = new Request(c.req.url, {
+      method: c.req.method,
+      headers: new Headers(c.req.raw.headers), // Explicitly create new Headers from raw request headers
+      body: JSON.stringify(update),
     });
-    Object.defineProperty(telegrafRes, 'writableEnded', {
-      get: () => writableEnded,
-    });
+    const doResponse = await stub.fetch(doRequest as any); // Cast to any to resolve type mismatch
     
-    await c.env.telegramBot.handleUpdate(update, telegrafRes as any);
-    
-    return new Response(honoRes.body, { status: honoRes.status, headers: honoRes.headers });
+    // Construct a new Hono-compatible Response from the DO's response
+    const responseBody = await doResponse.text(); // Read body as text
+    return new Response(responseBody, { status: doResponse.status, headers: doResponse.headers });
+
   } catch (error: any) {
     console.error('Telegram webhook error:', error);
     return c.text('Error', 500);
@@ -143,3 +151,4 @@ app.post('/telegram-webhook', async (c) => {
 });
 
 export default app;
+export { TelegramBotDO }; // Export the Durable Object class for Wrangler

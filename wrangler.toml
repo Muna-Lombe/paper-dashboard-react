@@ -3,12 +3,23 @@ main = "dist/src/index.js"
 compatibility_date = "2025-10-11"
 compatibility_flags = ["nodejs_compat"]
 
+# Durable Objects binding
+[[durable_objects.bindings]]
+name = "TELEGRAM_BOT_DO"
+class_name = "TelegramBotDO"
+script_name = "paper-dash-server"
+
 
 [observability]
 [observability.logs]
-enabled = false
+enabled = true
 head_sampling_rate = 1
+persist = true
 invocation_logs = true
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1
 persist = true
 
 [build]
