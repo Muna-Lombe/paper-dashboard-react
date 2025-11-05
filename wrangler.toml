@@ -4,7 +4,7 @@ compatibility_date = "2025-10-11"
 compatibility_flags = ["nodejs_compat"]
 
 services = [
-  { binding = "LOG_API", service = "<logs-monitor-worker>" }
+  { binding = "LOG_API", service = "logs-monitor-worker" }
 ]
 
 # Durable Objects binding
