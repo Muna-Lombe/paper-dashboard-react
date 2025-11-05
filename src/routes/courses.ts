@@ -8,12 +8,142 @@ import { InferSelectModel } from 'drizzle-orm';
 import { Env } from '..';
 import { User } from '../database/models/User';
 import { sql } from 'drizzle-orm';
+import CourseSearchService from '../services/courseSearchService';
 
 export type Course = InferSelectModel<typeof courses>;
 export type CourseBlock = InferSelectModel<typeof courseBlocks>;
 export type CourseCorrection = InferSelectModel<typeof courseCorrections>;
 
 const courseRoutes = new Hono<{ Bindings: Env; Variables: { user: User; } & AuthVariables }>();
+
+// Search and filter validation schema
+const searchSchema = z.object({
+  search: z.string().optional(),
+  minProgress: z.number().min(0).max(100).optional(),
+  maxProgress: z.number().min(0).max(100).optional(),
+  sortBy: z.enum(['title', 'progress', 'lastAccessed', 'recent']).optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional(),
+  limit: z.number().min(1).max(100).optional(),
+  offset: z.number().min(0).optional(),
+});
+
+// Search courses endpoint
+courseRoutes.post('/search', auth, validator('json', (value, c) => {
+  const parsed = searchSchema.safeParse(value);
+  if (!parsed.success) {
+    return c.json({ errors: parsed.error.issues }, 400);
+  }
+  return parsed.data;
+}), async (c) => {
+  try {
+    const filters = c.req.valid('json');
+    const user = c.get('user');
+    const db = (c.env as Env).drizzleDb;
+    const searchService = new CourseSearchService(db as any);
+
+    const results = await searchService.searchUserCourses(user.id, filters);
+
+    return c.json(results);
+  } catch (err: any) {
+    console.error(err.message);
+    return c.json({ msg: 'Server error' }, 500);
+  }
+});
+
+// Get course statistics
+courseRoutes.get('/stats', auth, async (c) => {
+  try {
+    const user = c.get('user');
+    const db = (c.env as Env).drizzleDb;
+    const searchService = new CourseSearchService(db as any);
+
+    const stats = await searchService.getCourseStats(user.id);
+
+    return c.json(stats);
+  } catch (err: any) {
+    console.error(err.message);
+    return c.json({ msg: 'Server error' }, 500);
+  }
+});
+
+// Get courses by status
+courseRoutes.get('/status/:status', auth, validator('query', (value, c) => {
+  const schema = z.object({
+    limit: z.string().transform(v => parseInt(v)).optional(),
+    offset: z.string().transform(v => parseInt(v)).optional(),
+  });
+  const parsed = schema.safeParse(value);
+  if (!parsed.success) {
+    return c.json({ errors: parsed.error.issues }, 400);
+  }
+  return parsed.data;
+}), async (c) => {
+  try {
+    const status = c.req.param('status') as any;
+    const query = c.req.valid('query');
+    const user = c.get('user');
+    const db = (c.env as Env).drizzleDb;
+    const searchService = new CourseSearchService(db as any);
+
+    if (!['not-started', 'in-progress', 'completed'].includes(status)) {
+      return c.json({ msg: 'Invalid status' }, 400);
+    }
+
+    const results = await searchService.getCoursesByStatus(
+      user.id,
+      status,
+      query.limit || 20,
+      query.offset || 0
+    );
+
+    return c.json(results);
+  } catch (err: any) {
+    console.error(err.message);
+    return c.json({ msg: 'Server error' }, 500);
+  }
+});
+
+// Get suggested courses
+courseRoutes.get('/suggested', auth, async (c) => {
+  try {
+    const user = c.get('user');
+    const db = (c.env as Env).drizzleDb;
+    const searchService = new CourseSearchService(db as any);
+
+    const suggested = await searchService.getSuggestedCourses(user.id, 5);
+
+    return c.json(suggested);
+  } catch (err: any) {
+    console.error(err.message);
+    return c.json({ msg: 'Server error' }, 500);
+  }
+});
+
+// Autocomplete course titles
+courseRoutes.get('/autocomplete', auth, validator('query', (value, c) => {
+  const schema = z.object({
+    q: z.string().nonempty('Query is required'),
+  });
+  const parsed = schema.safeParse(value);
+  if (!parsed.success) {
+    return c.json({ errors: parsed.error.issues }, 400);
+  }
+  return parsed.data;
+}), async (c) => {
+  try {
+    const query = c.req.valid('query');
+    const user = c.get('user');
+    const db = (c.env as Env).drizzleDb;
+    const searchService = new CourseSearchService(db as any);
+
+    const suggestions = await searchService.autocomplete(user.id, query.q, 5);
+
+    return c.json({ suggestions });
+  } catch (err: any) {
+    console.error(err.message);
+    return c.json({ msg: 'Server error' }, 500);
+  }
+});
 
 // Swagger documentation comments are not directly supported with Hono in this setup.
 // They should be moved to a separate documentation generation process or removed.

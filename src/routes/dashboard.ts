@@ -4,6 +4,7 @@ import { InferSelectModel } from 'drizzle-orm';
 import { users, courses } from '../../drizzle/schema'; // Import Drizzle schemas
 import { sql } from 'drizzle-orm';
 import { Env } from '..';
+import AnalyticsService from '../services/analyticsService';
 
 export type User = InferSelectModel<typeof users>;
 export type Course = InferSelectModel<typeof courses>;
@@ -45,19 +46,87 @@ const dashboardRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 dashboardRoutes.get('/summary', auth, async (c) => {
   try {
     const db = (c.env as Env).drizzleDb;
-    const totalUsersResult = await db.select({ count: sql<number>`count(*)` }).from(users);
-    const totalCoursesResult = await db.select({ count: sql<number>`count(*)` }).from(courses);
-    // Placeholder for active users - requires more complex logic (e.g., last login, activity)
-    const activeUsers = 0;
+    const analyticsService = new AnalyticsService(db as any);
+    
+    // Get real dashboard statistics
+    const stats = await analyticsService.getDashboardStats();
 
-    const totalUsers = totalUsersResult[0].count;
-    const totalCourses = totalCoursesResult[0].count;
+    return c.json(stats);
+  } catch (err:any) {
+    console.error(err.message);
+    return c.json({ msg: "Server Error" }, 500);
+  }
+});
+
+// Get user engagement metrics
+dashboardRoutes.get('/user-metrics/:userId', auth, async (c) => {
+  try {
+    const userId = c.req.param('userId');
+    const db = (c.env as Env).drizzleDb;
+    const analyticsService = new AnalyticsService(db as any);
+
+    const metrics = await analyticsService.getUserMetrics(userId);
+    
+    if (!metrics) {
+      return c.json({ msg: 'User not found' }, 404);
+    }
+
+    return c.json(metrics);
+  } catch (err:any) {
+    console.error(err.message);
+    return c.json({ msg: "Server Error" }, 500);
+  }
+});
+
+// Get all users engagement metrics (admin only - returns up to 100 users)
+dashboardRoutes.get('/all-users-metrics', auth, async (c) => {
+  try {
+    const db = (c.env as Env).drizzleDb;
+    const analyticsService = new AnalyticsService(db as any);
+
+    const metrics = await analyticsService.getAllUsersMetrics(100);
 
     return c.json({
-      totalUsers,
-      totalCourses,
-      activeUsers,
-      // ... other statistics
+      totalUsers: metrics.length,
+      users: metrics,
+    });
+  } catch (err:any) {
+    console.error(err.message);
+    return c.json({ msg: "Server Error" }, 500);
+  }
+});
+
+// Get course analytics
+dashboardRoutes.get('/course-analytics/:courseId', auth, async (c) => {
+  try {
+    const courseId = c.req.param('courseId');
+    const db = (c.env as Env).drizzleDb;
+    const analyticsService = new AnalyticsService(db as any);
+
+    const analytics = await analyticsService.getCourseAnalytics(courseId);
+    
+    if (!analytics) {
+      return c.json({ msg: 'Course not found' }, 404);
+    }
+
+    return c.json(analytics);
+  } catch (err:any) {
+    console.error(err.message);
+    return c.json({ msg: "Server Error" }, 500);
+  }
+});
+
+// Get top courses by enrollment
+dashboardRoutes.get('/top-courses', auth, async (c) => {
+  try {
+    const db = (c.env as Env).drizzleDb;
+    const analyticsService = new AnalyticsService(db as any);
+
+    const topCourses = await analyticsService.getTopCourses(10);
+
+    return c.json({
+      totalCourses: topCourses.length,
+      courses: topCourses,
     });
   } catch (err:any) {
     console.error(err.message);

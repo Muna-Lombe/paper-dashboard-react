@@ -10,11 +10,14 @@ import { secureHeaders } from 'hono/secure-headers';
 // import { sequelize } from "./database/db";
 import { getDrizzleDb } from './database/drizzle/db';
 
-import { D1Database, DurableObjectNamespace } from '@cloudflare/workers-types/experimental';
+import { D1Database, DurableObjectNamespace, Fetcher } from '@cloudflare/workers-types/experimental';
 import { Telegraf } from 'telegraf';
 // import { telegrafResponseBuilder } from './middleware/telegrafResponseBuilder'; // No longer needed
 // import { createTelegrafMiddleware } from './middleware/telegrafMiddleware'; // No longer needed
 import { TelegramBotDurableObject } from './durable_objects/TelegramBotDurableObject'; // Import Durable Object class
+import { rateLimit } from './middleware/rateLimit'; // Import rate limiting middleware
+import { validateInput } from './middleware/sanitize'; // Import input validation middleware
+import { errorHandler } from './middleware/errorHandler'; // Import error handler middleware
 
 export interface Env {
   paper_dash_db: D1Database;
@@ -29,6 +32,10 @@ export interface Env {
   SERVER_URL: string;
   EXTERNAL_SCRAPER_SERVICE_URL: string; // Add this type
   TELEGRAM_BOT_DO: DurableObjectNamespace; // Durable Object binding
+  SENDGRID_API_KEY?: string; // SendGrid API key for emails
+  SENDGRID_FROM_EMAIL?: string; // SendGrid from email address
+  LOG_API?: Fetcher; // Service binding for the LogHog Worker
+  LOGHOG_APP_TOKEN?: string; // App token for LogHog authentication
   // telegramBot: Telegraf; // No longer initialized at top level
 }
 
@@ -42,6 +49,12 @@ let drizzleDbInstance: ReturnType<typeof getDrizzleDb>; // Restore these
 app.use(logger());
 app.use(poweredBy({serverName: "Paper Api"}));
 app.use(secureHeaders());
+app.use(rateLimit({
+  requestsPerMinute: 60,
+  requestsPerHour: 1000,
+}));
+app.use(validateInput);
+app.use(errorHandler); // Add error handler middleware
 app.use(cors({
   origin: ["https://paperdash.katundu.org", "http://localhost:3000"],
   credentials: true,
@@ -112,6 +125,9 @@ app.route("/api/integrations", integrationsRoutes); // Mount integrations routes
 import assistantRoutes from "./routes/assistant";
 // import { drizzle } from 'drizzle-orm/singlestore/driver';
 app.route("/api/assistant", assistantRoutes); // Mount assistant routes
+
+import adminRoutes from "./routes/admin";
+app.route("/api/admin", adminRoutes); // Mount admin routes
 
 
 // Telegram Webhook

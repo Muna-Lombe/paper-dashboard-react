@@ -29,6 +29,13 @@
       "when": 1762021343492,
       "tag": "0003_create_relations",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1762195267795,
+      "tag": "0004_add_fields_to_user",
+      "breakpoints": true
     }
   ]
 }

@@ -28,6 +28,8 @@ command = "npm run build"
 [vars]
 SERVER_URL="https://paperapi.katundu.org"
 NODE_ENV="production"
+LOGHOG_API_URL = "https://apihog.katundu.org"
+
 
 [[d1_databases]]
 binding = "paper_dash_db"

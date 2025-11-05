@@ -5,9 +5,16 @@ export const users = sqliteTable('users', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   email: text('email').unique().notNull(),
   password: text('password').notNull(),
+  role: text('role', { enum: ['student', 'teacher', 'admin'] }).default('student').notNull(), // RBAC role field
   progressMeSerialToken: text('progress_me_serial_token'),
-
-
+  isEmailVerified: integer('is_email_verified', { mode: 'boolean' }).default(false),
+  emailVerificationToken: text('email_verification_token'), // JWT token for email verification
+  emailVerificationExpiresAt: text('email_verification_expires_at'), // Expiration timestamp
+  passwordResetToken: text('password_reset_token'), // JWT token for password reset
+  passwordResetExpiresAt: text('password_reset_expires_at'), // Expiration timestamp
+  lastLoginAt: text('last_login_at'), // Track last login for analytics
+  createdAt: text('created_at'), // Nullable since added via migration
+  updatedAt: text('updated_at'), // Nullable since added via migration
 }, () => []);
 
 
