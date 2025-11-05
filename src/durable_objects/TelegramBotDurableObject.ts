@@ -7,6 +7,7 @@ import { getDrizzleDb } from "../database/drizzle/db"; // Import getDrizzleDb
 import { DrizzleD1Database } from 'drizzle-orm/d1'; // Import DrizzleD1Database type
 import { DurableObject, DurableObjectState } from '@cloudflare/workers-types/experimental'; // Keep DurableObject, DurableObjectState
 import { Update } from 'telegraf/types'; // Import Telegram Update type
+import LogHogClient from "../services/loggerService";
 
 
 type UserState = Map<string, string>; // Define type for userState
@@ -364,6 +365,34 @@ export class TelegramBotDurableObject implements DurableObject {
   ]);
   }
 
+  logger(message:string, errorCode: number){
+    const traceId = "trace-"+this.bot.botInfo?.id+"-tm_stmp:"+Date.now();
+    const spanId = "span-"+Date.now();
+    
+
+
+    // Initialize LogHog if service binding exists
+    if (this.env.LOG_API && this.env.LOGHOG_APP_TOKEN) {
+      const loghog = new LogHogClient(
+        this.env.LOG_API,
+        this.env.LOGHOG_APP_TOKEN,
+        (promise) => Promise.all([promise]) // Use Cloudflare's waitUntil if available
+      );
+
+      // Log error to LogHog with structured data
+      loghog.logHttpError(
+        "POST",
+        "/telegram-webhook",
+        errorCode,
+        message,
+        String(this.bot.botInfo?.id),
+        traceId,
+        spanId,
+        undefined
+      );
+    }
+  }
+
   // @ts-ignore - Type conflict between global Request and Cloudflare's CfRequest, but runtime behavior is correct
   fetch = async (request: Request): Promise<Response> => {
     // This is where incoming requests for this DO instance will be handled.
@@ -371,6 +400,9 @@ export class TelegramBotDurableObject implements DurableObject {
     try {
       const url = new URL(request.url);
       const path = url.pathname;
+
+      console.log("path:", path)
+      
 
       if (path === "/telegram-webhook") {
         const update = await request.json() as Update; // Cast to Update type
