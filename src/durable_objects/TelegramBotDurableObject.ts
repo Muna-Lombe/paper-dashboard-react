@@ -401,12 +401,13 @@ export class TelegramBotDurableObject implements DurableObject {
       const url = new URL(request.url);
       const path = url.pathname;
 
-      console.log("path:", path)
+      // console.log("path:", path)
       
 
       if (path === "/telegram-webhook") {
         const update = await request.json() as Update; // Cast to Update type
 
+        console.log("update:", update)
         const honoRes = { headers: new Headers(), body: null, status: 200 };
         let writableEnded = false;
         const telegrafRes = Object.assign(honoRes, {
