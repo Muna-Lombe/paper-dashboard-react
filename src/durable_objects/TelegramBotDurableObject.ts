@@ -213,6 +213,89 @@ export class TelegramBotDurableObject implements DurableObject {
       }
     });
 
+    // Action handler for inline "Approve" button
+    this.bot.action(/approve_reg_(.+)/, async (ctx: Context) => {
+      const chatId = ctx.from?.id.toString();
+      const botMasterChatId = this.env.TELEGRAM_BOT_MASTER_CHAT_ID;
+
+      if (chatId !== botMasterChatId) {
+        return ctx.answerCbQuery('You are not authorized to use this action.');
+      }
+
+      const match = (ctx as any).match;
+      if (!match || !match[1]) {
+        return ctx.answerCbQuery('Invalid callback data');
+      }
+
+      const registrationChatId = match[1];
+      try {
+        console.log(`Approving registration for chat ID: ${registrationChatId}`);
+        const response = await axios.post(`${this.env.SERVER_URL}/api/telegram/approve-request`, { registrationChatId });
+        
+        if (response.status === 200) {
+          // Answer the callback query to remove loading state
+          await ctx.answerCbQuery('Registration approved!');
+          
+          // Edit the message to show it's been handled
+          await ctx.editMessageText(
+            `✅ Registration for ${response.data.email} (Chat ID: ${registrationChatId}) has been approved.`,
+          );
+
+          // Notify the user
+          await ctx.telegram.sendMessage(
+            registrationChatId,
+            `Your registration request has been approved! Proceed to get your access token.\n\n*IMPORTANT*:\n1. We **DO NOT** store your ProgressMe email and password, and we do not have access to your ProgressMe account.\n2. Do **NOT** share your access token with anyone else.`,
+            Markup.inlineKeyboard([
+              [Markup.button.callback('Proceed', 'get_token')],
+            ])
+          );
+        }
+      } catch (error: any) {
+        console.error('Error approving registration:', error);
+        await ctx.answerCbQuery('Failed to approve registration');
+      }
+    });
+
+    // Action handler for inline "Reject" button
+    this.bot.action(/reject_reg_(.+)/, async (ctx: Context) => {
+      const chatId = ctx.from?.id.toString();
+      const botMasterChatId = this.env.TELEGRAM_BOT_MASTER_CHAT_ID;
+
+      if (chatId !== botMasterChatId) {
+        return ctx.answerCbQuery('You are not authorized to use this action.');
+      }
+
+      const match = (ctx as any).match;
+      if (!match || !match[1]) {
+        return ctx.answerCbQuery('Invalid callback data');
+      }
+
+      const registrationChatId = match[1];
+      try {
+        console.log(`Rejecting registration for chat ID: ${registrationChatId}`);
+        const response = await axios.post(`${this.env.SERVER_URL}/api/telegram/reject-request`, { registrationChatId });
+        
+        if (response.status === 200) {
+          // Answer the callback query to remove loading state
+          await ctx.answerCbQuery('Registration rejected');
+          
+          // Edit the message to show it's been handled
+          await ctx.editMessageText(
+            `❌ Registration for ${response.data.email} (Chat ID: ${registrationChatId}) has been rejected.`,
+          );
+
+          // Notify the user
+          await ctx.telegram.sendMessage(
+            registrationChatId,
+            'Your registration request has been rejected. Please contact support if you have any questions.'
+          );
+        }
+      } catch (error: any) {
+        console.error('Error rejecting registration:', error);
+        await ctx.answerCbQuery('Failed to reject registration');
+      }
+    });
+
     // Middleware for handling states (email, password, etc.)
     this.bot.use(async (ctx, next) => {
       
