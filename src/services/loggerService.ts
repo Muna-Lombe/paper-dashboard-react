@@ -3,6 +3,17 @@
 import { Fetcher } from "@cloudflare/workers-types/experimental";
 import { Env } from "../index";
 
+/**
+ * @example: {
+          body: {}, 
+          source_ip: '120.0.0.1', 
+          category: 'image_storage', 
+          trace_id: "ab6915a0-8c35-467c-9c11-8a96d39bdd81", 
+          span_id: "e2f2eb1a-9182-45e0-ad98-64264bb099e6", 
+          template: { name: 'INFO', params: { statusCode: 500, method: 'POST', path: '/api' } }, 
+          tags: { "service": "api-service", "region": "eu-west-1", "env": "production" }
+        }
+ */
 export interface LogData {
   body: Record<string, any>,
   source_ip: string;
@@ -103,6 +114,7 @@ export class LogHogClient {
 
   /**
    * Log info level message
+   * @param data 
    */
   info(message: string, data: LogData) {
     return this.log('info', message, data);
