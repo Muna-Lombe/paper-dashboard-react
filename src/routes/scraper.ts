@@ -7,7 +7,7 @@ import { validator } from 'hono/validator';
 import { z } from 'zod';
 import { getCookie, setCookie } from 'hono/cookie';
 import axios from 'axios';
-import courseScraper from "../../services/courseScraper";
+import courseScraper from "../../services/courseScraper.js";
 import { eq, and } from 'drizzle-orm';
 import { Env } from '..'; // Import Env interface
 import { User } from '../database/models/User'; // Import User interface
@@ -834,7 +834,7 @@ scraperRoutes.post(
                 template: { name: 'INFO', params: { statusCode: 500, method: 'POST', path: '/scraper/copy-course' } },
                 tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
             });
-            
+
             return c.json({ msg: "Server Error" }, 500);
         }
     },
