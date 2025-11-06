@@ -142,6 +142,48 @@ export class TelegramBotDurableObject implements DurableObject {
       }
     });
 
+    // Action handler for "Get Access Token" / "Proceed" button
+    this.bot.action('get_token', async (ctx: Context) => {
+      const chatId = ctx.from?.id?.toString();
+      console.log("get_token button clicked:", chatId);
+      
+      if (!chatId) {
+        return ctx.answerCbQuery('Could not determine your chat ID');
+      }
+
+      // Answer callback query first to remove loading state
+      await ctx.answerCbQuery();
+
+      const db = this.drizzleDb as any;
+      const registrationRequest = await db.select()
+        .from(telegramRegistrationRequests)
+        .where(eq(telegramRegistrationRequests.chatId as any, chatId))
+        .limit(1);
+      
+      if (registrationRequest.length > 0 && registrationRequest[0].status === 'approved') {
+        if (registrationRequest[0].apiToken && registrationRequest[0].apiToken !== 'null') {
+          const message = await ctx.reply(
+            Format.fmt( 
+              Format.bold(`Here is your access token:\\n`),
+              Format.spoiler(Format.fmt(Format.code(registrationRequest[0].apiToken))),
+              Format.quote(`\\n*IMPORTANT*: Do **NOT** share this token with anyone else.`)
+            ),
+            Markup.inlineKeyboard([
+              [Markup.button.callback('Regenerate api token', 'regenerate_api_token')],
+            ])
+          );
+          this.editableMessagesState.set(chatId, message.message_id);
+        } else {
+          this.userState.set(chatId, 'awaiting_progressme_password');
+          ctx.reply(
+            `You have not completed the progressme login step.\\nPlease provide your progressme password to complete.`
+          );
+        }
+      } else {
+        ctx.reply('You need to be registered and approved to get an access token. Please use the /register command to start the process.');
+      }
+    });
+
     // Approve Command (Bot Master Only)
     this.bot.command('approve', async (ctx: Context) => {
       const chatId = ctx.from?.id.toString();
@@ -438,6 +480,98 @@ export class TelegramBotDurableObject implements DurableObject {
         console.error('Error initiating token regeneration:', error);
         ctx.reply('An error occurred while trying to regenerate your token. Please try again later.');
       }
+    });
+
+    // Action handler for "Yes" regenerate confirmation
+    this.bot.action('yes_regenerate', async (ctx: Context) => {
+      const chatId = ctx.from?.id?.toString();
+      
+      if (!chatId) {
+        return ctx.answerCbQuery('Could not determine your chat ID');
+      }
+
+      await ctx.answerCbQuery('Regenerating token...');
+
+      try {
+        const db = this.drizzleDb as any;
+        const registrationRequest = await db.select()
+          .from(telegramRegistrationRequests)
+          .where(eq(telegramRegistrationRequests.chatId as any, chatId))
+          .limit(1);
+
+        if (registrationRequest.length > 0 && registrationRequest[0].status === 'approved') {
+          // Delete old token and set state to await password
+          await db.update(telegramRegistrationRequests)
+            .set({ apiToken: null })
+            .where(eq(telegramRegistrationRequests.chatId as any, chatId));
+
+          this.userState.set(chatId, 'awaiting_progressme_password');
+          
+          await ctx.editMessageText('Token deleted. Please provide your ProgressMe password to generate a new token.');
+        } else {
+          await ctx.editMessageText('You are not approved for token regeneration.');
+        }
+      } catch (error: any) {
+        console.error('Error regenerating token:', error);
+        await ctx.editMessageText('An error occurred while regenerating your token. Please try again later.');
+      }
+    });
+
+    // Action handler for "No" regenerate confirmation
+    this.bot.action('no_regenerate', async (ctx: Context) => {
+      const chatId = ctx.from?.id?.toString();
+      
+      if (!chatId) {
+        return ctx.answerCbQuery('Could not determine your chat ID');
+      }
+
+      await ctx.answerCbQuery('Token regeneration cancelled');
+      this.userState.delete(chatId);
+      
+      await ctx.editMessageText('Token regeneration cancelled. Your existing token remains active.');
+    });
+
+    // Action handler for "Access User Dashboard" button
+    this.bot.action('dashboard', async (ctx: Context) => {
+      const chatId = ctx.from?.id?.toString();
+      
+      if (!chatId) {
+        return ctx.answerCbQuery('Could not determine your chat ID');
+      }
+
+      await ctx.answerCbQuery();
+
+      const db = this.drizzleDb as any;
+      const registrationRequest = await db.select()
+        .from(telegramRegistrationRequests)
+        .where(eq(telegramRegistrationRequests.chatId as any, chatId))
+        .limit(1);
+
+      if (registrationRequest.length > 0 && registrationRequest[0].status === 'approved' && registrationRequest[0].apiToken) {
+        ctx.reply('Here is your dashboard menu:', Markup.inlineKeyboard([
+          [Markup.button.callback('User Basic Info', 'dashboard_user_info')],
+          [Markup.button.callback('Number of Classes', 'dashboard_num_classes')],
+          [Markup.button.callback('Number of Students', 'dashboard_num_students')],
+        ]));
+      } else {
+        ctx.reply('You need an access token to access the dashboard. Please use the /get_token command to start the process.', Markup.inlineKeyboard([
+          [Markup.button.callback('Get Access Token', 'get_token')],
+        ]));
+      }
+    });
+
+    // Action handler for "Register for Access" button
+    this.bot.action('register', async (ctx: Context) => {
+      const chatId = ctx.from?.id?.toString();
+      
+      if (!chatId) {
+        return ctx.answerCbQuery('Could not determine your chat ID');
+      }
+
+      await ctx.answerCbQuery();
+      
+      ctx.reply('Please share your email address to start the registration process.');
+      this.userState.set(chatId, 'awaiting_email');
     });
 
     this.bot.telegram.setMyCommands([
