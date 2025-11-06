@@ -719,6 +719,7 @@ class CourseScraperService {
     // significant refactoring for production use.
 }
 
+const noScraper = new CourseScraperService()
 // Export a singleton instance
-export default new CourseScraperService();
+export default noScraper;
 
