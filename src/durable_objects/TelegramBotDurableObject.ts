@@ -105,6 +105,7 @@ export class TelegramBotDurableObject implements DurableObject {
     // Get Token Command
     this.bot.command('get_token', async (ctx: Context) => {
       const chatId = ctx.chat?.id?.toString();
+      console.log("get token requested:", chatId)
       if (!chatId) { // Handle undefined chatId
         return ctx.reply('Could not determine your chat ID. Please try again.');
       }
