@@ -834,6 +834,7 @@ scraperRoutes.post(
                 template: { name: 'INFO', params: { statusCode: 500, method: 'POST', path: '/scraper/copy-course' } },
                 tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
             });
+            
             return c.json({ msg: "Server Error" }, 500);
         }
     },
