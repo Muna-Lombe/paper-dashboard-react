@@ -67,7 +67,7 @@ class CourseScraperService {
     private currentXHR: XHRData;
     private activeWs: ActiveWsManager;
     private currentBook: BookData;
-    private currentAuthToken: string | null;
+    public currentAuthToken: string | null; // Make public for DO access
     private controllerTemplates: {
         IsCanSharingMaterialMessage: (bookId: number, userId: number) => ControllerMessage;
         GetSharingMaterialMessage: (bookId: number) => ControllerMessage;
@@ -719,7 +719,6 @@ class CourseScraperService {
     // significant refactoring for production use.
 }
 
-const noScraper = new CourseScraperService()
 // Export a singleton instance
-export default noScraper;
+export default new CourseScraperService();
 

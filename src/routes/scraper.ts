@@ -18,6 +18,14 @@ export type TelegramRegistrationRequest = InferSelectModel<typeof telegramRegist
 
 const scraperRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables & { apiUser: { chatId: string; email: string; apiToken: string | null; }; }; }>(); // Updated Hono context to include AuthVariables
 
+/**
+ * Helper function to get the Course Scraper Durable Object stub for a user
+ */
+function getScraperDO(c: Context<any>, userId: string) {
+    const doId = c.env.COURSE_SCRAPER_DO.idFromName(userId);
+    return c.env.COURSE_SCRAPER_DO.get(doId);
+}
+
 // Swagger documentation comments are not directly supported with Hono in this setup.
 // They should be moved to a separate documentation generation process or removed.
 // /**
@@ -298,17 +306,25 @@ scraperRoutes.post(
             }
             const { email, password } = decoded.user;
             
-            // The actual ProgressMe password is NOT stored in our JWT for security.
-            // If the external scraper needs it, it must be provided separately by the user.
-            // For this `/auth` endpoint, we assume the API token is enough for the external scraper to proceed.
-            // If the external scraper requires the password for subsequent actions, it needs to be handled differently.
-            const scraperAuthResponse = await courseScraper.authenticateWithWebSocket(email, password);
+            // Get the Durable Object for this user
+            const scraperDO = getScraperDO(c, user.id);
+            
+            // Authenticate via Durable Object
+            const doRequest = new Request(`https://dummy/authenticate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, userId: user.id }),
+            });
+            
+            const doResponse = await scraperDO.fetch(doRequest);
+            const scraperAuthResponse = await doResponse.json() as any;
 
-            if (scraperAuthResponse.status !== 200 || !scraperAuthResponse.data) {
+            if (!doResponse.ok || !scraperAuthResponse.success) {
                 logger?.error('ProgressMe authentication failed', {
                     body: {
                         userId: user?.id,
                         chatId: apiUser?.chatId,
+                        error: scraperAuthResponse.error,
                     },
                     source_ip: c.req.url,
                     category: 'scraper',
@@ -319,12 +335,12 @@ scraperRoutes.post(
                 });
                 return c.json({ msg: 'Failed to authenticate with external scraper service.' }, 400);
             }
-            const { token, data } = scraperAuthResponse.data; // token here refers to the ProgressMe token, not our API token
-
+            
+            const { token, response: authData } = scraperAuthResponse;
 
             // associate telegram registration request with user
             const db = c.env.drizzleDb as any;
-            await db.update(tokens).set({ userId: data.Value.Id }).where(eq(tokens.token as any, apiToken));
+            await db.update(tokens).set({ userId: authData.Value.Id }).where(eq(tokens.token as any, apiToken));
             
             logger?.info('ProgressMe authentication successful', {
                 body: {
@@ -339,7 +355,7 @@ scraperRoutes.post(
                 tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
             });
 
-            return c.json({ token, data: { puid: data.Value.Id, role: data.Value.AccountRole } });
+            return c.json({ token, data: { puid: authData.Value.Id, role: authData.Value.AccountRole } });
         } catch (err: any) {
             console.error(err.message);
             logger?.error('Error authenticating with ProgressMe', {

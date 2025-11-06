@@ -5,7 +5,7 @@
 import dns, { Resolver, promisify, lookup } from "dns";
 // const { promisify } = require("util");
 
-import { WebSocket, WebSocketPair } from "@cloudflare/workers-types/experimental";
+// import { WebSocket, WebSocketPair } from "@cloudflare/workers-types/experimental";
 
 // puppeteer.default.use(StealthPlugin());
 
@@ -110,28 +110,6 @@ class CourseScraperService {
         };
     }
 
-    async resolveHostname(hostname) {
-        
-        for (const dnsServer of this.dnsServers) {
-            try {
-                const resolver = new Resolver();
-                resolver.setServers([dnsServer]);
-                const resolve4 = promisify(resolver.resolve4.bind(resolver));
-                const addresses = await resolve4(hostname);
-                console.log(
-                    `Successfully resolved ${hostname} to ${addresses[0]} using ${dnsServer}`,
-                );
-                return addresses[0];
-            } catch (error) {
-                console.log(
-                    `DNS resolution failed with ${dnsServer}:`,
-                    error.message,
-                );
-                continue;
-            }
-        }
-        throw new Error("Failed to resolve hostname with all DNS servers");
-    }
 
     async createWebSocketConnection(url, maxRetries = 3) {
         const urlObj = new URL(url);

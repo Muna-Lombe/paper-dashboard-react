@@ -4,13 +4,19 @@ compatibility_date = "2025-10-11"
 compatibility_flags = ["nodejs_compat"]
 
 services = [
-  { binding = "LOG_API", service = "logs-monitor-worker" }
+  { binding = "LOG_API", service = "logs-monitor-worker" },
+  { binding = "EMAIL_API", service = "email-gateway"}
 ]
 
-# Durable Objects binding
+# Durable Objects bindings
 [[durable_objects.bindings]]
 name = "TELEGRAM_BOT_DO"
 class_name = "TelegramBotDurableObject"
+script_name = "paper-dash-server"
+
+[[durable_objects.bindings]]
+name = "COURSE_SCRAPER_DO"
+class_name = "CourseScraperDurableObject"
 script_name = "paper-dash-server"
 
 
@@ -44,6 +50,10 @@ migrations_dir = "drizzle"
 [[migrations]]
 tag = "v1_telegram_bot_do"
 new_sqlite_classes = ["TelegramBotDurableObject"]
+
+[[migrations]]
+tag = "v2_course_scraper_do"
+new_sqlite_classes = ["CourseScraperDurableObject"]
 
 [placement]
 mode = "off"

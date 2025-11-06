@@ -1,81 +1,98 @@
 import { Env } from '../index';
+import { Fetcher } from '@cloudflare/workers-types/experimental';
 
 export interface MailOptions {
-  to: string;
+  to: string | string[];
   subject: string;
-  html: string;
+  html?: string;
   text?: string;
+  from?: string;
+}
+
+export interface SendEmailResponse {
+  success: boolean;
+  messageId?: string;
+  error?: string;
 }
 
 /**
- * Mail service for sending emails via Cloudflare Workers
- * Supports SendGrid and local/mock sending for development
+ * Mail service for sending emails via Email Worker Gateway
+ * Uses service binding to communicate with the email-gateway worker
  */
 export class MailService {
-  private env: Env;
+  private emailWorker: Fetcher | undefined;
+  private defaultFrom: string;
 
   constructor(env: Env) {
-    this.env = env;
+    this.emailWorker = env.EMAIL_API;
+    this.defaultFrom = env.SENDGRID_FROM_EMAIL || 'noreply@paperapi.katundu.org';
   }
 
   /**
-   * Send email using SendGrid API
+   * Send email using Email Worker Gateway
    */
   async sendEmail(options: MailOptions): Promise<boolean> {
     try {
-      // Check if SendGrid is configured
-      const sendgridApiKey = this.env.SENDGRID_API_KEY;
-      
-      if (!sendgridApiKey) {
-        console.warn('SendGrid API key not configured. Email will not be sent.');
-        console.log(`[MOCK EMAIL] To: ${options.to}`);
+      // Check if email worker is configured
+      if (!this.emailWorker) {
+        console.warn('Email worker not configured. Email will not be sent.');
+        console.log(`[MOCK EMAIL] To: ${Array.isArray(options.to) ? options.to.join(', ') : options.to}`);
         console.log(`[MOCK EMAIL] Subject: ${options.subject}`);
+        console.log(`[MOCK EMAIL] From: ${options.from || this.defaultFrom}`);
         return true; // Allow app to continue without emails in dev
       }
 
-      const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      // Prepare email payload
+      const emailPayload = {
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
+        from: options.from || this.defaultFrom,
+      };
+
+      // Send request to email worker gateway
+      const response = await this.emailWorker.fetch("http://email-worker/api/email/send", {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${sendgridApiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          personalizations: [
-            {
-              to: [{ email: options.to }],
-              subject: options.subject,
-            },
-          ],
-          from: {
-            email: this.env.SENDGRID_FROM_EMAIL || 'noreply@paperdash.com',
-            name: 'Paper Dash',
-          },
-          content: [
-            {
-              type: 'text/html',
-              value: options.html,
-            },
-            ...(options.text
-              ? [
-                  {
-                    type: 'text/plain',
-                    value: options.text,
-                  },
-                ]
-              : []),
-          ],
-        }),
-      });
+        body: JSON.stringify(emailPayload),
+      } as any);
 
-      if (!response.ok) {
-        const error = await response.text();
-        console.error('SendGrid API error:', error);
+      const result = await response.json() as SendEmailResponse;
+
+      if (result.success) {
+        const recipients = Array.isArray(options.to) ? options.to.join(', ') : options.to;
+        console.log(`Email sent successfully to ${recipients}. Message ID: ${result.messageId}`);
+        return true;
+      } else {
+        console.error('Email worker error:', result.error);
+        return false;
+      }
+    } catch (error: any) {
+      console.error('Error sending email via worker:', error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Check email worker health
+   */
+  async checkHealth(): Promise<boolean> {
+    try {
+      if (!this.emailWorker) {
         return false;
       }
 
-      return true;
+      const response = await this.emailWorker.fetch('https://email-gateway/health', {
+        method: 'GET',
+      } as any);
+
+      const health = await response.json() as any;
+      return health.status === 'healthy';
     } catch (error: any) {
-      console.error('Mail service error:', error.message);
+      console.error('Error checking email worker health:', error.message);
       return false;
     }
   }
@@ -88,17 +105,43 @@ export class MailService {
       to: email,
       subject: 'Verify your Paper Dash account',
       html: `
-        <h2>Welcome to Paper Dash!</h2>
-        <p>Thank you for signing up. Please verify your email address to complete your registration.</p>
-        <p>
-          <a href="${verificationLink}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">
-            Verify Email Address
-          </a>
-        </p>
-        <p>Or copy and paste this link:</p>
-        <p><code>${verificationLink}</code></p>
-        <p>This link will expire in 24 hours.</p>
-        <p>If you didn't create this account, please ignore this email.</p>
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .button { 
+              display: inline-block; 
+              padding: 12px 24px; 
+              background-color: #007bff; 
+              color: white; 
+              text-decoration: none; 
+              border-radius: 5px; 
+              margin: 20px 0;
+            }
+            .link { color: #007bff; word-break: break-all; }
+            .footer { margin-top: 30px; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h2>Welcome to Paper Dash!</h2>
+            <p>Thank you for signing up. Please verify your email address to complete your registration.</p>
+            <p>
+              <a href="${verificationLink}" class="button">
+                Verify Email Address
+              </a>
+            </p>
+            <p>Or copy and paste this link into your browser:</p>
+            <p class="link">${verificationLink}</p>
+            <p><strong>This link will expire in 24 hours.</strong></p>
+            <div class="footer">
+              <p>If you didn't create this account, please ignore this email.</p>
+            </div>
+          </div>
+        </body>
+        </html>
       `,
       text: `
 Welcome to Paper Dash!
@@ -122,17 +165,52 @@ If you didn't create this account, please ignore this email.
       to: email,
       subject: 'Reset your Paper Dash password',
       html: `
-        <h2>Password Reset Request</h2>
-        <p>We received a request to reset your password. Click the link below to create a new password:</p>
-        <p>
-          <a href="${resetLink}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">
-            Reset Password
-          </a>
-        </p>
-        <p>Or copy and paste this link:</p>
-        <p><code>${resetLink}</code></p>
-        <p>This link will expire in 1 hour.</p>
-        <p>If you didn't request this, please ignore this email and your password will not be changed.</p>
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .button { 
+              display: inline-block; 
+              padding: 12px 24px; 
+              background-color: #dc3545; 
+              color: white; 
+              text-decoration: none; 
+              border-radius: 5px; 
+              margin: 20px 0;
+            }
+            .link { color: #007bff; word-break: break-all; }
+            .warning { 
+              background-color: #fff3cd; 
+              border-left: 4px solid #ffc107; 
+              padding: 12px; 
+              margin: 20px 0;
+            }
+            .footer { margin-top: 30px; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h2>Password Reset Request</h2>
+            <p>We received a request to reset your password. Click the link below to create a new password:</p>
+            <p>
+              <a href="${resetLink}" class="button">
+                Reset Password
+              </a>
+            </p>
+            <p>Or copy and paste this link into your browser:</p>
+            <p class="link">${resetLink}</p>
+            <div class="warning">
+              <strong>⏰ This link will expire in 1 hour.</strong>
+            </div>
+            <div class="footer">
+              <p>If you didn't request this password reset, please ignore this email and your password will remain unchanged.</p>
+              <p>For security reasons, we recommend changing your password if you didn't make this request.</p>
+            </div>
+          </div>
+        </body>
+        </html>
       `,
       text: `
 Password Reset Request
@@ -143,7 +221,91 @@ Reset link: ${resetLink}
 
 This link will expire in 1 hour.
 
-If you didn't request this, please ignore this email and your password will not be changed.
+If you didn't request this password reset, please ignore this email and your password will remain unchanged.
+
+For security reasons, we recommend changing your password if you didn't make this request.
+      `,
+    };
+  }
+
+  /**
+   * Generate welcome email template
+   */
+  generateWelcomeEmail(email: string, name: string): MailOptions {
+    return {
+      to: email,
+      subject: 'Welcome to Paper Dash!',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #007bff; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; }
+            .button { 
+              display: inline-block; 
+              padding: 12px 24px; 
+              background-color: #007bff; 
+              color: white; 
+              text-decoration: none; 
+              border-radius: 5px; 
+              margin: 20px 0;
+            }
+            .features { margin: 20px 0; }
+            .feature { margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 5px; }
+            .footer { margin-top: 30px; font-size: 12px; color: #666; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🎉 Welcome to Paper Dash!</h1>
+            </div>
+            <div class="content">
+              <p>Hi ${name},</p>
+              <p>Your account has been successfully verified! You're now ready to start using Paper Dash.</p>
+              
+              <div class="features">
+                <div class="feature">📚 Access your courses and materials</div>
+                <div class="feature">📊 Track your progress</div>
+                <div class="feature">🤖 Use our Telegram bot for quick access</div>
+                <div class="feature">📈 View your personalized dashboard</div>
+              </div>
+
+              <p style="text-align: center;">
+                <a href="https://paperdash.katundu.org" class="button">
+                  Go to Dashboard
+                </a>
+              </p>
+            </div>
+            <div class="footer">
+              <p>Need help? Contact us at support@paperapi.katundu.org</p>
+              <p>&copy; ${new Date().getFullYear()} Paper Dash. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+🎉 Welcome to Paper Dash!
+
+Hi ${name},
+
+Your account has been successfully verified! You're now ready to start using Paper Dash.
+
+What you can do:
+📚 Access your courses and materials
+📊 Track your progress
+🤖 Use our Telegram bot for quick access
+📈 View your personalized dashboard
+
+Visit your dashboard: https://paperdash.katundu.org
+
+Need help? Contact us at support@paperapi.katundu.org
+
+© ${new Date().getFullYear()} Paper Dash. All rights reserved.
       `,
     };
   }

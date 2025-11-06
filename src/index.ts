@@ -31,10 +31,12 @@ export interface Env {
   TELEGRAM_BOT_MASTER_CHAT_ID: string;
   SERVER_URL: string;
   EXTERNAL_SCRAPER_SERVICE_URL: string; // Add this type
-  TELEGRAM_BOT_DO: DurableObjectNamespace; // Durable Object binding
+  TELEGRAM_BOT_DO: DurableObjectNamespace; // Durable Object binding for Telegram bot
+  COURSE_SCRAPER_DO: DurableObjectNamespace; // Durable Object binding for course scraper
   SENDGRID_API_KEY?: string; // SendGrid API key for emails
   SENDGRID_FROM_EMAIL?: string; // SendGrid from email address
   LOG_API?: Fetcher; // Service binding for the LogHog Worker
+  EMAIL_API?: Fetcher; // Service binding for the LogHog Worker
   LOGHOG_APP_TOKEN?: string; // App token for LogHog authentication
   // telegramBot: Telegraf; // No longer initialized at top level
 }
@@ -167,4 +169,5 @@ app.post('/telegram-webhook', async (c) => {
 });
 
 export default app;
-export { TelegramBotDurableObject }; // Export the Durable Object class for Wrangler
+export { TelegramBotDurableObject }; // Export the Telegram Bot Durable Object class for Wrangler
+export { CourseScraperDurableObject } from './durable_objects/CourseScraperDurableObject'; // Export the Course Scraper Durable Object class for Wrangler
