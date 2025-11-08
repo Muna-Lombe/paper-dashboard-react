@@ -9,7 +9,10 @@
     "cf:dev": "wrangler dev --port 5000",
     "build": "tsc",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "set-webhook": "tsx scripts/setWebhook.ts"
+    "set-webhook": "tsx scripts/setWebhook.ts",
+    "migrate:local": "tsx no_commit/runLocalMigrations.ts",
+    "migrate:status": "tsx no_commit/runLocalMigrations.ts status",
+    "migrate:reset": "tsx no_commit/runLocalMigrations.ts reset"
   },
   "keywords": [],
   "author": "",

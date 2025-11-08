@@ -22,10 +22,12 @@ export interface SendEmailResponse {
 export class MailService {
   private emailWorker: Fetcher | undefined;
   private defaultFrom: string;
+  private env: Env;
 
   constructor(env: Env) {
     this.emailWorker = env.EMAIL_API;
     this.defaultFrom = env.SENDGRID_FROM_EMAIL || 'noreply@paperapi.katundu.org';
+    this.env = env
   }
 
   /**
@@ -52,15 +54,32 @@ export class MailService {
       };
 
       // Send request to email worker gateway
-      const response = await this.emailWorker.fetch("http://email-worker/api/email/send", {
+      const response = await this.emailWorker.fetch("http://email-api/gateway/send", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': 'Bearer '+ this.env.MAIL_TOKEN
         },
         body: JSON.stringify(emailPayload),
       } as any);
 
-      const result = await response.json() as SendEmailResponse;
+      // Get response body
+      const responseText = await response.text();
+      
+      // Check if response is OK
+      if (!response.ok) {
+        console.error(`Email worker HTTP ${response.status}:`, responseText);
+        return false;
+      }
+
+      // Parse JSON response
+      let result: SendEmailResponse;
+      try {
+        result = JSON.parse(responseText) as SendEmailResponse;
+      } catch (parseError: any) {
+        console.error('Email worker returned non-JSON response:', responseText);
+        return false;
+      }
 
       if (result.success) {
         const recipients = Array.isArray(options.to) ? options.to.join(', ') : options.to;
@@ -85,7 +104,7 @@ export class MailService {
         return false;
       }
 
-      const response = await this.emailWorker.fetch('https://email-gateway/health', {
+      const response = await this.emailWorker.fetch('https://email-api/api/health', {
         method: 'GET',
       } as any);
 

@@ -36,6 +36,13 @@
       "when": 1762195267795,
       "tag": "0004_add_fields_to_user",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1762523442734,
+      "tag": "0005_add_role_to_user",
+      "breakpoints": true
     }
   ]
 }

@@ -25,6 +25,7 @@ export interface Env {
   PORT: string;
   NODE_ENV: string;
   JWT_SECRET: string;
+  MAIL_TOKEN: string;
   CLIENT_URL: string;
   UPLOAD_DIR: string;
   TELEGRAM_BOT_TOKEN: string;

@@ -35,6 +35,9 @@ persist = true
 [build]
 command = "npm run build"
 
+# Minify for production (source maps disabled via tsconfig.json)
+minify = true
+
 [vars]
 SERVER_URL="https://paperapi.katundu.org"
 NODE_ENV="production"
