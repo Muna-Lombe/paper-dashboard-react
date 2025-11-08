@@ -5,6 +5,7 @@ import AuthenticationPage from "./views/AuthenticationPage.js"; // Updated impor
 import LandingPage from "./views/Landing.js";
 import HealthCheck from "./views/HealthCheck.js";
 import RegistrationPage from "./views/RegistrationPage.js"; // Import the new RegistrationPage component
+import VerifyEmailPage from "./views/VerifyEmailPage.js"; // Import the new VerifyEmailPage component
 import TelegramCallbackPage from "./views/TelegramCallbackPage.js"; // Import the new TelegramCallbackPage
 import CourseScraper from "./components/Progressme/CourseScraper.js";
 import ScheduleBuilder from "./components/Progressme/ScheduleBuilderV8.jsx";
@@ -35,6 +36,13 @@ var routes = [
     name: "Register",
     icon: "nc-icon nc-badge",
     component: <RegistrationPage />,
+    layout: "/auth",
+  },
+  {
+    path: "/verify-email",
+    name: "Verify Email",
+    icon: "nc-icon nc-check-2",
+    component: <VerifyEmailPage />,
     layout: "/auth",
   },
   {

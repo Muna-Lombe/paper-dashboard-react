@@ -1,4 +1,4 @@
-// taostReducer.js
+// toastSlice.js
 import { createSlice } from '@reduxjs/toolkit'
 
 const initialState = {
@@ -10,14 +10,24 @@ const toastSlice = createSlice({
   initialState,
   reducers: {
     addToast: (state, action) => {
-      state.toasts.push(action.payload)
+      const toast = {
+        id: action.payload.id || Date.now() + Math.random(),
+        message: action.payload.message || action.payload,
+        type: action.payload.type || 'info',
+        autoClose: action.payload.autoClose !== undefined ? action.payload.autoClose : 3000,
+        timestamp: new Date().toISOString()
+      }
+      state.toasts.push(toast)
     },
     removeToast: (state, action) => {
-      state.toasts = state.toasts.filter(toast => toast !== action.payload)
+      state.toasts = state.toasts.filter(toast => toast.id !== action.payload)
+    },
+    clearToasts: (state) => {
+      state.toasts = []
     }
   }
 })
 
-export const { addToast, removeToast} = toastSlice.actions
+export const { addToast, removeToast, clearToasts } = toastSlice.actions
 export default toastSlice.reducer
 

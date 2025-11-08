@@ -1,4 +1,4 @@
-// errorReducer.js
+// errorSlice.js
 import { createSlice } from '@reduxjs/toolkit'
 
 const initialState = {
@@ -10,12 +10,19 @@ const errorSlice = createSlice({
   initialState,
   reducers: {
     addError: (state, action) => {
-      state.errors.push(action.payload)
+      const error = {
+        id: action.payload.id || Date.now() + Math.random(),
+        message: action.payload.message || action.payload,
+        type: 'error',
+        autoClose: action.payload.autoClose !== undefined ? action.payload.autoClose : 5000,
+        timestamp: new Date().toISOString()
+      }
+      state.errors.push(error)
     },
     removeError: (state, action) => {
-      state.errors = state.errors.filter(error => error !== action.payload)
+      state.errors = state.errors.filter(error => error.id !== action.payload)
     },
-    clearErrors: (state, action) => {
+    clearErrors: (state) => {
       state.errors = []
     }
   }

@@ -39,10 +39,10 @@ const useAuth = () => {
         
         return {success: true, message: "Registration successful! Please log in."};
       }
-      return {success: false, message: response.data?.message || "Registration failed. Please try again."};
+      return {success: false, message: response.data?.msg || "Registration failed. Please try again."};
     }
     catch (error) {
-      dispatch(addError(error.response?.data?.message || "Registration failed. Please try again."));
+      // dispatch(addError(error.response?.data?.msg || "Registration failed. Please try again."));
       return false;
     }
   }
@@ -62,12 +62,12 @@ const useAuth = () => {
         return {success: true, message: "Login successful!"};
 
       } else {
-        return {success: false, message: response.data?.message || "Login failed."};
+        return {success: false, message: response.data?.msg || "Login failed."};
       }
     } catch (error) {
-      console.error("Login error:", error);
-      dispatch(addError(error.response?.data?.message || "Login failed. Please try again."));
-      return false;
+      // console.error("Login error:", error);
+      // dispatch(addError(error.response?.data?.msg || "Login failed. Please try again."));
+      return {success: false, message: error.response?.data?.msg};
     } finally {
       setIsLoading(false);
     }

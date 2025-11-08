@@ -53,6 +53,27 @@ export const endpoints = {
                 Accept: "application/json",
             },
         },
+        onboarding: {
+            url: `${baseApiUrl}/api/auth/onboarding`,
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+            },
+        },
+        verifyEmail: {
+            url: `${baseApiUrl}/api/auth/verify-email`,
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+            },
+        },
+        resendVerification: {
+            url: `${baseApiUrl}/api/auth/resend-verification`,
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+            },
+        },
         logout: {
             url: `${baseApiUrl}/api/auth/logout`,
             headers: {

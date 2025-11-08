@@ -7,6 +7,8 @@ import { Provider } from "react-redux";
 import "./assets/css/tailwind.css"; // Import Tailwind CSS
 import AdminLayout from "./layouts/AdminLayout";
 import GuestLayout from "./layouts/GuestLayout";
+import ToastContainer from "./components/ToastContainer";
+import ErrorContainer from "./components/ErrorContainer";
 
 import store from "./variables/reducerStore";
 import HealthCheck from "views/HealthCheck";
@@ -19,13 +21,16 @@ const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <Provider store={store}>
     <BrowserRouter>
+      {/* Global Notification Containers */}
+      <ToastContainer />
+      <ErrorContainer />
       
-        <Routes>
-          <Route path="/admin/*" element={<AdminLayout />} />
-          <Route path="/health" element={<HealthCheck />} /> {/* Health Check route */}
-          <Route path="/*" element={<GuestLayout />} />
-          {/* <Route path="/" element={<Navigate to="/login" replace />} /> Default to auth page */}
-        </Routes>
+      <Routes>
+        <Route path="/admin/*" element={<AdminLayout />} />
+        <Route path="/health" element={<HealthCheck />} /> {/* Health Check route */}
+        <Route path="/*" element={<GuestLayout />} />
+        {/* <Route path="/" element={<Navigate to="/login" replace />} /> Default to auth page */}
+      </Routes>
       
     </BrowserRouter>
   </Provider>

@@ -24,6 +24,7 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
+    sourcemap: false, // Disable sourcemaps in production for security and smaller bundle size
   },
   esbuild: {
     loader: "jsx",
@@ -37,5 +38,6 @@ export default defineConfig({
       },
     },
   },
+  
   // base: "/paper-dashboard-react/",
 });
