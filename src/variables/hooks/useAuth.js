@@ -113,6 +113,38 @@ const useAuth = () => {
     }
   }
 
+  const forgotPassword = async (email) => {
+    setIsLoading(true);
+    dispatch(clearErrors());
+    try {
+      const response = await axios.post(endpoints.auth.forgotPassword.url, { email });
+      if (response.status === 200) {
+        return { success: true, message: response.data.message || "Password reset link sent to your email." };
+      }
+      return { success: false, message: response.data?.msg || "Failed to send reset link." };
+    } catch (error) {
+      return { success: false, message: error.response?.data?.msg || "Failed to send reset link." };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetPassword = async (token, newPassword) => {
+    setIsLoading(true);
+    dispatch(clearErrors());
+    try {
+      const response = await axios.post(endpoints.auth.resetPassword.url, { token, newPassword });
+      if (response.status === 200) {
+        return { success: true, message: response.data.message || "Password reset successful!" };
+      }
+      return { success: false, message: response.data?.msg || "Failed to reset password." };
+    } catch (error) {
+      return { success: false, message: error.response?.data?.msg || "Failed to reset password." };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     isAuthenticated,
     userId,
@@ -120,7 +152,9 @@ const useAuth = () => {
     login,
     register,
     logout,
-    getProgressmeUser
+    getProgressmeUser,
+    forgotPassword,
+    resetPassword
   };
 }
 

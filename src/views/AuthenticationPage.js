@@ -5,6 +5,7 @@ axios.defaults.withCredentials = true;
 import { endpoints } from "../config"; // Assuming config.js is in the parent directory
 import { useDispatch } from "react-redux";
 import { addError } from "../variables/slices/errorSlice";
+import { addToast } from "../variables/slices/toastSlice";
 import useAuth from "../variables/hooks/useAuth";
 import TextLogo from "../components/TextLogo";
 
@@ -85,7 +86,17 @@ function AuthenticationPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+            <div className="flex justify-between items-center mb-1">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+              {isLogin && (
+                <Link
+                  to="/forgot-password"
+                  className="text-xs font-medium text-blue-600 hover:text-blue-500 focus:outline-none focus:underline"
+                >
+                  Forgot password?
+                </Link>
+              )}
+            </div>
             <input
               type="password"
               id="password"

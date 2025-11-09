@@ -6,6 +6,8 @@ import LandingPage from "./views/Landing.js";
 import HealthCheck from "./views/HealthCheck.js";
 import RegistrationPage from "./views/RegistrationPage.js"; // Import the new RegistrationPage component
 import VerifyEmailPage from "./views/VerifyEmailPage.js"; // Import the new VerifyEmailPage component
+import ForgotPasswordPage from "./views/ForgotPasswordPage.js"; // Import the new ForgotPasswordPage component
+import ResetPasswordPage from "./views/ResetPasswordPage.js"; // Import the new ResetPasswordPage component
 import TelegramCallbackPage from "./views/TelegramCallbackPage.js"; // Import the new TelegramCallbackPage
 import CourseScraper from "./components/Progressme/CourseScraper.js";
 import ScheduleBuilder from "./components/Progressme/ScheduleBuilderV8.jsx";
@@ -43,6 +45,20 @@ var routes = [
     name: "Verify Email",
     icon: "nc-icon nc-check-2",
     component: <VerifyEmailPage />,
+    layout: "/auth",
+  },
+  {
+    path: "/forgot-password",
+    name: "Forgot Password",
+    icon: "nc-icon nc-key-25",
+    component: <ForgotPasswordPage />,
+    layout: "/auth",
+  },
+  {
+    path: "/reset-password",
+    name: "Reset Password",
+    icon: "nc-icon nc-lock-circle-open",
+    component: <ResetPasswordPage />,
     layout: "/auth",
   },
   {

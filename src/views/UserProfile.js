@@ -65,7 +65,7 @@ function UserProfile() {
         const response = await axios.delete(endpoints.user.profile.delete.url);
         dispatch(addToast(response.data.message || "Account deleted successfully."));
         // Redirect to login page after account deletion
-        // navigate('/auth/login'); // Assuming you have navigate from react-router-dom
+        // navigate('/login'); // Assuming you have navigate from react-router-dom
       } catch (error) {
         dispatch(addError(error.response?.data?.message || "Failed to delete account."));
       }

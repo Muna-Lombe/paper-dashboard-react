@@ -81,6 +81,20 @@ export const endpoints = {
                 Accept: "application/json",
             },
         },
+        forgotPassword: {
+            url: `${baseApiUrl}/api/auth/forgot-password`,
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+            },
+        },
+        resetPassword: {
+            url: `${baseApiUrl}/api/auth/reset-password`,
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+            },
+        },
     
     },
 
