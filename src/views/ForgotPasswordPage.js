@@ -14,8 +14,6 @@ function ForgotPasswordPage() {
   const [emailSent, setEmailSent] = useState(false);
   const dispatch = useDispatch();
 
-  console.log("log baby");
-  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);

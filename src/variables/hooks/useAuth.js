@@ -36,14 +36,26 @@ const useAuth = () => {
     try {
       const response = await axios.post(endpoints.auth.register.url, { email, password });
       if (response.status === 200) {
-        
-        return {success: true, message: "Registration successful! Please log in."};
+        return {
+          success: true, 
+          message: "Registration successful! Please log in.",
+          requiresEmailVerification: response.data?.requiresEmailVerification || false
+        };
       }
-      return {success: false, message: response.data?.msg || "Registration failed. Please try again."};
+      return {
+        success: false, 
+        message: response.data?.msg || "Registration failed. Please try again.",
+        requiresEmailVerification: response.data?.requiresEmailVerification || false
+      };
     }
     catch (error) {
-      // dispatch(addError(error.response?.data?.msg || "Registration failed. Please try again."));
-      return false;
+      return {
+        success: false, 
+        message: error.response?.data?.msg || "Registration failed. Please try again.",
+        requiresEmailVerification: error.response?.data?.requiresEmailVerification || false
+      };
+    } finally {
+      setIsLoading(false);
     }
   }
   const login = async (email, password) => {
@@ -59,15 +71,26 @@ const useAuth = () => {
         setUserId(response.data.user.id); // Assuming user ID is returned in response.data.user
         sessionStorage.setItem("userId", response.data.user.id); // Store for initial load check in useEffect
         // dispatch(addToast("Login successful!"));
-        return {success: true, message: "Login successful!"};
-
+        return {
+          success: true, 
+          message: "Login successful!",
+          requiresEmailVerification: false
+        };
       } else {
-        return {success: false, message: response.data?.msg || "Login failed."};
+        return {
+          success: false, 
+          message: response.data?.msg || "Login failed.",
+          requiresEmailVerification: response.data?.requiresEmailVerification || false
+        };
       }
     } catch (error) {
       // console.error("Login error:", error);
       // dispatch(addError(error.response?.data?.msg || "Login failed. Please try again."));
-      return {success: false, message: error.response?.data?.msg};
+      return {
+        success: false, 
+        message: error.response?.data?.msg || "Login failed. Please try again.",
+        requiresEmailVerification: error.response?.data?.requiresEmailVerification || false
+      };
     } finally {
       setIsLoading(false);
     }

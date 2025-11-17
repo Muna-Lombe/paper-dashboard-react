@@ -8,12 +8,14 @@ import { addError } from "../variables/slices/errorSlice";
 import { addToast } from "../variables/slices/toastSlice";
 import useAuth from "../variables/hooks/useAuth";
 import TextLogo from "../components/TextLogo";
+import EmailVerificationModal from "../components/EmailVerificationModal";
 
 function AuthenticationPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { login, register} = useAuth();
@@ -29,7 +31,12 @@ function AuthenticationPage() {
           navigate("/admin/dashboard")
           dispatch(addToast("Login successful!"));
         } else {
-          dispatch(addError(response.message || "Login failed. Please try again."));
+          // Check if email verification is required
+          if (response.requiresEmailVerification) {
+            setShowVerificationModal(true);
+          } else {
+            dispatch(addError(response.message || "Login failed. Please try again."));
+          }
         }
       } else {
         if (password !== confirmPassword) {
@@ -42,7 +49,12 @@ function AuthenticationPage() {
           dispatch(addToast("Registration successful! Please log in."));
           setIsLogin(true)
         } else {
-          dispatch(addError(response.message || "Registration failed. Please try again."));
+          // Check if email verification is required
+          if (response.requiresEmailVerification) {
+            setShowVerificationModal(true);
+          } else {
+            dispatch(addError(response.message || "Registration failed. Please try again."));
+          }
         }
       }
     } catch (error) {
@@ -139,6 +151,13 @@ function AuthenticationPage() {
           </button>
         </p>
       </div>
+
+      {/* Email Verification Modal */}
+      <EmailVerificationModal
+        isOpen={showVerificationModal}
+        onClose={() => setShowVerificationModal(false)}
+        email={email}
+      />
     </div>
   );
 }
