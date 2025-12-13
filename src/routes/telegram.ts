@@ -9,7 +9,6 @@ import { z } from 'zod';
 import { eq, and } from 'drizzle-orm';
 import { Env } from '..';
 import { DrizzleD1Database } from 'drizzle-orm/d1';
-import courseScraper from '../../services/courseScraper';
 
 export type TelegramRegistrationRequest = InferSelectModel<typeof telegramRegistrationRequests>;
 
@@ -238,27 +237,44 @@ telegramRoutes.post('/generate-progressme-token',
 
       const email = registrationRequest[0].email;
       
-      // WARNING: courseScraper uses puppeteer, which is not compatible with Cloudflare Workers.
-      // This part of the code will still fail upon deployment to Cloudflare Workers.
-      // It needs to be externalized to a separate service.
-      const authResult = await courseScraper.authenticateWithWebSocket(
-        email,
-        progressMePassword
-      );
-      // const externalScraperUrl = c.env.EXTERNAL_SCRAPER_SERVICE_URL; // Access from Hono context
-      // if (!externalScraperUrl) {
-      //   console.error('EXTERNAL_SCRAPER_SERVICE_URL is not defined in environment variables.');
-      //   return c.json({ msg: 'Scraper service not configured.' }, 500);
-      // }
-      // const scraperAuthResponse = await axios.post(`${externalScraperUrl}/authenticate`, {
-      //   email,
-      //   password: progressMePassword,
-      // });
+      // Use CourseScraperDurableObject for authentication instead of direct courseScraper
+      // This is necessary because WebSocket connections need to be managed in a Durable Object
+      if (!c.env.COURSE_SCRAPER_DO) {
+        console.error('COURSE_SCRAPER_DO is not defined in environment variables.');
+        return c.json({ msg: 'Scraper service not configured.' }, 500);
+      }
 
-      // if (scraperAuthResponse.status !== 200 || !scraperAuthResponse.data) {
-      //   return c.json({ msg: 'Failed to authenticate with external scraper service.' }, 400);
-      // }
-      const { token, data } = authResult;
+      // Get or create a Durable Object instance for this user
+      // Use email as the DO ID to maintain state per user
+      const doId = c.env.COURSE_SCRAPER_DO.idFromName(email);
+      const scraperDO = c.env.COURSE_SCRAPER_DO.get(doId);
+
+      // Forward authentication request to the Durable Object
+      // The DO routes based on pathname, so we use a simple URL with /authenticate path
+      const doRequest = new Request('https://do-internal/authenticate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password: progressMePassword,
+          userId: registrationRequest[0].id, // Use registration request ID as userId
+        }),
+      });
+
+      const doResponse = await scraperDO.fetch(doRequest as any);
+      const scraperAuthResponse = await doResponse.json() as any;
+
+      if (!doResponse.ok || !scraperAuthResponse.success) {
+        console.error('ProgressMe authentication failed:', scraperAuthResponse.error);
+        return c.json({ 
+          msg: scraperAuthResponse.error || 'Failed to authenticate with ProgressMe. Please check your credentials.',
+          error: scraperAuthResponse.error 
+        }, 400);
+      }
+
+      const { token, response: authData } = scraperAuthResponse;
       const isProgressMeAuthSuccessful = token || null; 
 
       if (!isProgressMeAuthSuccessful) {
@@ -297,8 +313,34 @@ telegramRoutes.post('/generate-progressme-token',
 
       return c.json({ encodedToken: serviceToken }, 200);
     } catch (err: any) {
-      console.error("generating token error:", err.message);
-      return c.json({ msg: "Server error" }, 500);
+      console.error("generating token error:", err.message, err.stack);
+      
+      // Provide more specific error messages
+      if (err.message && err.message.includes('WebSocket')) {
+        return c.json({ 
+          msg: 'WebSocket connection failed. This may be a temporary issue. Please try again later.',
+          error: 'WEBSOCKET_ERROR'
+        }, 500);
+      }
+      
+      if (err.message && err.message.includes('timeout')) {
+        return c.json({ 
+          msg: 'Authentication timed out. Please check your credentials and try again.',
+          error: 'TIMEOUT'
+        }, 408);
+      }
+      
+      if (err.message && err.message.includes('Token')) {
+        return c.json({ 
+          msg: 'Token generation failed. Please contact support if this issue persists.',
+          error: 'TOKEN_GENERATION_ERROR'
+        }, 500);
+      }
+      
+      return c.json({ 
+        msg: err.message || "Server error occurred while generating token. Please try again later.",
+        error: err.message 
+      }, 500);
     }
   }
 );
