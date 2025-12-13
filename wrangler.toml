@@ -42,6 +42,7 @@ minify = true
 SERVER_URL="https://paperapi.katundu.org"
 NODE_ENV="production"
 LOGHOG_API_URL = "https://apihog.katundu.org"
+CLIENT_URL="https://paperdash.katundu.org"
 
 
 [[d1_databases]]

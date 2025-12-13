@@ -164,12 +164,19 @@ export class MailService {
                       </p>
                       
                       <!-- CTA Button -->
-                      <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                      <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 30px 0;">
                         <tr>
-                          <td align="center" style="padding: 20px 0;">
-                            <a href="${verificationLink}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; padding: 16px 40px; border-radius: 8px; box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);">
-                              ✓ Verify Email Address
-                            </a>
+                          <td align="center" style="padding: 0;">
+                            <!-- Bulletproof Button -->
+                            <table role="presentation" style="border-collapse: collapse;">
+                              <tr>
+                                <td align="center" style="border-radius: 8px; background-color: #667eea;">
+                                  <a href="${verificationLink}" target="_blank" style="display: inline-block; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none; border-radius: 8px; padding: 16px 40px; border: 1px solid #667eea; background-color: #667eea;">
+                                    ✓ Verify Email Address
+                                  </a>
+                                </td>
+                              </tr>
+                            </table>
                           </td>
                         </tr>
                       </table>
@@ -292,12 +299,19 @@ Need help? Contact us at support@paperapi.katundu.org
                       </p>
                       
                       <!-- CTA Button -->
-                      <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                      <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 30px 0;">
                         <tr>
-                          <td align="center" style="padding: 20px 0;">
-                            <a href="${resetLink}" style="display: inline-block; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; padding: 16px 40px; border-radius: 8px; box-shadow: 0 4px 14px rgba(245, 87, 108, 0.4);">
-                              🔑 Reset My Password
-                            </a>
+                          <td align="center" style="padding: 0;">
+                            <!-- Bulletproof Button -->
+                            <table role="presentation" style="border-collapse: collapse;">
+                              <tr>
+                                <td align="center" style="border-radius: 8px; background-color: #f5576c;">
+                                  <a href="${resetLink}" target="_blank" style="display: inline-block; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none; border-radius: 8px; padding: 16px 40px; border: 1px solid #f5576c; background-color: #f5576c;">
+                                    🔑 Reset My Password
+                                  </a>
+                                </td>
+                              </tr>
+                            </table>
                           </td>
                         </tr>
                       </table>
@@ -510,10 +524,17 @@ Need help? Contact us at support@paperapi.katundu.org
                       <!-- CTA Button -->
                       <table role="presentation" style="width: 100%; border-collapse: collapse; margin-top: 30px;">
                         <tr>
-                          <td align="center" style="padding: 20px 0;">
-                            <a href="https://paperdash.katundu.org" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; padding: 16px 40px; border-radius: 8px; box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);">
-                              🚀 Go to Dashboard
-                            </a>
+                          <td align="center" style="padding: 0;">
+                            <!-- Bulletproof Button -->
+                            <table role="presentation" style="border-collapse: collapse;">
+                              <tr>
+                                <td align="center" style="border-radius: 8px; background-color: #667eea;">
+                                  <a href="https://paperdash.katundu.org" target="_blank" style="display: inline-block; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: bold; color: #ffffff; text-decoration: none; border-radius: 8px; padding: 16px 40px; border: 1px solid #667eea; background-color: #667eea;">
+                                    🚀 Go to Dashboard
+                                  </a>
+                                </td>
+                              </tr>
+                            </table>
                           </td>
                         </tr>
                       </table>
