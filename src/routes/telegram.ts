@@ -41,35 +41,92 @@ telegramRoutes.post('/register-request',
 
     try {
       const db = c.env.drizzleDb;
-      let existingRequest = await db.select().from(telegramRegistrationRequests).where(and(
-        eq(telegramRegistrationRequests.chatId, chatId),
-        eq(telegramRegistrationRequests.status, "pending")
-      ));
-      let registrationRequest;
+      
+      // First, check if user exists with ANY status
+      const existingRequest = await db.select().from(telegramRegistrationRequests).where(
+        eq(telegramRegistrationRequests.chatId, chatId)
+      );
+      
       if (existingRequest.length > 0) {
-        await db.update(telegramRegistrationRequests).set({
-          email,
-          reasons,
-          useCase,
-        }).where(eq(telegramRegistrationRequests.id, existingRequest[0].id));
-        registrationRequest = { ...existingRequest[0], email, reasons, useCase };
-      } else {
-        const newRequest = await db.insert(telegramRegistrationRequests).values({
-          chatId,
-          email,
-          reasons,
-          useCase,
-          status: 'pending',
-        }).returning();
-        registrationRequest = newRequest[0];
+        const existing = existingRequest[0];
+        
+        // If user is already approved, return their existing token/info
+        if (existing.status === 'approved') {
+          return c.json({ 
+            msg: 'You are already registered and approved. Your token is available.', 
+            requestId: existing.id,
+            status: 'approved',
+            hasToken: !!existing.apiToken,
+            email: existing.email
+          }, 200);
+        }
+        
+        // If status is pending, update the existing request
+        if (existing.status === 'pending') {
+          await db.update(telegramRegistrationRequests).set({
+            email,
+            reasons,
+            useCase,
+          }).where(eq(telegramRegistrationRequests.id, existing.id));
+          const updated = await db.select().from(telegramRegistrationRequests).where(
+            eq(telegramRegistrationRequests.id, existing.id)
+          );
+          return c.json({ 
+            msg: 'Registration request updated successfully.', 
+            requestId: updated[0].id, 
+            reasons, 
+            useCase,
+            status: updated[0].status
+          }, 200);
+        }
+        
+        // If status is rejected, allow them to create a new request by updating the rejected one
+        if (existing.status === 'rejected') {
+          await db.update(telegramRegistrationRequests).set({
+            email,
+            reasons,
+            useCase,
+            status: 'pending', // Reset to pending for re-review
+          }).where(eq(telegramRegistrationRequests.id, existing.id));
+          const updated = await db.select().from(telegramRegistrationRequests).where(
+            eq(telegramRegistrationRequests.id, existing.id)
+          );
+          return c.json({ 
+            msg: 'Registration request resubmitted successfully. It will be reviewed again.', 
+            requestId: updated[0].id, 
+            reasons, 
+            useCase,
+            status: updated[0].status
+          }, 201);
+        }
       }
+      
+      // No existing record, create a new one
+      const newRequest = await db.insert(telegramRegistrationRequests).values({
+        chatId,
+        email,
+        reasons,
+        useCase,
+        status: 'pending',
+      }).returning();
 
-     
-
-      return c.json({ msg: 'Registration request submitted successfully.', requestId: registrationRequest.id, reasons, useCase }, 201);
+      return c.json({ 
+        msg: 'Registration request submitted successfully.', 
+        requestId: newRequest[0].id, 
+        reasons, 
+        useCase,
+        status: newRequest[0].status
+      }, 201);
     } catch (err: any) {
-      console.error(err.message);
-      return c.json({ msg: "Server error" }, 500);
+      console.error('Registration error:', err.message);
+      // Check if it's a unique constraint violation
+      if (err.message && err.message.includes('UNIQUE constraint failed')) {
+        return c.json({ 
+          msg: 'A registration request with this chat ID already exists. Please contact support if you need assistance.',
+          error: 'DUPLICATE_CHAT_ID'
+        }, 409);
+      }
+      return c.json({ msg: "Server error", error: err.message }, 500);
     }
   }
 );

@@ -1,8 +1,8 @@
 import { Context, Telegraf, Markup, Format } from "telegraf";
 import { Env } from "..";
 import axios from "axios";
-import { telegramRegistrationRequests } from "../../drizzle/schema";
-import { eq, and } from 'drizzle-orm';
+import { telegramRegistrationRequests, users, courses } from "../../drizzle/schema";
+import { eq, and, sql } from 'drizzle-orm';
 import { getDrizzleDb } from "../database/drizzle/db"; // Import getDrizzleDb
 import { DrizzleD1Database } from 'drizzle-orm/d1'; // Import DrizzleD1Database type
 import { DurableObject, DurableObjectState } from '@cloudflare/workers-types/experimental'; // Keep DurableObject, DurableObjectState
@@ -362,23 +362,35 @@ export class TelegramBotDurableObject implements DurableObject {
               reasons: 'Registered via Telegram bot',
               useCase: 'Scraper access',
             });
-            if (response.status === 201) {
+            
+            if (response.status === 200 && response.data.status === 'approved') {
+              // User is already approved
+              if (response.data.hasToken) {
+                ctx.reply(Format.fmt(
+                  Format.bold('You are already registered and approved! 🎉\n\n'),
+                  'Your access token is already available. Use /get_token to retrieve it, or /regenerate_token to create a new one.'
+                ));
+              } else {
+                ctx.reply(Format.fmt(
+                  Format.bold('You are already registered and approved! 🎉\n\n'),
+                  'However, you don\'t have an access token yet. Use /get_token to generate one.'
+                ));
+              }
+              this.userState.delete(chatId);
+            } else if (response.status === 201 || response.status === 200) {
+              // New request submitted or existing request updated
               ctx.reply('Your registration request has been submitted. The bot master will review it.');
               // Notify bot master with inline buttons
-              const botMasterChatId = this.env.TELEGRAM_BOT_MASTER_CHAT_ID; // Access env from c.env
+              const botMasterChatId = this.env.TELEGRAM_BOT_MASTER_CHAT_ID;
               if (botMasterChatId) {
-                // The bot.telegram.sendMessage uses the Telegraf instance.
-                // In a Worker, you'd likely use the Telegram Bot API directly or ensure `bot` is properly initialized with fetch capabilities.
-                // For now, assume `bot` can send messages via its webhook handler.
                 const message = await ctx.telegram.sendMessage(
                   botMasterChatId,
-                  `New registration request from ${email} (Chat ID: ${chatId}).\nReasons: ${response.data.reasons}. Use Case: ${response.data.useCase}.`,
+                  `New registration request from ${email} (Chat ID: ${chatId}).\nReasons: ${response.data.reasons || 'Registered via Telegram bot'}. Use Case: ${response.data.useCase || 'Scraper access'}.`,
                   Markup.inlineKeyboard([
                     [Markup.button.callback('Approve', `approve_reg_${chatId}`)],
                     [Markup.button.callback('Reject', `reject_reg_${chatId}`)],
                   ])
                 );
-                // requestMessages.set(`${botMasterChatId}-${chatId}`, message.message_id);
               }
               this.userState.delete(chatId);
             } else {
@@ -441,20 +453,145 @@ export class TelegramBotDurableObject implements DurableObject {
       return next();
     });
 
-    // Action handlers for dashboard menu (placeholders)
+    // Action handlers for dashboard menu
     this.bot.action('dashboard_user_info', async (ctx: Context) => {
-      await ctx.answerCbQuery();
-      ctx.reply('User Basic Info: (Placeholder for backend data)');
+      const chatId = ctx.from?.id?.toString();
+      if (!chatId) {
+        return ctx.answerCbQuery('Could not determine your chat ID');
+      }
+
+      await ctx.answerCbQuery('Loading user info...');
+
+      try {
+        const db = this.drizzleDb as any;
+        const registrationRequest = await db.select()
+          .from(telegramRegistrationRequests)
+          .where(eq(telegramRegistrationRequests.chatId as any, chatId))
+          .limit(1);
+
+        if (registrationRequest.length === 0 || !registrationRequest[0].apiToken) {
+          return ctx.reply('You need an access token to view your profile. Use /get_token to get one.');
+        }
+
+        // Fetch user profile using the API token
+        const response = await axios.get(`${this.env.SERVER_URL}/api/user/profile`, {
+          headers: {
+            'Cookie': `access-token=${registrationRequest[0].apiToken}`
+          }
+        });
+
+        if (response.status === 200 && response.data) {
+          const user = response.data;
+          ctx.reply(Format.fmt(
+            Format.bold('👤 User Profile:\n\n'),
+            `📧 Email: ${user.email || 'N/A'}\n`,
+            `🆔 ID: ${user.id || 'N/A'}\n`,
+            `👤 Role: ${user.role || 'student'}\n`,
+            `📅 Created: ${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}\n`,
+            `✉️ Email Verified: ${user.isEmailVerified ? '✅ Yes' : '❌ No'}`
+          ));
+        } else {
+          ctx.reply('Failed to fetch user profile. Please try again.');
+        }
+      } catch (error: any) {
+        console.error('Error fetching user info:', error);
+        ctx.reply('An error occurred while fetching your profile. Please try again later.');
+      }
     });
 
     this.bot.action('dashboard_num_classes', async (ctx: Context) => {
-      await ctx.answerCbQuery();
-      ctx.reply('Number of Classes: (Placeholder for backend data)');
+      const chatId = ctx.from?.id?.toString();
+      if (!chatId) {
+        return ctx.answerCbQuery('Could not determine your chat ID');
+      }
+
+      await ctx.answerCbQuery('Loading dashboard stats...');
+
+      try {
+        const db = this.drizzleDb as any;
+        const registrationRequest = await db.select()
+          .from(telegramRegistrationRequests)
+          .where(eq(telegramRegistrationRequests.chatId as any, chatId))
+          .limit(1);
+
+        if (registrationRequest.length === 0 || !registrationRequest[0].apiToken) {
+          return ctx.reply('You need an access token to view dashboard stats. Use /get_token to get one.');
+        }
+
+        // Fetch dashboard summary using the API token
+        const response = await axios.get(`${this.env.SERVER_URL}/api/dashboard/summary`, {
+          headers: {
+            'Cookie': `access-token=${registrationRequest[0].apiToken}`
+          }
+        });
+
+        if (response.status === 200 && response.data) {
+          const stats = response.data;
+          ctx.reply(Format.fmt(
+            Format.bold('📊 Dashboard Statistics:\n\n'),
+            `📚 Total Courses: ${stats.totalCourses || 0}\n`,
+            `👥 Total Users: ${stats.totalUsers || 0}\n`,
+            `✅ Active Users: ${stats.activeUsers || 0}\n`,
+            `📈 Total Students: ${stats.totalStudents || 0}`
+          ));
+        } else {
+          ctx.reply('Failed to fetch dashboard statistics. Please try again.');
+        }
+      } catch (error: any) {
+        console.error('Error fetching dashboard stats:', error);
+        if (error.response?.status === 401) {
+          ctx.reply('Your token has expired. Please use /get_token to get a new one.');
+        } else {
+          ctx.reply('An error occurred while fetching dashboard statistics. Please try again later.');
+        }
+      }
     });
 
     this.bot.action('dashboard_num_students', async (ctx: Context) => {
-      await ctx.answerCbQuery();
-      ctx.reply('Number of Students: (Placeholder for backend data)');
+      const chatId = ctx.from?.id?.toString();
+      if (!chatId) {
+        return ctx.answerCbQuery('Could not determine your chat ID');
+      }
+
+      await ctx.answerCbQuery('Loading student information...');
+
+      try {
+        const db = this.drizzleDb as any;
+        const registrationRequest = await db.select()
+          .from(telegramRegistrationRequests)
+          .where(eq(telegramRegistrationRequests.chatId as any, chatId))
+          .limit(1);
+
+        if (registrationRequest.length === 0 || !registrationRequest[0].apiToken) {
+          return ctx.reply('You need an access token to view student information. Use /get_token to get one.');
+        }
+
+        // Fetch dashboard summary for student count
+        const response = await axios.get(`${this.env.SERVER_URL}/api/dashboard/summary`, {
+          headers: {
+            'Cookie': `access-token=${registrationRequest[0].apiToken}`
+          }
+        });
+
+        if (response.status === 200 && response.data) {
+          const stats = response.data;
+          ctx.reply(Format.fmt(
+            Format.bold('👥 Student Information:\n\n'),
+            `📊 Total Students: ${stats.totalStudents || 0}\n`,
+            `✅ Active Students: ${stats.activeStudents || 0}\n`,
+            `📚 Students with Courses: ${stats.studentsWithCourses || 0}`
+          ));
+        } else {
+          ctx.reply('Failed to fetch student information. Please try again.');
+        }
+      } catch (error: any) {
+        console.error('Error fetching student info:', error);
+        if (error.response?.status === 401) {
+          ctx.reply('Your token has expired. Please use /get_token to get a new one.');
+        } else {
+          ctx.reply('An error occurred while fetching student information. Please try again later.');
+        }
+      }
     });
 
     this.bot.action('copy_to_clipboard', async (ctx: Context) => {
@@ -572,6 +709,331 @@ export class TelegramBotDurableObject implements DurableObject {
       
       ctx.reply('Please share your email address to start the registration process.');
       this.userState.set(chatId, 'awaiting_email');
+    });
+
+    // Admin Commands
+    this.bot.command('admin', async (ctx: Context) => {
+      const chatId = ctx.from?.id?.toString();
+      const botMasterChatId = this.env.TELEGRAM_BOT_MASTER_CHAT_ID;
+
+      if (chatId !== botMasterChatId) {
+        return ctx.reply('You are not authorized to use admin commands.');
+      }
+
+      ctx.reply('Admin Menu:', Markup.inlineKeyboard([
+        [Markup.button.callback('📋 View All Registrations', 'admin_view_registrations')],
+        [Markup.button.callback('📊 System Statistics', 'admin_stats')],
+        [Markup.button.callback('👥 View All Users', 'admin_view_users')],
+        [Markup.button.callback('🔄 Refresh', 'admin_refresh')],
+      ]));
+    });
+
+    // Admin: View all registrations
+    this.bot.action('admin_view_registrations', async (ctx: Context) => {
+      const chatId = ctx.from?.id?.toString();
+      const botMasterChatId = this.env.TELEGRAM_BOT_MASTER_CHAT_ID;
+
+      if (chatId !== botMasterChatId) {
+        return ctx.answerCbQuery('You are not authorized');
+      }
+
+      await ctx.answerCbQuery('Loading registrations...');
+
+      try {
+        const db = this.drizzleDb as any;
+        const allRegistrations = await db.select()
+          .from(telegramRegistrationRequests)
+          .orderBy(sql`created_at DESC`)
+          .limit(20); // Limit to last 20
+
+        if (allRegistrations.length === 0) {
+          return ctx.reply('No registration requests found.');
+        }
+
+        let message = Format.fmt(Format.bold('📋 Registration Requests:\n\n'));
+        allRegistrations.forEach((reg: any, index: number) => {
+          const statusEmoji = reg.status === 'approved' ? '✅' : reg.status === 'rejected' ? '❌' : '⏳';
+          const messageInsert = Format.fmt(
+              message,
+              `${index + 1}. ${statusEmoji} ${reg.status.toUpperCase()}\n`,
+              `   📧 ${reg.email}\n`,
+              `   💬 Chat ID: ${reg.chatId}\n`,
+              `   📝 Use Case: ${reg.useCase || 'N/A'}\n`,
+              `   ${reg.apiToken ? '🔑 Has Token' : '🔒 No Token'}\n\n`
+            
+          )
+          message = messageInsert
+          
+        });
+
+        ctx.reply(message, Markup.inlineKeyboard([
+          [Markup.button.callback('🔄 Refresh', 'admin_view_registrations')],
+          [Markup.button.callback('⬅️ Back to Admin Menu', 'admin_menu')],
+        ]));
+      } catch (error: any) {
+        console.error('Error fetching registrations:', error);
+        ctx.reply('Failed to fetch registrations. Please try again.');
+      }
+    });
+
+    // Admin: System statistics
+    this.bot.action('admin_stats', async (ctx: Context) => {
+      const chatId = ctx.from?.id?.toString();
+      const botMasterChatId = this.env.TELEGRAM_BOT_MASTER_CHAT_ID;
+
+      if (chatId !== botMasterChatId) {
+        return ctx.answerCbQuery('You are not authorized');
+      }
+
+      await ctx.answerCbQuery('Loading statistics...');
+
+      try {
+        const db = this.drizzleDb as any;
+        
+        // Get registration stats
+        const allRegistrations = await db.select().from(telegramRegistrationRequests);
+        const pendingCount = allRegistrations.filter((r: any) => r.status === 'pending').length;
+        const approvedCount = allRegistrations.filter((r: any) => r.status === 'approved').length;
+        const rejectedCount = allRegistrations.filter((r: any) => r.status === 'rejected').length;
+        const withTokenCount = allRegistrations.filter((r: any) => r.apiToken).length;
+
+        // Get user stats
+        const allUsers = await db.select().from(users);
+        const totalUsers = allUsers.length;
+        const verifiedUsers = allUsers.filter((u: any) => u.isEmailVerified).length;
+
+        // Get course stats
+        const allCourses = await db.select().from(courses);
+        const totalCourses = allCourses.length;
+
+        const statsMessage = Format.fmt(
+          Format.bold('📊 System Statistics:\n\n'),
+          Format.bold('📋 Registrations:\n'),
+          `   ⏳ Pending: ${pendingCount}\n`,
+          `   ✅ Approved: ${approvedCount}\n`,
+          `   ❌ Rejected: ${rejectedCount}\n`,
+          `   🔑 With Tokens: ${withTokenCount}\n\n`,
+          Format.bold('👥 Users:\n'),
+          `   📊 Total: ${totalUsers}\n`,
+          `   ✉️ Verified: ${verifiedUsers}\n\n`,
+          Format.bold('📚 Courses:\n'),
+          `   📊 Total: ${totalCourses}\n`
+        );
+
+        ctx.reply(statsMessage, Markup.inlineKeyboard([
+          [Markup.button.callback('🔄 Refresh', 'admin_stats')],
+          [Markup.button.callback('⬅️ Back to Admin Menu', 'admin_menu')],
+        ]));
+      } catch (error: any) {
+        console.error('Error fetching stats:', error);
+        ctx.reply('Failed to fetch statistics. Please try again.');
+      }
+    });
+
+    // Admin: View all users
+    this.bot.action('admin_view_users', async (ctx: Context) => {
+      const chatId = ctx.from?.id?.toString();
+      const botMasterChatId = this.env.TELEGRAM_BOT_MASTER_CHAT_ID;
+
+      if (chatId !== botMasterChatId) {
+        return ctx.answerCbQuery('You are not authorized');
+      }
+
+      await ctx.answerCbQuery('Loading users...');
+
+      try {
+        const db = this.drizzleDb as any;
+        const allUsers = await db.select()
+          .from(users)
+          .orderBy(sql`created_at DESC`)
+          .limit(20); // Limit to last 20
+
+        if (allUsers.length === 0) {
+          return ctx.reply('No users found.');
+        }
+
+        let message = Format.fmt(Format.bold('👥 Users:\n\n'));
+        allUsers.forEach((user: any, index: number) => {
+          const roleEmoji = user.role === 'admin' ? '👑' : user.role === 'teacher' ? '👨‍🏫' : '👤';
+          const messageInsert = Format.fmt(
+            message,
+            `${index + 1}. ${roleEmoji} ${user.role.toUpperCase()}\n`,
+            `   📧 ${user.email}\n`,
+            `   ${user.isEmailVerified ? '✅ Verified' : '❌ Not Verified'}\n\n`
+          )
+          message = messageInsert;
+        });
+
+        ctx.reply(message, Markup.inlineKeyboard([
+          [Markup.button.callback('🔄 Refresh', 'admin_view_users')],
+          [Markup.button.callback('⬅️ Back to Admin Menu', 'admin_menu')],
+        ]));
+      } catch (error: any) {
+        console.error('Error fetching users:', error);
+        ctx.reply('Failed to fetch users. Please try again.');
+      }
+    });
+
+    // Admin: Back to menu
+    this.bot.action('admin_menu', async (ctx: Context) => {
+      const chatId = ctx.from?.id?.toString();
+      const botMasterChatId = this.env.TELEGRAM_BOT_MASTER_CHAT_ID;
+
+      if (chatId !== botMasterChatId) {
+        return ctx.answerCbQuery('You are not authorized');
+      }
+
+      await ctx.answerCbQuery();
+      ctx.editMessageText('Admin Menu:', Markup.inlineKeyboard([
+        [Markup.button.callback('📋 View All Registrations', 'admin_view_registrations')],
+        [Markup.button.callback('📊 System Statistics', 'admin_stats')],
+        [Markup.button.callback('👥 View All Users', 'admin_view_users')],
+        [Markup.button.callback('🔄 Refresh', 'admin_refresh')],
+      ]));
+    });
+
+    // Admin: Refresh
+    this.bot.action('admin_refresh', async (ctx: Context) => {
+      const chatId = ctx.from?.id?.toString();
+      const botMasterChatId = this.env.TELEGRAM_BOT_MASTER_CHAT_ID;
+
+      if (chatId !== botMasterChatId) {
+        return ctx.answerCbQuery('You are not authorized');
+      }
+
+      await ctx.answerCbQuery('Refreshing...');
+      ctx.editMessageText('Admin Menu:', Markup.inlineKeyboard([
+        [Markup.button.callback('📋 View All Registrations', 'admin_view_registrations')],
+        [Markup.button.callback('📊 System Statistics', 'admin_stats')],
+        [Markup.button.callback('👥 View All Users', 'admin_view_users')],
+        [Markup.button.callback('🔄 Refresh', 'admin_refresh')],
+      ]));
+    });
+
+    // Teacher Commands
+    this.bot.command('teacher', async (ctx: Context) => {
+      const chatId = ctx.from?.id?.toString();
+      if (!chatId) {
+        return ctx.reply('Could not determine your chat ID. Please try again.');
+      }
+
+      try {
+        const db = this.drizzleDb as any;
+        const registrationRequest = await db.select()
+          .from(telegramRegistrationRequests)
+          .where(eq(telegramRegistrationRequests.chatId as any, chatId))
+          .limit(1);
+
+        if (registrationRequest.length === 0 || !registrationRequest[0].apiToken) {
+          return ctx.reply('You need an access token to access teacher features. Use /get_token to get one.');
+        }
+
+        // Check if user is a teacher (would need to fetch from API)
+        ctx.reply('Teacher Menu:', Markup.inlineKeyboard([
+          [Markup.button.callback('📚 My Courses', 'teacher_my_courses')],
+          [Markup.button.callback('👥 My Students', 'teacher_my_students')],
+          [Markup.button.callback('📊 Course Analytics', 'teacher_course_analytics')],
+          [Markup.button.callback('📅 Schedule Management', 'teacher_schedule')],
+        ]));
+      } catch (error: any) {
+        console.error('Error in teacher command:', error);
+        ctx.reply('An error occurred. Please try again.');
+      }
+    });
+
+    // Teacher: My Courses
+    this.bot.action('teacher_my_courses', async (ctx: Context) => {
+      const chatId = ctx.from?.id?.toString();
+      if (!chatId) {
+        return ctx.answerCbQuery('Could not determine your chat ID');
+      }
+
+      await ctx.answerCbQuery('Loading courses...');
+
+      try {
+        const db = this.drizzleDb as any;
+        const registrationRequest = await db.select()
+          .from(telegramRegistrationRequests)
+          .where(eq(telegramRegistrationRequests.chatId as any, chatId))
+          .limit(1);
+
+        if (registrationRequest.length === 0 || !registrationRequest[0].apiToken) {
+          return ctx.reply('You need an access token to view courses. Use /get_token to get one.');
+        }
+
+        // Fetch courses using API
+        const response = await axios.get(`${this.env.SERVER_URL}/api/courses`, {
+          headers: {
+            'Cookie': `access-token=${registrationRequest[0].apiToken}`
+          }
+        });
+
+        if (response.status === 200 && response.data) {
+          const courses = Array.isArray(response.data) ? response.data : response.data.courses || [];
+          
+          if (courses.length === 0) {
+            return ctx.reply('You don\'t have any courses yet.');
+          }
+
+          let message = Format.fmt(Format.bold('📚 Your Courses:\n\n'));
+          courses.slice(0, 10).forEach((course: any, index: number) => {
+            const messageInsert = Format.fmt(
+              message,
+              `${index + 1}. ${course.title || 'Untitled'}\n`,
+              `   📊 Progress: ${course.progress || 0}%\n`,
+              `   📅 Last Accessed: ${course.lastAccessed ? new Date(course.lastAccessed).toLocaleDateString() : 'Never'}\n\n`
+            )
+            message = messageInsert;
+          });
+
+          if (courses.length > 10) {
+            message.text += `\n... and ${courses.length - 10} more courses`;
+          }
+
+          ctx.reply(message, Markup.inlineKeyboard([
+            [Markup.button.callback('🔄 Refresh', 'teacher_my_courses')],
+            [Markup.button.callback('⬅️ Back to Teacher Menu', 'teacher_menu')],
+          ]));
+        } else {
+          ctx.reply('Failed to fetch courses. Please try again.');
+        }
+      } catch (error: any) {
+        console.error('Error fetching courses:', error);
+        if (error.response?.status === 401) {
+          ctx.reply('Your token has expired. Please use /get_token to get a new one.');
+        } else {
+          ctx.reply('An error occurred while fetching courses. Please try again later.');
+        }
+      }
+    });
+
+    // Teacher: My Students (placeholder - would need student management API)
+    this.bot.action('teacher_my_students', async (ctx: Context) => {
+      await ctx.answerCbQuery('Loading students...');
+      ctx.reply('Student management features coming soon! 📚👥');
+    });
+
+    // Teacher: Course Analytics
+    this.bot.action('teacher_course_analytics', async (ctx: Context) => {
+      await ctx.answerCbQuery('Loading analytics...');
+      ctx.reply('Course analytics features coming soon! 📊');
+    });
+
+    // Teacher: Schedule Management
+    this.bot.action('teacher_schedule', async (ctx: Context) => {
+      await ctx.answerCbQuery('Loading schedule...');
+      ctx.reply('Schedule management features coming soon! 📅');
+    });
+
+    // Teacher: Back to menu
+    this.bot.action('teacher_menu', async (ctx: Context) => {
+      await ctx.answerCbQuery();
+      ctx.editMessageText('Teacher Menu:', Markup.inlineKeyboard([
+        [Markup.button.callback('📚 My Courses', 'teacher_my_courses')],
+        [Markup.button.callback('👥 My Students', 'teacher_my_students')],
+        [Markup.button.callback('📊 Course Analytics', 'teacher_course_analytics')],
+        [Markup.button.callback('📅 Schedule Management', 'teacher_schedule')],
+      ]));
     });
 
     this.bot.telegram.setMyCommands([

@@ -26,6 +26,8 @@ module.exports = {
         extensions: ['.tsx', '.ts', '.js'],
         fallback: {
             fs: false,
+            dns: require.resolve('node-libs-browser/mock/dns'),
+            buffer: require.resolve('buffer/'),
         },
     },
     plugins: [
@@ -40,5 +42,8 @@ module.exports = {
     },
     performance: {
         hints: false,
+    },
+    experiments: {
+        topLevelAwait: true,
     },
 };
