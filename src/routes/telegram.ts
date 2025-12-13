@@ -267,11 +267,24 @@ telegramRoutes.post('/generate-progressme-token',
       const scraperAuthResponse = await doResponse.json() as any;
 
       if (!doResponse.ok || !scraperAuthResponse.success) {
-        console.error('ProgressMe authentication failed:', scraperAuthResponse.error);
+        console.error('ProgressMe authentication failed:', {
+          status: doResponse.status,
+          error: scraperAuthResponse.error,
+          originalError: scraperAuthResponse.originalError,
+          email: email
+        });
+        
+        // Use the detailed error message from DO, or fallback to generic message
+        const errorMsg = scraperAuthResponse.error || scraperAuthResponse.originalError || 'Failed to authenticate with ProgressMe. Please check your credentials.';
+        
+        const statusCode = doResponse.status >= 400 && doResponse.status < 600 ? doResponse.status : 400;
         return c.json({ 
-          msg: scraperAuthResponse.error || 'Failed to authenticate with ProgressMe. Please check your credentials.',
-          error: scraperAuthResponse.error 
-        }, 400);
+          msg: errorMsg,
+          error: scraperAuthResponse.error || scraperAuthResponse.originalError,
+          errorType: statusCode === 503 ? 'WEBSOCKET_UNAVAILABLE' : 
+                     statusCode === 408 ? 'TIMEOUT' : 
+                     statusCode === 401 ? 'AUTH_FAILED' : 'UNKNOWN_ERROR'
+        }, statusCode as any);
       }
 
       const { token, response: authData } = scraperAuthResponse;

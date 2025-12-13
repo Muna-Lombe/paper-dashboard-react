@@ -178,7 +178,13 @@ export class CourseScraperDurableObject implements DurableObject {
         });
 
         try {
+            console.log(`[CourseScraperDO] Starting authentication for email: ${email}`);
             const authResponse = await this.scraper.authenticateWithWebSocket(email, password);
+            console.log(`[CourseScraperDO] Authentication response received:`, {
+                hasToken: !!authResponse.token,
+                hasResponse: !!authResponse.response,
+                success: authResponse.success
+            });
 
             // Store tokens
             this.authToken = authResponse.token;
@@ -193,7 +199,8 @@ export class CourseScraperDurableObject implements DurableObject {
                 body: { 
                     email, 
                     userId,
-                    success: authResponse.success 
+                    success: authResponse.success,
+                    tokenLength: authResponse.token?.length || 0
                 },
                 source_ip: request.url,
                 category: 'scraper',
@@ -211,11 +218,20 @@ export class CourseScraperDurableObject implements DurableObject {
                 headers: { 'Content-Type': 'application/json' }
             });
         } catch (error: any) {
+            console.error(`[CourseScraperDO] Authentication error:`, {
+                message: error.message,
+                stack: error.stack,
+                name: error.name,
+                email: email
+            });
+
             this.logger?.error('ProgressMe authentication failed', {
                 body: { 
                     email, 
                     userId,
-                    error: error.message 
+                    error: error.message,
+                    errorType: error.name,
+                    errorStack: error.stack?.substring(0, 500) // Limit stack trace length
                 },
                 source_ip: request.url,
                 category: 'scraper',
@@ -225,11 +241,27 @@ export class CourseScraperDurableObject implements DurableObject {
                 tags: { service: 'course-scraper-do', region: 'global', env: this.env.NODE_ENV || 'production' }
             });
 
+            // Provide more specific error messages
+            let errorMessage = error.message || 'Unknown error occurred';
+            let statusCode = 500;
+
+            if (error.message?.includes('WebSocket') || error.message?.includes('Connection')) {
+                errorMessage = 'WebSocket connection failed. This service requires WebSocket support which may not be fully available in this environment.';
+                statusCode = 503; // Service Unavailable
+            } else if (error.message?.includes('timeout')) {
+                errorMessage = 'Authentication timed out. Please check your credentials and try again.';
+                statusCode = 408; // Request Timeout
+            } else if (error.message?.includes('Token')) {
+                errorMessage = `ProgressMe authentication failed: ${error.message}. This may indicate invalid credentials or a server-side issue.`;
+                statusCode = 401; // Unauthorized
+            }
+
             return new Response(JSON.stringify({ 
                 success: false,
-                error: error.message 
+                error: errorMessage,
+                originalError: error.message // Include original for debugging
             }), { 
-                status: 500,
+                status: statusCode,
                 headers: { 'Content-Type': 'application/json' }
             });
         }
