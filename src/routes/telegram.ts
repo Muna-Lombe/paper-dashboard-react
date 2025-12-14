@@ -298,6 +298,8 @@ telegramRoutes.post('/generate-progressme-token',
         user: {
           id: registrationRequest[0].id, 
           email: email,
+          authToken: token,
+          progressmeUserData:authData.Value
           // Remove password from payload - SECURITY VULNERABILITY
           // password: progressMePassword
         },

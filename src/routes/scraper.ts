@@ -304,48 +304,65 @@ scraperRoutes.post(
                 });
                 return c.json({ msg: "Invalid Credentials" }, 400);
             }
-            const { email, password } = decoded.user;
+            const { email, authToken, password, progressmeUserData:puInfo } = decoded.user;
             
             // Get the Durable Object for this user
             const scraperDO = getScraperDO(c, user.id);
             
-            // Authenticate via Durable Object
-            const doRequest = new Request(`https://do-internal/authenticate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password, userId: user.id }),
-            });
-            
-            const doResponse = await scraperDO.fetch(doRequest as any);
-            const scraperAuthResponse = await doResponse.json() as any;
+            if(!authToken && password){
 
-            if (!doResponse.ok || !scraperAuthResponse.success) {
-                logger?.error('ProgressMe authentication failed', {
+                // Authenticate via Durable Object
+                const doRequest = new Request(`https://do-internal/authenticate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, userId: user.id }),
+                });
+                
+                const doResponse = await scraperDO.fetch(doRequest as any);
+                const scraperAuthResponse = await doResponse.json() as any;
+    
+                if (!doResponse.ok || !scraperAuthResponse.success) {
+                    logger?.error('ProgressMe authentication failed', {
+                        body: {
+                            userId: user?.id,
+                            authParams: {
+                                email,
+                                password
+                            },
+                            chatId: apiUser?.chatId,
+                            error: scraperAuthResponse.error,
+    
+                        },
+                        source_ip: c.req.url,
+                        category: 'scraper',
+                        trace_id: traceId,
+                        span_id: spanId,
+                        template: { name: 'ERROR', params: { statusCode: 400, method: 'POST', path: '/scraper/getUserInfo' } },
+                        tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
+                    });
+                    return c.json({ msg: 'Failed to authenticate with external scraper service.' }, 400);
+                }
+                
+                const { token, response: authData } = scraperAuthResponse;
+                // associate telegram registration request with user
+                const db = c.env.drizzleDb as any;
+                await db.update(tokens).set({ userId: authData.Value.Id }).where(eq(tokens.token as any, apiToken));
+                logger?.info('ProgressMe authentication successful', {
                     body: {
                         userId: user?.id,
-                        authParams: {
-                            email,
-                            password
-                        },
                         chatId: apiUser?.chatId,
-                        error: scraperAuthResponse.error,
-
                     },
                     source_ip: c.req.url,
                     category: 'scraper',
                     trace_id: traceId,
                     span_id: spanId,
-                    template: { name: 'ERROR', params: { statusCode: 400, method: 'POST', path: '/scraper/getUserInfo' } },
+                    template: { name: 'INFO', params: { statusCode: 200, method: 'POST', path: '/scraper/getUserInfo' } },
                     tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
                 });
-                return c.json({ msg: 'Failed to authenticate with external scraper service.' }, 400);
-            }
-            
-            const { token, response: authData } = scraperAuthResponse;
+                return c.json({ token, data: { puid: authData.Value.Id, role: authData.Value.AccountRole } });
 
-            // associate telegram registration request with user
-            const db = c.env.drizzleDb as any;
-            await db.update(tokens).set({ userId: authData.Value.Id }).where(eq(tokens.token as any, apiToken));
+            }
+
             
             logger?.info('ProgressMe authentication successful', {
                 body: {
@@ -359,8 +376,8 @@ scraperRoutes.post(
                 template: { name: 'INFO', params: { statusCode: 200, method: 'POST', path: '/scraper/getUserInfo' } },
                 tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
             });
+            return c.json({ token:authToken, data: { puid: puInfo.Id, role: puInfo.role } });
 
-            return c.json({ token, data: { puid: authData.Value.Id, role: authData.Value.AccountRole } });
         } catch (err: any) {
             console.error(err.message);
             logger?.error('Error authenticating with ProgressMe', {
