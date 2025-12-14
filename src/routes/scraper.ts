@@ -479,7 +479,7 @@ scraperRoutes.get("/getbook",
     const user = c.get('user');
     const apiUser = c.get('apiUser');
     const authHeader = c.req.header('Authorization');
-    const puUserAuthToken = authHeader?.replace('Bearer ', ''); 
+    const progressmeUserAuthToken = authHeader?.replace('Bearer ', ''); 
     const traceId = (c as any).traceId;
     const spanId = (c as any).spanId;
 
@@ -511,6 +511,7 @@ scraperRoutes.get("/getbook",
             body: {
                 userId: user?.id,
                 chatId: apiUser?.chatId,
+                puToken:progressmeUserAuthToken,
             },
             source_ip: c.req.url,
             category: 'scraper',
@@ -562,7 +563,7 @@ scraperRoutes.get("/getbook",
             const doRequest = new Request(`https://do-internal/get-book`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bookId: Number(bookId), puToken: puUserAuthToken }),
+                body: JSON.stringify({ bookId: Number(bookId), puToken: progressmeUserAuthToken }),
             });
 
             const doResponse = await scraperDO.fetch(doRequest as any);
@@ -650,7 +651,7 @@ scraperRoutes.get("/getbook",
             const doRequest = new Request(`https://do-internal/get-book`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bookCode,  puToken: puUserAuthToken }),
+                body: JSON.stringify({ bookCode,  puToken: progressmeUserAuthToken }),
             });
 
             const doResponse = await scraperDO.fetch(doRequest as any);
