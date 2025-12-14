@@ -253,7 +253,7 @@ type ScraperAuthData = z.infer<typeof scraperAuthSchema>; // Define a type for t
 scraperRoutes.post(
     "/getUserInfo", // Renamed back to /auth as per original description
     auth,
-    apiTokenAuth, // Use Hono-compatible API token middleware
+    // apiTokenAuth, // Use Hono-compatible API token middleware
     validator("json", (value, c) => {
       const parsed = scraperAuthSchema.safeParse(value);
       if (!parsed.success) {
@@ -423,7 +423,10 @@ scraperRoutes.post(
 // *               description: The name of the book
 // *
 // */
-scraperRoutes.get("/getbook",auth, apiTokenAuth, async (c) => {
+scraperRoutes.get("/getbook",
+    auth, 
+    // apiTokenAuth, 
+    async (c) => {
     const user = c.get('user');
     const apiUser = c.get('apiUser');
     const traceId = (c as any).traceId;
@@ -675,7 +678,7 @@ const copyCourseSchema = z.object({
 scraperRoutes.post(
     "/copy-course",
     auth,
-    apiTokenAuth, // Use Hono-compatible API token middleware
+    // apiTokenAuth, // Use Hono-compatible API token middleware
     validator("json", (value, c) => {
       const parsed = copyCourseSchema.safeParse(value);
       if (!parsed.success) {
