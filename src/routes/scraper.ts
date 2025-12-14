@@ -517,6 +517,7 @@ scraperRoutes.get("/getbook",
                 body: {
                     userId: user?.id,
                     chatId: apiUser?.chatId,
+                    bookId
                 },
                 source_ip: c.req.url,
                 category: 'scraper',
@@ -532,6 +533,8 @@ scraperRoutes.get("/getbook",
                     body: {
                         userId: user?.id,
                         chatId: apiUser?.chatId,
+                        bookId,
+                        
                     },
                     source_ip: c.req.url,
                     category: 'scraper',
@@ -548,6 +551,7 @@ scraperRoutes.get("/getbook",
                 body: {
                     userId: user?.id,
                     chatId: apiUser?.chatId,
+                    book
                 },
                 source_ip: c.req.url,
                 category: 'scraper',
@@ -635,6 +639,7 @@ scraperRoutes.get("/getbook",
             body: {
                 userId: user?.id,
                 chatId: apiUser?.chatId,
+                error: err.message
             },
             source_ip: c.req.url,
             category: 'scraper',
