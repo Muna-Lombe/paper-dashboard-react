@@ -69,6 +69,7 @@ class CourseScraperService {
     private currentBook: BookData;
     public currentAuthToken: string | null; // Make public for DO access
     private controllerTemplates: {
+        Login: (email: string, password: string, authToken: string, userRole: number, accountRole: number) => ControllerMessage;
         IsCanSharingMaterialMessage: (bookId: number, userId: number) => ControllerMessage;
         GetSharingMaterialMessage: (bookId: number) => ControllerMessage;
         GetIdMaterialMessage: (code: string) => ControllerMessage;
@@ -77,6 +78,7 @@ class CourseScraperService {
         GetCurrentUserMessage: SimpleControllerMessage;
         GetUserMessage: SimpleControllerMessage;
         GetDebugMessage: SimpleControllerMessage;
+        GetAccountRole:(email: string, password: string) => ControllerMessage;
     };
 
     constructor() {
@@ -115,6 +117,21 @@ class CourseScraperService {
         this.currentBook = {};
         this.currentAuthToken = null;
         this.controllerTemplates = {
+            Login: (email: string, password: string, authToken: string, userRole: number, accountRole: number) => ({
+                Controller: "AccountWsController",
+                Method: "Login",
+                ProjectName: "Users",
+                RequestId: this.generateAuthToken(),
+                Value: JSON.stringify({
+                    Email: `${email}`,
+                    Password: `${password}`,
+                    RememberMe: true,
+                    UserRole: userRole, // From first response
+                    AccountRole: accountRole, // Added from original JS implementation
+                    AuthToken: authToken,
+                    CurrentDomain: "progressme.ru",
+                }),
+            }),
             IsCanSharingMaterialMessage: (bookId: number, userId: number) => ({
                 Controller: "BookWsController",
                 Method: "IsCanSharingMaterial",
@@ -155,6 +172,14 @@ class CourseScraperService {
                     sharingMaterialId +
                     '"}',
             }),
+            GetAccountRole: (email:string, password:string) =>({
+                Controller: "AccountWsController",
+                Method: "GetAccountRoles",
+                RequestId: this.generateAuthToken(),
+                ProjectName: "Users",
+                Value: `{\"Email\":\"${email}\",\"Password\":\"${password}\",\"Domain\":\"progressme.ru\"}`,
+                
+            }),
             GetCurrentUserMessage: {
                 controller: "Auth",
                 metod: "GetCurrentUser",
@@ -170,6 +195,7 @@ class CourseScraperService {
                 metod: "Ping",
                 value: '""',
             },
+
         };
     }
 
@@ -235,26 +261,15 @@ class CourseScraperService {
             const authToken = this.generateAuthToken();
             this.currentAuthToken = authToken;
 
-            const wsUrl = `wss://proxy.progressme.ru/websocket?token=${authToken}`;
+            const wsUrl = `wss://proxy.edvibe.com/websocket?token=${authToken}`;
 
             const ws = await this.createWebSocketConnection(wsUrl);
 
+
+
             return new Promise((resolve, reject) => {
-                const loginMessage: ControllerMessage = {
-                    Controller: "AccountWsController",
-                    Method: "Login",
-                    ProjectName: "Users",
-                    RequestId: this.generateAuthToken(),
-                    Value: JSON.stringify({
-                        Email: `${email}`,
-                        Password: `${password}`,
-                        RememberMe: true,
-                        UserRole: 4, // From first response
-                        AccountRole: 1, // Added from original JS implementation
-                        AuthToken: authToken,
-                        CurrentDomain: "progressme.ru",
-                    }),
-                };
+                const getAccountRoleMessage = this.controllerTemplates.GetAccountRole(email, password) 
+                const loginMessage: ControllerMessage = this.controllerTemplates.Login(email, password, authToken, 4, 1);
                 
                 console.log("Sending login message:", JSON.stringify(loginMessage, null, 2));
 
@@ -723,11 +738,16 @@ class CourseScraperService {
     }
 
     generateAuthToken(): string {
-        const chars =
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+        // Generate UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+        const chars = "0123456789abcdef";
+        const segments = [8, 4, 4, 4, 12]; // Length of each segment
+        
         let token = "";
-        for (let i = 0; i < 22; i++) {
-            token += chars.charAt(Math.floor(Math.random() * chars.length));
+        for (let i = 0; i < segments.length; i++) {
+            if (i > 0) token += "-";
+            for (let j = 0; j < segments[i]; j++) {
+                token += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
         }
         return token;
     }
