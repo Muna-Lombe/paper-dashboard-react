@@ -97,7 +97,7 @@ const validateUrlSchema = z.object({
 scraperRoutes.post(
     "/validate-url",
     auth,
-    apiTokenAuth, // Use Hono-compatible API token middleware
+    // apiTokenAuth, // Use Hono-compatible API token middleware
     validator("json", (value, c) => {
       const parsed = validateUrlSchema.safeParse(value);
       if (!parsed.success) {
