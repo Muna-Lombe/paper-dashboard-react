@@ -250,10 +250,13 @@ class CourseScraperService {
                         Password: `${password}`,
                         RememberMe: true,
                         UserRole: 4, // From first response
+                        AccountRole: 1, // Added from original JS implementation
                         AuthToken: authToken,
                         CurrentDomain: "progressme.ru",
                     }),
                 };
+                
+                console.log("Sending login message:", JSON.stringify(loginMessage, null, 2));
 
                 const timeout = setTimeout(() => {
                     ws.close();
@@ -263,7 +266,15 @@ class CourseScraperService {
                 ws.addEventListener("message", (event: MessageEvent) => {
                     try {
                         const response = JSON.parse(event.data as string);
-                        console.log("Auth response:", response);
+                        console.log("Auth response:", JSON.stringify(response, null, 2));
+                        console.log("Auth response details:", {
+                            Success: response.Success,
+                            ErrorMessage: response.ErrorMessage,
+                            ErrorCode: response.ErrorCode,
+                            ResponseId: response.ResponseId,
+                            RequestId: response.RequestId,
+                            hasValue: !!response.Value
+                        });
 
                         if (response.Success) {
                             clearTimeout(timeout);
@@ -281,15 +292,23 @@ class CourseScraperService {
                         } else {
                             clearTimeout(timeout);
                             ws.close();
+                            const errorMsg = response.ErrorMessage || response.Error || "Authentication failed";
+                            console.error("ProgressMe authentication rejected:", {
+                                errorMessage: errorMsg,
+                                errorCode: response.ErrorCode,
+                                fullResponse: response
+                            });
                             reject(
-                                new Error(
-                                    response.ErrorMessage || "Authentication failed",
-                                ),
+                                new Error(`Rejected with reason: ${errorMsg}`),
                             );
                         }
                     } catch (error: any) {
                         clearTimeout(timeout);
                         ws.close();
+                        console.error("Failed to parse ProgressMe response:", {
+                            error: error.message,
+                            rawData: event.data
+                        });
                         reject(new Error(`Failed to parse response: ${error.message}`));
                     }
                 });
