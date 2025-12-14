@@ -21,7 +21,7 @@ const scraperRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables & { api
 /**
  * Helper function to get the Course Scraper Durable Object stub for a user
  */
-function getScraperDO(c: Context<any>, userId: string) {
+function getScraperDO(c: Context<{ Bindings: Env; Variables: AuthVariables & { apiUser: { chatId: string; email: string; apiToken: string | null; }; } }>, userId: string) {
     const doId = c.env.COURSE_SCRAPER_DO.idFromName(userId);
     return c.env.COURSE_SCRAPER_DO.get(doId);
 }
@@ -310,21 +310,26 @@ scraperRoutes.post(
             const scraperDO = getScraperDO(c, user.id);
             
             // Authenticate via Durable Object
-            const doRequest = new Request(`https://dummy/authenticate`, {
+            const doRequest = new Request(`https://do-internal/authenticate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password, userId: user.id }),
             });
             
-            const doResponse = await scraperDO.fetch(doRequest);
+            const doResponse = await scraperDO.fetch(doRequest as any);
             const scraperAuthResponse = await doResponse.json() as any;
 
             if (!doResponse.ok || !scraperAuthResponse.success) {
                 logger?.error('ProgressMe authentication failed', {
                     body: {
                         userId: user?.id,
+                        authParams: {
+                            email,
+                            password
+                        },
                         chatId: apiUser?.chatId,
                         error: scraperAuthResponse.error,
+
                     },
                     source_ip: c.req.url,
                     category: 'scraper',
