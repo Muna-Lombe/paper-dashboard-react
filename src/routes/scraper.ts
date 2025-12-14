@@ -478,6 +478,8 @@ scraperRoutes.get("/getbook",
     async (c) => {
     const user = c.get('user');
     const apiUser = c.get('apiUser');
+    const authHeader = c.req.header('Authorization');
+    const puUserAuthToken = authHeader?.replace('Bearer ', ''); 
     const traceId = (c as any).traceId;
     const spanId = (c as any).spanId;
 
@@ -560,7 +562,7 @@ scraperRoutes.get("/getbook",
             const doRequest = new Request(`https://do-internal/get-book`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bookId: Number(bookId) }),
+                body: JSON.stringify({ bookId: Number(bookId), puToken: puUserAuthToken }),
             });
 
             const doResponse = await scraperDO.fetch(doRequest as any);
@@ -648,7 +650,7 @@ scraperRoutes.get("/getbook",
             const doRequest = new Request(`https://do-internal/get-book`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bookCode }),
+                body: JSON.stringify({ bookCode,  puToken: puUserAuthToken }),
             });
 
             const doResponse = await scraperDO.fetch(doRequest as any);

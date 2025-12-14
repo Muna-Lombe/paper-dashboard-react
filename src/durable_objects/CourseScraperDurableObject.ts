@@ -27,6 +27,7 @@ export class CourseScraperDurableObject implements DurableObject {
         this.env = env;
         this.scraper = CourseScraperService;
         
+        
         // Initialize logger if available
         if (env.LOG_API && env.LOGHOG_APP_TOKEN) {
             this.logger = new LogHogClient(
@@ -307,12 +308,13 @@ export class CourseScraperDurableObject implements DurableObject {
      * Handle get book request
      */
     private async handleGetBook(request: Request): Promise<Response> {
-        const { bookId, bookCode } = await request.json() as { 
+        const { bookId, bookCode, puToken } = await request.json() as { 
             bookId?: number; 
             bookCode?: string;
+            puToken?: string;
         };
 
-        if (!this.progressMeToken) {
+        if (!this.progressMeToken || !puToken) {
             return new Response(JSON.stringify({ 
                 error: 'Not authenticated',
                 message: 'Please authenticate first' 
@@ -323,7 +325,7 @@ export class CourseScraperDurableObject implements DurableObject {
         }
 
         this.logger?.info('Getting book', {
-            body: { bookId, bookCode },
+            body: { bookId, bookCode, token: this.progressMeToken || puToken },
             source_ip: request.url,
             category: 'scraper',
             trace_id: '',
@@ -334,6 +336,8 @@ export class CourseScraperDurableObject implements DurableObject {
 
         try {
             let book;
+            this.progressMeToken??=puToken;
+            this.scraper.currentAuthToken = this.progressMeToken;
             
             if (bookId) {
                 book = await this.scraper.getBookById(bookId);
