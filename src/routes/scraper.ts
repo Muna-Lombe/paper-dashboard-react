@@ -7,7 +7,7 @@ import { validator } from 'hono/validator';
 import { z } from 'zod';
 import { getCookie, setCookie } from 'hono/cookie';
 import axios from 'axios';
-import courseScraper from "../../services/courseScraper.js";
+// import courseScraper from "../../services/courseScraper.js"; // No longer needed - using Durable Object instead
 import { eq, and } from 'drizzle-orm';
 import { Env } from '..'; // Import Env interface
 import { User } from '../database/models/User'; // Import User interface
@@ -131,8 +131,35 @@ scraperRoutes.post(
                 tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
             });
             
+            // Use Durable Object for URL validation
+            const scraperDO = getScraperDO(c, user.id);
+            const doRequest = new Request(`https://do-internal/validate-url`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url }),
+            });
 
-            const response =  courseScraper.validateUrl(url);
+            const doResponse = await scraperDO.fetch(doRequest as any);
+            const doResult = await doResponse.json() as any;
+
+            if (!doResponse.ok) {
+                logger?.error('URL validation failed', {
+                    body: {
+                        userId: user?.id,
+                        chatId: apiUser?.chatId,
+                        error: doResult.error || doResult.message
+                    },
+                    source_ip: c.req.url,
+                    category: 'scraper',
+                    trace_id: traceId,
+                    span_id: spanId,
+                    template: { name: 'ERROR', params: { statusCode: doResponse.status, method: 'POST', path: '/scraper/validate-url' } },
+                    tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
+                });
+                return c.json({ msg: doResult.error || 'URL validation failed' }, doResponse.status as any);
+            }
+
+            const response = doResult.valid;
             if (!response) {
                 logger?.warn('URL validation failed', {
                     body: {
@@ -501,6 +528,7 @@ scraperRoutes.get("/getbook",
                     body: {
                         userId: user?.id,
                         chatId: apiUser?.chatId,
+                        decodedUrl
                     },
                     source_ip: c.req.url,
                     category: 'scraper',
@@ -527,13 +555,42 @@ scraperRoutes.get("/getbook",
                 tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
             });
 
-            const response = await courseScraper.getBookById(Number(bookId));
+            // Use Durable Object to get book by ID
+            const scraperDO = getScraperDO(c, user.id);
+            const doRequest = new Request(`https://do-internal/get-book`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookId: Number(bookId) }),
+            });
+
+            const doResponse = await scraperDO.fetch(doRequest as any);
+            const response = await doResponse.json() as any;
+
+            if (!doResponse.ok) {
+                logger?.error('Failed to get book', {
+                    body: {
+                        userId: user?.id,
+                        chatId: apiUser?.chatId,
+                        bookId,
+                        error: response.error || response.message
+                    },
+                    source_ip: c.req.url,
+                    category: 'scraper',
+                    trace_id: traceId,
+                    span_id: spanId,
+                    template: { name: 'ERROR', params: { statusCode: doResponse.status, method: 'POST', path: '/scraper/getBook' } },
+                    tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
+                });
+                return c.json({ msg: response.error || response.message || 'Failed to get book' }, doResponse.status as any);
+            }
+
             if (!response || !response.bookName) {
                 logger?.error('Failed to get book', {
                     body: {
                         userId: user?.id,
                         chatId: apiUser?.chatId,
                         bookId,
+                        error: response.error || response.message
                         
                     },
                     source_ip: c.req.url,
@@ -551,7 +608,7 @@ scraperRoutes.get("/getbook",
                 body: {
                     userId: user?.id,
                     chatId: apiUser?.chatId,
-                    book
+                    bookName: response.bookName
                 },
                 source_ip: c.req.url,
                 category: 'scraper',
@@ -576,6 +633,7 @@ scraperRoutes.get("/getbook",
                 body: {
                     userId: user?.id,
                     chatId: apiUser?.chatId,
+                    bookCode
                 },
                 source_ip: c.req.url,
                 category: 'scraper',
@@ -585,12 +643,42 @@ scraperRoutes.get("/getbook",
                 tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
             });
 
-            const response = await courseScraper.getBookByCode(bookCode);
+            // Use Durable Object to get book by code
+            const scraperDO = getScraperDO(c, user.id);
+            const doRequest = new Request(`https://do-internal/get-book`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookCode }),
+            });
+
+            const doResponse = await scraperDO.fetch(doRequest as any);
+            const response = await doResponse.json() as any;
+
+            if (!doResponse.ok) {
+                logger?.error('Failed to get book', {
+                    body: {
+                        userId: user?.id,
+                        chatId: apiUser?.chatId,
+                        bookCode,
+                        error: response.error || response.message
+                    },
+                    source_ip: c.req.url,
+                    category: 'scraper',
+                    trace_id: traceId,
+                    span_id: spanId,
+                    template: { name: 'ERROR', params: { statusCode: doResponse.status, method: 'POST', path: '/scraper/getBook' } },
+                    tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
+                });
+                return c.json({ msg: response.error || response.message || 'Failed to get book' }, doResponse.status as any);
+            }
+
             if (!response || !response.bookName) {
                 logger?.error('Failed to get book', {
                     body: {
                         userId: user?.id,
                         chatId: apiUser?.chatId,
+                        bookCode,
+                        error: response.error || response.message
                     },
                     source_ip: c.req.url,
                     category: 'scraper',
@@ -607,6 +695,7 @@ scraperRoutes.get("/getbook",
                 body: {
                     userId: user?.id,
                     chatId: apiUser?.chatId,
+                    bookName: response.bookName
                 },
                 source_ip: c.req.url,
                 category: 'scraper',
@@ -623,6 +712,7 @@ scraperRoutes.get("/getbook",
             body: {
                 userId: user?.id,
                 chatId: apiUser?.chatId,
+                decodedUrl
             },
             source_ip: c.req.url,
             category: 'scraper',
@@ -639,7 +729,7 @@ scraperRoutes.get("/getbook",
             body: {
                 userId: user?.id,
                 chatId: apiUser?.chatId,
-                error: err.message
+                error: err?.message || "No specific error, check scraper logs"
             },
             source_ip: c.req.url,
             category: 'scraper',
@@ -740,14 +830,40 @@ scraperRoutes.post(
                 tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
             });
 
-            // Check if book can be shared
-            const canBookBeSharedResponse = await courseScraper.copyCourse(
-                Number(bookId),
-                Number(userId),
-                token || ""
-            );
+            // Use Durable Object to check if book can be shared
+            const scraperDO = getScraperDO(c, user.id);
+            const checkCanShareRequest = new Request(`https://do-internal/check-can-share`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    bookId: Number(bookId), 
+                    userId: Number(userId),
+                    token: token || ""
+                }),
+            });
 
-            const canBookBeShared = canBookBeSharedResponse;
+            const checkCanShareResponse = await scraperDO.fetch(checkCanShareRequest as any);
+            const checkCanShareResult = await checkCanShareResponse.json() as any;
+
+            if (!checkCanShareResponse.ok) {
+                logger?.error('Failed to check if book can be shared', {
+                    body: {
+                        userId: user?.id,
+                        chatId: apiUser?.chatId,
+                        bookId,
+                        error: checkCanShareResult.error || checkCanShareResult.message
+                    },
+                    source_ip: c.req.url,
+                    category: 'scraper',
+                    trace_id: traceId,
+                    span_id: spanId,
+                    template: { name: 'ERROR', params: { statusCode: checkCanShareResponse.status, method: 'POST', path: '/scraper/copy-course' } },
+                    tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
+                });
+                return c.json({ msg: checkCanShareResult.error || 'Failed to check sharing status' }, checkCanShareResponse.status as any);
+            }
+
+            const canBookBeShared = checkCanShareResult.canShare;
             console.log("book can be share:", canBookBeShared);
                 
             if (canBookBeShared) {
@@ -764,8 +880,38 @@ scraperRoutes.post(
                     tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
                 });
 
-                // console.log("\ncan share. Setting sharingMaterialId...");
-                const sharingMaterialId = await courseScraper.setSharingMaterialId(Number(bookId), token || "");
+                // Use Durable Object to set sharing material ID
+                const setSharingRequest = new Request(`https://do-internal/set-sharing-material`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        bookId: Number(bookId),
+                        token: token || ""
+                    }),
+                });
+
+                const setSharingResponse = await scraperDO.fetch(setSharingRequest as any);
+                const setSharingResult = await setSharingResponse.json() as any;
+
+                if (!setSharingResponse.ok || !setSharingResult.success) {
+                    logger?.error('Failed to set sharing material ID', {
+                        body: {
+                            userId: user?.id,
+                            chatId: apiUser?.chatId,
+                            bookId,
+                            error: setSharingResult.error || setSharingResult.message
+                        },
+                        source_ip: c.req.url,
+                        category: 'scraper',
+                        trace_id: traceId,
+                        span_id: spanId,
+                        template: { name: 'ERROR', params: { statusCode: setSharingResponse.status, method: 'POST', path: '/scraper/copy-course' } },
+                        tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
+                    });
+                    return c.json({ msg: setSharingResult.error || 'Failed to set sharing material ID' }, (setSharingResponse.status || 400) as any);
+                }
+
+                const sharingMaterialId = setSharingResult.sharingMaterialId;
 
                 if (!sharingMaterialId) {
                     logger?.error('Failed to set sharing material ID', {
@@ -826,13 +972,21 @@ scraperRoutes.post(
                 tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
             });
 
-            const copyCourseResponse = await courseScraper.copyCourse(
-                Number(bookId),
-                Number(userId),
-                token || ""
-            );
+            // Use Durable Object to copy course
+            const copyCourseRequest = new Request(`https://do-internal/copy-course`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    bookId: Number(bookId),
+                    userId: Number(userId),
+                    token: token || ""
+                }),
+            });
 
-            if (!copyCourseResponse.success) {
+            const copyCourseDoResponse = await scraperDO.fetch(copyCourseRequest as any);
+            const copyCourseResponse = await copyCourseDoResponse.json() as any;
+
+            if (!copyCourseDoResponse.ok || !copyCourseResponse.success) {
                 logger?.error('Failed to copy course', {
                     body: {
                         userId: user?.id,
@@ -849,7 +1003,7 @@ scraperRoutes.post(
                 return c.json({ msg: 'Failed to copy course with external scraper service.' }, 400);
             }
             
-            const result = copyCourseResponse;
+            const result = copyCourseResponse.result;
             
             logger?.info('Course copied successfully', {
                 body: {
