@@ -291,7 +291,7 @@ class CourseScraperService {
                             hasValue: !!response.Value
                         });
 
-                        if (response.Success) {
+                        if (response.IsSuccess) {
                             clearTimeout(timeout);
                             this.activeWs.setNewActive({
                                 socket: ws,
