@@ -151,7 +151,7 @@ class CourseScraperService {
                 Method: "GetIdMaterial",
                 ProjectName: "Books",
                 RequestId: this.generateAuthToken(),
-                Value: `{"Code":${code}}`,
+                Value: `{"Code":"${code}"}`,
             }),
             GetBookMessage: (bookId: number) => ({
                 Controller: "SharingMaterialWsController",
@@ -283,7 +283,7 @@ class CourseScraperService {
                         const response = JSON.parse(event.data as string);
                         console.log("Auth response:", JSON.stringify(response, null, 2));
                         console.log("Auth response details:", {
-                            Success: response.Success,
+                            Success: response.IsSuccess,
                             ErrorMessage: response.ErrorMessage,
                             ErrorCode: response.ErrorCode,
                             ResponseId: response.ResponseId,
@@ -396,10 +396,10 @@ class CourseScraperService {
                 ws.addEventListener("message", (event: MessageEvent) => {
                     try {
                         const response = JSON.parse(event.data as string);
-                        if (response.Success) {
+                        if (response.IsSuccess) {
                             clearTimeout(timeout);
                             ws.close();
-                            const result = JSON.parse(response.Result);
+                            const result = response.Value;
                             resolve(result);
                         } else {
                             clearTimeout(timeout);
@@ -442,13 +442,16 @@ class CourseScraperService {
                     reject(new Error("GetBookById timeout"));
                 }, 30000);
 
+                // console.log("in getBookById, message:", message);
+
                 ws.addEventListener("message", (event: MessageEvent) => {
                     try {
                         const response = JSON.parse(event.data as string);
-                        if (response.Success) {
+                        // console.log("in getBookById, response log:", response);
+                        if (response.IsSuccess) {
                             clearTimeout(timeout);
                             ws.close();
-                            const result = JSON.parse(response.Result);
+                            const result = response.Value;
                             resolve(result);
                         } else {
                             clearTimeout(timeout);
@@ -482,23 +485,31 @@ class CourseScraperService {
             const ws = await this.createWebSocketConnection(wsUrl);
 
             return new Promise((resolve, reject) => {
-                const message = this.controllerTemplates.GetIdMaterialMessage(bookCode);
+                const message = this.controllerTemplates.GetIdMaterialMessage(String(bookCode));
 
                 const timeout = setTimeout(() => {
                     ws.close();
                     reject(new Error("GetBookByCode timeout"));
                 }, 30000);
 
+                // console.log("in getBookByCode, message:", message);
+
                 ws.addEventListener("message", (event: MessageEvent) => {
                     try {
                         const response = JSON.parse(event.data as string);
-                        if (response.Success) {
-                            const materialData = JSON.parse(response.Result);
+                        // console.log("in getBookByCode, response log:", response);
+                        
+                        
+                        if (response.IsSuccess || response.ErrorCode === 0) {
+                            const materialData = response.Value;
+                            // console.log("in getBookByCode, materialData:", materialData);
                             // Now get the full book data
                             this.getBookById(materialData.BookId)
                                 .then((bookData) => {
                                     clearTimeout(timeout);
                                     ws.close();
+                                    // console.log("Resolve Data", bookData);
+                                    
                                     resolve(bookData);
                                 })
                                 .catch((error: Error) => {
@@ -553,10 +564,10 @@ class CourseScraperService {
                 ws.addEventListener("message", (event: MessageEvent) => {
                     try {
                         const response = JSON.parse(event.data as string);
-                        if (response.Success) {
+                        if (response.IsSuccess) {
                             clearTimeout(timeout);
                             ws.close();
-                            const result = JSON.parse(response.Result);
+                            const result = response.Value;
                             resolve(result);
                         } else {
                             clearTimeout(timeout);
@@ -603,10 +614,10 @@ class CourseScraperService {
                 ws.addEventListener("message", (event: MessageEvent) => {
                     try {
                         const response = JSON.parse(event.data as string);
-                        if (response.Success) {
+                        if (response.IsSuccess) {
                             clearTimeout(timeout);
                             ws.close();
-                            const result = JSON.parse(response.Result);
+                            const result = response.Value;
                             resolve(result);
                         } else {
                             clearTimeout(timeout);
@@ -669,10 +680,10 @@ class CourseScraperService {
                 ws.addEventListener("message", (event: MessageEvent) => {
                     try {
                         const response = JSON.parse(event.data as string);
-                        if (response.Success) {
+                        if (response.IsSuccess) {
                             clearTimeout(timeout);
                             ws.close();
-                            const result = JSON.parse(response.Result);
+                            const result = response.Value;
                             resolve(result);
                         } else {
                             clearTimeout(timeout);

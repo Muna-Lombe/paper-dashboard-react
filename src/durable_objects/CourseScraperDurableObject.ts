@@ -314,7 +314,7 @@ export class CourseScraperDurableObject implements DurableObject {
             puToken?: string;
         };
 
-        if (!this.progressMeToken || !puToken) {
+        if (!puToken) {
             return new Response(JSON.stringify({ 
                 error: 'Not authenticated',
                 message: 'Please authenticate first' 
@@ -339,6 +339,7 @@ export class CourseScraperDurableObject implements DurableObject {
             this.progressMeToken??=puToken;
             this.scraper.currentAuthToken = this.progressMeToken;
             
+            // console.log("getting book by:",bookId??bookCode)
             if (bookId) {
                 book = await this.scraper.getBookById(bookId);
             } else if (bookCode) {
@@ -353,6 +354,7 @@ export class CourseScraperDurableObject implements DurableObject {
                 });
             }
 
+            console.log("Book:", book)
             this.logger?.info('Book retrieved successfully', {
                 body: { 
                     bookId, 

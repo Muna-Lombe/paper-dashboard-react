@@ -16,14 +16,70 @@ import { LogHogClient } from '../services/loggerService'; // Import LogHog clien
 
 export type TelegramRegistrationRequest = InferSelectModel<typeof telegramRegistrationRequests>;
 
-const scraperRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables & { apiUser: { chatId: string; email: string; apiToken: string | null; }; }; }>(); // Updated Hono context to include AuthVariables
+type ScraperVariables = AuthVariables & { 
+    apiUser?: { 
+        chatId: string | null; 
+        email: string | null; 
+        apiToken: string | null; 
+    }; 
+};
+
+const scraperRoutes = new Hono<{ Bindings: Env; Variables: ScraperVariables }>(); // Updated Hono context to include AuthVariables
 
 /**
  * Helper function to get the Course Scraper Durable Object stub for a user
  */
-function getScraperDO(c: Context<{ Bindings: Env; Variables: AuthVariables & { apiUser: { chatId: string; email: string; apiToken: string | null; }; } }>, userId: string) {
+function getScraperDO(c: Context<{ Bindings: Env; Variables: ScraperVariables }>, userId: string) {
     const doId = c.env.COURSE_SCRAPER_DO.idFromName(userId);
     return c.env.COURSE_SCRAPER_DO.get(doId);
+}
+
+/**
+ * Normalizes ProgressMe book response to a standardized format
+ * Maps various field name variations (PascalCase, camelCase) to consistent camelCase keys
+ * This allows the API to handle future changes in ProgressMe's response structure
+ */
+interface NormalizedBook {
+    bookId: number | null;
+    bookName: string | null;
+    bookCode?: string | null;
+    sharingMaterialId?: string | null;
+    [key: string]: any; // Preserve other fields
+}
+
+function normalizeBook(progressMeBook: any): NormalizedBook {
+    if (!progressMeBook || typeof progressMeBook !== 'object') {
+        return {
+            bookId: null,
+            bookName: null,
+            bookCode: null,
+            sharingMaterialId: null,
+        };
+    }
+
+    // Map various field name variations to standardized camelCase
+    const normalized: NormalizedBook = {
+        // Map bookId: Id, BookId, bookId, id
+        bookId: progressMeBook.Id ?? progressMeBook.BookId ?? progressMeBook.bookId ?? progressMeBook.id ?? null,
+        
+        // Map bookName: Name, BookName, bookName, name
+        bookName: progressMeBook.Name ?? progressMeBook.BookName ?? progressMeBook.bookName ?? progressMeBook.name ?? null,
+        
+        // Map bookCode: Code, BookCode, bookCode, code
+        bookCode: progressMeBook.Code ?? progressMeBook.BookCode ?? progressMeBook.bookCode ?? progressMeBook.code ?? null,
+        
+        // Map sharingMaterialId: SharingMaterialId, sharingMaterialId
+        sharingMaterialId: progressMeBook.SharingMaterialId ?? progressMeBook.sharingMaterialId ?? null,
+    };
+
+    // Preserve all other fields from the original response
+    Object.keys(progressMeBook).forEach(key => {
+        if (!['Id', 'BookId', 'bookId', 'id', 'Name', 'BookName', 'bookName', 'name', 'Code', 'BookCode', 'bookCode', 'code', 'SharingMaterialId', 'sharingMaterialId'].includes(key)) {
+            normalized[key] = progressMeBook[key];
+        }
+    });
+
+    return normalized;
 }
 
 // Swagger documentation comments are not directly supported with Hono in this setup.
@@ -386,6 +442,8 @@ scraperRoutes.post(
                     template: { name: 'INFO', params: { statusCode: 200, method: 'POST', path: '/scraper/getUserInfo' } },
                     tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
                 });
+                c.set('apiUser', { chatId: apiUser?.chatId??null, email: apiUser?.email??null, apiToken })
+
                 return c.json({ token, data: { puid: authData.Value.Id, role: authData.Value.AccountRole } });
 
             }
@@ -482,6 +540,9 @@ scraperRoutes.get("/getbook",
     const progressmeUserAuthToken = authHeader?.replace('Bearer ', ''); 
     const traceId = (c as any).traceId;
     const spanId = (c as any).spanId;
+
+    console.log("apiuser", apiUser);
+    
 
     // Initialize logger
     const logger = c.env.LOG_API && c.env.LOGHOG_APP_TOKEN
@@ -587,14 +648,16 @@ scraperRoutes.get("/getbook",
                 return c.json({ msg: response.error || response.message || 'Failed to get book' }, doResponse.status as any);
             }
 
-            if (!response || !response.bookName) {
+            const normalisedBook = normalizeBook(response);
+
+            if (!normalisedBook || !normalisedBook.bookName || !normalisedBook.bookId) {
                 logger?.error('Failed to get book', {
                     body: {
                         userId: user?.id,
                         chatId: apiUser?.chatId,
                         bookId,
-                        error: response.error || response.message
-                        
+                        error: response.error || response.message,
+                        normalizedBook: normalisedBook
                     },
                     source_ip: c.req.url,
                     category: 'scraper',
@@ -605,13 +668,14 @@ scraperRoutes.get("/getbook",
                 });
                 return c.json({ msg: 'Failed to get book from external scraper service.' }, 404);
             }
-            book = response;
+            book = normalisedBook;
             
             logger?.info('Book retrieved successfully', {
                 body: {
                     userId: user?.id,
                     chatId: apiUser?.chatId,
-                    bookName: response.bookName
+                    bookName: normalisedBook.bookName,
+                    bookId: normalisedBook.bookId
                 },
                 source_ip: c.req.url,
                 category: 'scraper',
@@ -675,13 +739,19 @@ scraperRoutes.get("/getbook",
                 return c.json({ msg: response.error || response.message || 'Failed to get book' }, doResponse.status as any);
             }
 
-            if (!response || !response.bookName) {
+            const normalisedBook = normalizeBook(response);
+
+            console.log("normalised book:", normalisedBook);
+            
+
+            if (!normalisedBook || !normalisedBook.bookName || !normalisedBook.bookId) {
                 logger?.error('Failed to get book', {
                     body: {
                         userId: user?.id,
                         chatId: apiUser?.chatId,
                         bookCode,
-                        error: response.error || response.message
+                        error: response.error || response.message,
+                        normalizedBook: normalisedBook
                     },
                     source_ip: c.req.url,
                     category: 'scraper',
@@ -692,13 +762,14 @@ scraperRoutes.get("/getbook",
                 });
                 return c.json({ msg: 'Failed to get book from external scraper service.' }, 404);
             }
-            book = response;
+            book = normalisedBook;
             
             logger?.info('Book retrieved successfully', {
                 body: {
                     userId: user?.id,
                     chatId: apiUser?.chatId,
-                    bookName: response.bookName
+                    bookName: normalisedBook.bookName,
+                    bookId: normalisedBook.bookId
                 },
                 source_ip: c.req.url,
                 category: 'scraper',
@@ -810,7 +881,7 @@ scraperRoutes.post(
         const { bookId, userId } = c.req.valid("json");
         const user = c.get('user');
         const apiUser = c.get('apiUser'); // Get apiUser from Hono context
-        const token = apiUser.apiToken; // Use the stored API token
+        const token = user.progressMeSerialToken; // Use the stored API token
         const traceId = (c as any).traceId;
         const spanId = (c as any).spanId;
 
@@ -833,6 +904,7 @@ scraperRoutes.post(
                 tags: { "service": "paper-dash-api", "region": "eu-west-1", "env": c.env.NODE_ENV }
             });
 
+
             // Use Durable Object to check if book can be shared
             const scraperDO = getScraperDO(c, user.id);
             const checkCanShareRequest = new Request(`https://do-internal/check-can-share`, {
@@ -841,10 +913,12 @@ scraperRoutes.post(
                 body: JSON.stringify({ 
                     bookId: Number(bookId), 
                     userId: Number(userId),
-                    token: token || ""
+                    token: token || user.progressMeSerialToken
                 }),
             });
 
+            console.log("copy request body:", { bookId, userId, token});
+            
             const checkCanShareResponse = await scraperDO.fetch(checkCanShareRequest as any);
             const checkCanShareResult = await checkCanShareResponse.json() as any;
 
