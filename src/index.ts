@@ -20,6 +20,8 @@ import { validateInput } from './middleware/sanitize'; // Import input validatio
 import { errorHandler } from './middleware/errorHandler'; // Import error handler middleware
 
 export interface Env {
+  DEV_MODE: string;
+  X_API_KEY: string;
   paper_dash_db: D1Database;
   drizzleDb: ReturnType<typeof getDrizzleDb>;
   PORT: string;
@@ -42,7 +44,9 @@ export interface Env {
   // telegramBot: Telegraf; // No longer initialized at top level
 }
 
+
 const app = new Hono<{ Bindings: Env }>();
+const devMode = process?.env?.DEV_MODE === "TRUE";
 
 // Initialize Drizzle once at the top level
 let drizzleDbInstance: ReturnType<typeof getDrizzleDb>; // Restore these
@@ -62,7 +66,7 @@ app.use(cors({
   origin: ["https://paperdash.katundu.org", "http://localhost:3000"],
   credentials: true,
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowHeaders: ["Content-Type", "Authorization"],
+  allowHeaders: ["Content-Type", "Authorization", (devMode ? "X-API-KEY" : "")],
 }));
 
 // Custom middleware to attach D1 binding to context

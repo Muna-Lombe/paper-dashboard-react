@@ -12,7 +12,11 @@
     "set-webhook": "tsx scripts/setWebhook.ts",
     "migrate:local": "tsx no_commit/runLocalMigrations.ts",
     "migrate:status": "tsx no_commit/runLocalMigrations.ts status",
-    "migrate:reset": "tsx no_commit/runLocalMigrations.ts reset"
+    "migrate:reset": "tsx no_commit/runLocalMigrations.ts reset",
+    "lab:test": "tsx --test security-lab/tests/**/*.test.ts",
+    "lab:vuln": "LAB_MODE=vulnerable tsx security-lab/src/server.ts",
+    "lab:secure": "LAB_MODE=secure tsx security-lab/src/server.ts",
+    "lab:scenarios": "tsx security-lab/scripts/runScenarios.ts"
   },
   "keywords": [],
   "author": "",

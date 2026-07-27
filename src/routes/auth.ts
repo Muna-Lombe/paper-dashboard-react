@@ -251,6 +251,40 @@ authRoutes.post(
   }),
   async (c) => {
     const { email, password } = c.req.valid("json");
+    const devMode = c.env.DEV_MODE === "TRUE";
+    const xApiKey = c.req.header("X-API-KEY");
+    const hasXApiKey = c.env.X_API_KEY === xApiKey;
+
+    if (devMode && hasXApiKey) {
+      const payload = {
+        user: {
+          id: "Dev-001",
+          email: "dev@dev.com",
+          role: "admin", // Include role in JWT payload for RBAC
+        },
+      };
+      const token = await new Promise<string>((resolve, reject) => {
+        jwt.sign(
+          payload,
+          (c.env as Env).JWT_SECRET || "default_jwt_secret",
+          { expiresIn: "5d" },
+          (err, token) => {
+            if (err) reject(err);
+            resolve(token as string);
+          },
+        );
+      });
+      const url = new URL(c.req.url);
+      setCookie(c, "access-token", token, {
+        httpOnly: true,
+        secure: (c.env as Env).NODE_ENV === "production" && url.protocol === "https:",
+        sameSite: (c.env as Env).NODE_ENV === "production" && url.protocol === "https:" ? "strict" : "Lax",
+        domain: url.hostname === "localhost:5000" ? "localhost" : url.hostname,
+        maxAge: (259200),
+        expires: new Date((3 * 24 * 60 * 60 * 1000) - Date.now()  ),
+      });
+      return c.json({ msg: "Login successful" }, 200);
+    }
 
     try {
       const db = (c.env as Env) .drizzleDb;

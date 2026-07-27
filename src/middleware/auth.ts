@@ -12,6 +12,14 @@ export const auth = async (c: Context<{ Bindings: Env; Variables: AuthVariables 
   // Get token from cookie
   const token = getCookie(c, "access-token");
 
+  // check if dev mode is true
+  const xApiKey = c.req.header("X-API-KEY");
+  const hasXApiKey = c.env.X_API_KEY === xApiKey;
+  if (c.env.DEV_MODE === "TRUE" && hasXApiKey) {
+    await next();
+    return;
+  }
+
   // Check if no token
   if (!token) {
     return c.json({ msg: "No token, authorization denied" }, 401);
