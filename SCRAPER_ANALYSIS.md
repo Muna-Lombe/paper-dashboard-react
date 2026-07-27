@@ -13,6 +13,7 @@ The application currently has a **Course Scraper Service** that:
 
 ## The Core Question: Why External Scraper?
 
+
 ### Problem with Current Implementation
 
 **Cloudflare Workers CAN run WebSocket code, BUT:**
