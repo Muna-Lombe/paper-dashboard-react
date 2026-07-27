@@ -1,6 +1,4 @@
 import React, { useState } from "react";
-import axios from "axios";
-axios.defaults.withCredentials = true;
 import { useDispatch } from "react-redux";
 import { addToast } from "../variables/slices/toastSlice";
 import { addError } from "../variables/slices/errorSlice";
@@ -24,7 +22,7 @@ function EmailVerificationModal({ isOpen, onClose, email }) {
   const handleResendVerification = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.post(endpoints.auth.resendVerification.url, { email });
+      const response = await endpoints.auth.resendVerification.post({ email });
       
       if (response.status === 200) {
         setEmailSent(true);

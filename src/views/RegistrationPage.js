@@ -1,7 +1,5 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
-axios.defaults.withCredentials = true;
 import { endpoints } from "../config";
 import { useDispatch } from "react-redux";
 import { addError } from "../variables/slices/errorSlice";

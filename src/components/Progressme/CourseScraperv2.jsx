@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-axios.defaults.withCredentials = true;
+import { api } from "@/api";
 import { addError } from "../../variables/slices/errorSlice";
 import { useDispatch } from "react-redux";
 import { endpoints } from "@/config";
@@ -36,7 +35,7 @@ const CourseScraperV2 = () => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(
+      const response = await api.post(
         endpoints.paperDashApi.validateUrl.url,
         {
           url: e.target?.[0]?.value.trim() || "",
@@ -51,7 +50,7 @@ const CourseScraperV2 = () => {
       );
 
       if (response.data.url) {
-        const bookResponse = await axios.get(
+        const bookResponse = await api.get(
           `${endpoints.paperDashApi.getBook.url}?url=${btoa(response.data.url)}`,
         );
         setUrl(response.data.url);
@@ -93,7 +92,7 @@ const CourseScraperV2 = () => {
     }
 
     try {
-      await axios.post(
+      await api.post(
         endpoints.paperDashApi.copyCourse.url,
         {
           bookId,

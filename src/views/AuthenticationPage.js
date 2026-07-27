@@ -1,7 +1,5 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
-axios.defaults.withCredentials = true;
 import { endpoints } from "../config"; // Assuming config.js is in the parent directory
 import { useDispatch } from "react-redux";
 import { addError } from "../variables/slices/errorSlice";
@@ -26,7 +24,7 @@ function AuthenticationPage() {
       let response;
       if (isLogin) {
         response = await login(email, password);
-        // console.log("Login successful:", response.data);
+        console.log("Login successful:", response.data);
         if (response.success) {  
           navigate("/admin/dashboard")
           dispatch(addToast("Login successful!"));

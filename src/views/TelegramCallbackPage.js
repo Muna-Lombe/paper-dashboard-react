@@ -4,8 +4,7 @@ import { useDispatch } from "react-redux";
 import { addError } from "variables/slices/errorSlice";
 import { addToast } from "variables/slices/toastSlice";
 import useAuth from "variables/hooks/useAuth";
-import axios from "axios";
-axios.defaults.withCredentials = true;
+import { api } from "@/api";
 import { endpoints } from "@/config";
 
 function TelegramCallbackPage() {
@@ -24,7 +23,7 @@ function TelegramCallbackPage() {
 
       if (userData.id && userData.hash) {
         try {
-          const response = await axios.post(endpoints.telegram.authUrl, userData);
+          const response = await api.post(endpoints.telegram.authUrl, userData);
 
           if (response.data.token && response.data.userId) {
             // Assuming your backend returns a token and userId after validating Telegram data

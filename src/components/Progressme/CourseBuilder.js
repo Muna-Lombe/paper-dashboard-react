@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { api } from '@/api';
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion';
 import { usePositionReorder } from '../../variables/hooks/usePositionReorder';
@@ -24,7 +24,7 @@ import { updateOrder, updateCorrection, updateData, addCorrection, resetStateWit
 import { endpoints } from '@/config';
 import { addError} from "../../variables/slices/errorSlice";
 import { addToast } from '../../variables/slices/toastSlice';
-axios.defaults.withCredentials = true;
+import PageHeader from '../admin/PageHeader';
 
 // const response = sampleBook
 
@@ -48,7 +48,7 @@ const CourseBuilder = () => {
 
   const fetchCourseData = async (id) => {
     try {
-      const response = await axios.get(endpoints.courses.get(id).url);
+      const response = await api.get(endpoints.courses.get(id).url);
       setCourseData(response.data); // Assuming response.data contains the full course object
       // Populate state based on fetched courseData
       setPageRanges(response.data.pages.length);
@@ -68,7 +68,7 @@ const CourseBuilder = () => {
   const handleCreateCourse = async () => {
     try {
       const newCourse = { name: "New Course", description: "A newly created course." }; // Example new course data
-      const response = await axios.post(endpoints.courses.create.url, newCourse);
+      const response = await api.post(endpoints.courses.create.url, newCourse);
       setCourseId(response.data.courseId); // Set the new course ID
       dispatch(addToast(response.data.message || "Course created successfully!"));
     } catch (error) {
@@ -78,7 +78,7 @@ const CourseBuilder = () => {
 
   const handleUpdateCourse = async () => {
     try {
-      const response = await axios.put(endpoints.courses.update(courseId).url, courseData);
+      const response = await api.put(endpoints.courses.update(courseId).url, courseData);
       dispatch(addToast(response.data.message || "Course updated successfully!"));
     } catch (error) {
       dispatch(addError(error.response?.data?.message || "Failed to update course."));
@@ -87,7 +87,7 @@ const CourseBuilder = () => {
 
   const handleDeleteCourse = async () => {
     try {
-      await axios.delete(endpoints.courses.delete(courseId).url);
+      await api.delete(endpoints.courses.delete(courseId).url);
       dispatch(addToast("Course deleted successfully!"));
       setCourseId(null); // Clear course ID and reset state
       setCourseData(null);
@@ -107,7 +107,7 @@ const CourseBuilder = () => {
       // Assuming the new block should be added to the current page
       const currentPageId = currentPage.id; 
       const newBlock = { data: "New Block Content", order: updatedList.length }; // Example new block data
-      const response = await axios.post(endpoints.courses.blocks.add(courseId).url, { pageId: currentPageId, block: newBlock });
+      const response = await api.post(endpoints.courses.blocks.add(courseId).url, { pageId: currentPageId, block: newBlock });
       // Assuming the backend returns the full updated page or the new block with an ID
       const addedBlock = response.data.block; // Adjust based on actual API response
       updateState([...updatedList, addedBlock]); // Add to local draggable state
@@ -119,7 +119,7 @@ const CourseBuilder = () => {
 
   const handleUpdateBlock = async (blockId, newData) => {
     try {
-      const response = await axios.put(endpoints.courses.blocks.update(courseId, blockId).url, { data: newData });
+      const response = await api.put(endpoints.courses.blocks.update(courseId, blockId).url, { data: newData });
       dispatch(addToast(response.data.message || "Block updated successfully!"));
       // Re-fetch course data or update local state to reflect changes
       fetchCourseData(courseId);
@@ -130,7 +130,7 @@ const CourseBuilder = () => {
 
   const handleDeleteBlock = async (blockId) => {
     try {
-      await axios.delete(endpoints.courses.blocks.delete(courseId, blockId).url);
+      await api.delete(endpoints.courses.blocks.delete(courseId, blockId).url);
       dispatch(addToast("Block deleted successfully!"));
       // Re-fetch course data or update local state to reflect changes
       fetchCourseData(courseId);
@@ -232,7 +232,7 @@ const CourseBuilder = () => {
   const handleGetPage = async (e,id) =>{
     e.preventDefault()
     try {
-      const response = await axios.get(endpoints.courses.get(courseId).url); // Fetch full course data
+      const response = await api.get(endpoints.courses.get(courseId).url); // Fetch full course data
       const page = response.data.pages[id]; // Get specific page from fetched data
 
       if (page) {
@@ -261,269 +261,212 @@ const CourseBuilder = () => {
   }
 
   
-  const UploadPdf = ()=>{
-    const handleUploadPdf = (e)=>{
-      e.preventDefault()
-      console.log('uploading pdf')
-      const formData = new FormData()
-      formData.append('pdf', e.target.files[0])
-      axios.post('/upload-pdf', formData)
-      .then(res=>{
-        console.log(res)
-      })
-      .catch(err=>{
-        console.log(err)
-      })
-
-
-    }
-    return(
-      <div className="p-4">
-        <h1 className="text-2xl font-bold mb-4">Upload PDF</h1>
-        <form onSubmit={handleUploadPdf}>
-          <div className="mb-4">
-            <label htmlFor="pdf-file" className="block text-gray-700 text-sm font-bold mb-2">Upload the pdf file</label>
-            <input type="file" name="pdf" id="pdf-file" className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+  const SectionViewerWrapper = () => (
+    <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="space-y-4">
+        {currentPage?.page?.sections?.map((section, idx) => (
+          <div key={idx} className="pd-panel p-3">
+            <h4 className="mb-2 text-sm font-semibold text-[var(--pd-muted)]">
+              Section {idx + 1}
+            </h4>
+            <SectionViewerV9 section={section} />
           </div>
-          <button type="submit" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Submit</button>
-        </form>
+        ))}
       </div>
-    )
-  }
-  
-
-  const JsonStyleViewerWrapper = () =>(
-    <div className="w-full flex flex-row h-[800px]">
-      <div className="w-3/4 h-full lg:w-1/2 overflow-auto">
-
-        {/* <JsonStyleViewerV2 page={currentPage.page} socket={socket} /> */}
-        <JsonStyleViewerV2 page={currentPage.page} />
-      </div>
-      <div className='w-25 mh-50 lg-w-50'>
-        <h3 className='d-none d-lg-flex justify-content-center w-50 pe-none border rounded' >Source image</h3>
-        <h3 className='d-flex justify-content-center w-100 d-lg-none pe-auto border rounded' style={{ cursor: 'pointer' }} onClick={toggleImageModal}>Source image</h3>
-        {/* <img src={currentPage.page.source_image} alt="source image" /> */}
-        <img
-          src={currentPage?.page?.source}
-          className='w-auto d-none d-lg-block border rounded'
-          style={{ cursor: 'pointer' }}
+      <div className="pd-panel p-3">
+        <button
+          type="button"
+          className="mb-2 w-full rounded-[10px] border border-[var(--pd-border)] px-3 py-2 text-sm font-semibold lg:pointer-events-none"
           onClick={toggleImageModal}
-        />
-
-
-        <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${imageModalOpen ? 'block' : 'hidden'}`}>
-          <div className="bg-white p-4 rounded-lg shadow-lg max-w-4xl w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h4 className="text-lg font-bold">Image Viewer</h4>
-              <button onClick={toggleImageModal} className="text-gray-500 hover:text-gray-700">Close</button>
+        >
+          Source image
+        </button>
+        {currentPage?.page?.source ? (
+          <img
+            src={currentPage.page.source}
+            className="hidden max-h-[70vh] w-full cursor-pointer rounded-[10px] object-contain lg:block"
+            alt="Source"
+            onClick={toggleImageModal}
+          />
+        ) : (
+          <p className="py-8 text-center text-sm text-[var(--pd-muted)]">No source image</p>
+        )}
+        <div
+          className={`fixed inset-0 z-50 items-center justify-center bg-[color-mix(in_srgb,var(--pd-ink)_50%,transparent)] p-4 ${
+            imageModalOpen ? "flex" : "hidden"
+          }`}
+        >
+          <div className="pd-panel max-h-[90vh] w-full max-w-4xl overflow-auto p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h4 className="pd-display text-lg font-bold">
+                Image Viewer
+              </h4>
+              <button type="button" onClick={toggleImageModal} className="pd-btn pd-btn-ghost">
+                Close
+              </button>
             </div>
             <img
               src={currentPage?.page?.source}
-              className="max-w-full h-auto"
-              alt="Source"
-            />
-          </div>
-        </div>
-
-      </div>
-      <div className="w-1/4 h-1/2 lg:w-1/2">
-        <h3 className="hidden lg:flex justify-center w-1/2 pointer-events-none border rounded">Source image</h3>
-        <h3 className="flex justify-center w-1/2 lg:hidden cursor-pointer border rounded" onClick={toggleImageModal}>Source image</h3>
-        <img
-          src={currentPage?.page?.source}
-          className="w-auto hidden lg:block border rounded cursor-pointer"
-          onClick={toggleImageModal}
-          alt="Source"
-        />
-        <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${imageModalOpen ? 'block' : 'hidden'}`}>
-          <div className="bg-white p-4 rounded-lg shadow-lg max-w-4xl w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h4 className="text-lg font-bold">Image Viewer</h4>
-              <button onClick={toggleImageModal} className="text-gray-500 hover:text-gray-700">Close</button>
-            </div>
-            <img
-              src={currentPage?.page?.source}
-              className="max-w-full h-auto"
+              className="max-h-[75vh] w-full object-contain"
               alt="Source"
             />
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 
-  const SectionViewerWrapper =() =>(
-    <div className="flex flex-row">
-      <div className="w-1/2">
-
-        {
-          currentPage?.page?.sections?.map((section,idx) => (
-            <div key={idx}>
-              <h4>Section {idx+1}</h4>
-              <SectionViewerV9 section={section} />
-
-            </div>
-          ))
-          
-        }
-      </div>
-      <div className="w-1/2">
-        <h3 className="hidden lg:flex justify-center w-1/2 pointer-events-none border rounded">Source image</h3>
-        <h3 className="flex justify-center w-1/2 lg:hidden cursor-pointer border rounded" onClick={toggleImageModal}>Source image</h3>
-        <img
-          src={currentPage?.page?.source}
-          className="hidden lg:block"
-          alt="Source"
-        />
-        <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${imageModalOpen ? 'block' : 'hidden'}`}>
-          <div className="bg-white p-4 rounded-lg shadow-lg max-w-4xl w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h4 className="text-lg font-bold">Image Viewer</h4>
-              <button onClick={toggleImageModal} className="text-gray-500 hover:text-gray-700">Close</button>
-            </div>
-            <img
-              src={currentPage?.page?.source}
-              className="max-w-full h-auto"
-              alt="Source"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  )
   return (
-    <div className="w-full">
-      <div className="relative flex flex-col min-w-0 break-words bg-white rounded-lg mb-6 shadow-lg h-auto px-2">
-        <div className="px-4 py-3 mb-0 bg-white rounded-t-lg flex justify-between items-center">
-          <h3 className="text-xl font-semibold">Course Builder</h3>
-          <div className="space-x-2">
-            <button onClick={handleCreateCourse} className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">New Course</button>
-            <button onClick={handleUpdateCourse} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Save Course</button>
-            <button onClick={handleDeleteCourse} className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Delete Course</button>
-          </div>
-        </div>
-        <nav className="px-3 flex justify-center" aria-label="Page navigation example">
-          <ul className="flex list-none rounded pl-0">
-            <li>
-              <button onClick={(e)=> handleGetPage(e,(currentPage.id > 0 ?  currentPage.id-1 : 0))} className="first:ml-0 text-xs font-semibold flex w-8 h-8 mx-1 p-0 rounded-full items-center justify-center leading-tight relative border border-solid border-blue-500 bg-white text-blue-500">
-                <i className="fas fa-angle-left"></i>
-              </button>
-            </li>
-            {Array(pageRanges).fill("x").map((p,x) => (
-              <li key={x}>
-                <button active={p?.active} onClick={(e) => handleGetPage(e,x)} className={`first:ml-0 text-xs font-semibold flex w-8 h-8 mx-1 p-0 rounded-full items-center justify-center leading-tight relative border border-solid border-blue-500 ${p?.active ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'}`}>
-                  {x+1}
+    <div className="pd-page pd-page-wide">
+      <PageHeader
+        title="Course Builder"
+        description="Edit course pages, reorder text blocks, and review source sections."
+        actions={
+          <>
+            <button type="button" onClick={handleCreateCourse} className="pd-btn pd-btn-primary">
+              New Course
+            </button>
+            <button type="button" onClick={handleUpdateCourse} className="pd-btn pd-btn-ghost">
+              Save Course
+            </button>
+            <button type="button" onClick={handleDeleteCourse} className="pd-btn pd-btn-danger">
+              Delete
+            </button>
+          </>
+        }
+      />
+
+      <div className="pd-panel overflow-hidden">
+        <div className="flex items-center gap-2 overflow-x-auto border-b border-[var(--pd-border)] px-3 py-3">
+          <button
+            type="button"
+            onClick={(e) => handleGetPage(e, currentPage.id > 0 ? currentPage.id - 1 : 0)}
+            className="pd-btn pd-btn-ghost shrink-0 px-2.5 py-2"
+            aria-label="Previous page"
+          >
+            <i className="fas fa-angle-left" />
+          </button>
+          <div className="flex items-center gap-1">
+            {Array(pageRanges)
+              .fill("x")
+              .map((_, x) => (
+                <button
+                  key={x}
+                  type="button"
+                  onClick={(e) => handleGetPage(e, x)}
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] border text-xs font-semibold transition-colors ${
+                    currentPage?.id === x
+                      ? "border-[var(--pd-accent)] bg-[var(--pd-accent)] text-white"
+                      : "border-[var(--pd-border)] bg-[var(--pd-surface)] text-[var(--pd-ink)]"
+                  }`}
+                >
+                  {x + 1}
                 </button>
-              </li>
-            ))}
-            <li>
-              <button onClick={(e) => handleGetPage(e,currentPage.id + 1)} className="first:ml-0 text-xs font-semibold flex w-8 h-8 mx-1 p-0 rounded-full items-center justify-center leading-tight relative border border-solid border-blue-500 bg-white text-blue-500">
-                <i className="fas fa-angle-right"></i>
-              </button>
-            </li>
-          </ul>
-        </nav>
-        <div className="flex-auto p-4" style={{ height: 'auto', minHeight:'200px', maxHeight: '800px' }}>
-            <div className="flex flex-wrap">
-              <div className="w-full lg:w-full">
-              <h3 className="flex items-center">
-                <p className="mr-2">Page:</p> 
-                <p className={`p-2 ${currentPage?.page?.page ? 'text-blue-500':'text-red-500'} font-medium w-fit h-fit`}>{currentPage?.page?.page || 'no page'}</p>
-                </h3>
-              </div>
-            </div>
-            
-            <form id="text-block-editable-form" className="overflow-hidden">
-            {
-              updatedList.map((block, idx) => (
-                  <FormItem
-                    key={"block-"+idx}
-                    ind={idx}
-                    updateOrder={updateOrder}
-                    updatePosition={updatePosition}
-                    block={block}
-                    handleUpdateBlock={handleUpdateBlock}
-                    handleDeleteBlock={handleDeleteBlock}
-                  />
-                
-              ))
-            }
-            
-            <button type="button" onClick={handleAddBlock} className="mt-2 bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">Add New Block</button>
-          </form>
-            {/* <JsonStyleViewerWrapper/> */}
-            <SectionViewerWrapper/>
-            {/* <SectionViewerV9 section={section} /> */}
+              ))}
           </div>
-           
+          <button
+            type="button"
+            onClick={(e) => handleGetPage(e, currentPage.id + 1)}
+            className="pd-btn pd-btn-ghost shrink-0 px-2.5 py-2"
+            aria-label="Next page"
+          >
+            <i className="fas fa-angle-right" />
+          </button>
+        </div>
+
+        <div className="p-4">
+          <p className="mb-4 text-sm">
+            <span className="font-semibold text-[var(--pd-muted)]">Page:</span>{" "}
+            <span
+              className={`font-semibold ${
+                currentPage?.page?.page ? "text-[var(--pd-accent)]" : "text-[var(--pd-danger)]"
+              }`}
+            >
+              {currentPage?.page?.page || "no page"}
+            </span>
+          </p>
+
+          <form id="text-block-editable-form" className="space-y-3 overflow-hidden">
+            {updatedList.map((block, idx) => (
+              <FormItem
+                key={"block-" + idx}
+                ind={idx}
+                updateOrder={updateOrder}
+                updatePosition={updatePosition}
+                block={block}
+                handleUpdateBlock={handleUpdateBlock}
+                handleDeleteBlock={handleDeleteBlock}
+              />
+            ))}
+            <button type="button" onClick={handleAddBlock} className="pd-btn pd-btn-primary">
+              Add New Block
+            </button>
+          </form>
+
+          <SectionViewerWrapper />
+        </div>
       </div>
     </div>
-  )
+  );
 }
 
 export default CourseBuilder
 
-const FormItem = ({ block, updateOrder, updatePosition, ind, handleUpdateBlock, handleDeleteBlock })=>{
+const FormItem = ({ block, updateOrder, updatePosition, ind, handleUpdateBlock, handleDeleteBlock }) => {
   const [isdragging, setIsDragging] = React.useState(false);
+  const itemRef = useMeasurePosition((pos) => updatePosition(ind, pos));
 
-  const itemRef = useMeasurePosition(pos => updatePosition(ind, pos));
-
-  return ( 
-    <div className={`p-0 h-20 ${isdragging ? 'z-30 bg-white' : 'z-10 bg-auto'}`}>
+  return (
+    <div className={`relative ${isdragging ? "z-30" : "z-10"}`}>
       <motion.div
+        className="rounded-[10px] border border-[var(--pd-border)] bg-[var(--pd-surface)] p-3"
         style={{
           zIndex: isdragging ? 3 : 1,
-          background: isdragging ? "white" : "auto",
-          height: "80px",
-          cursor:'grab'
-          }}
-        dragConstraints={{
-          top: 0,
-          bottom: 0
+          cursor: "grab",
         }}
+        dragConstraints={{ top: 0, bottom: 0 }}
         dragElastic={1}
         layout
         ref={itemRef}
         onDragStart={() => setIsDragging(true)}
-        onDragEnd={(e, info) =>{
-          console.log("info:", info);
-          updateOrder(ind, info.offset.y)
-          setIsDragging(false)
+        onDragEnd={(e, info) => {
+          updateOrder(ind, info.offset.y);
+          setIsDragging(false);
         }}
-        animate={{
-          scale: isdragging ? 0.9 : 1
-        }}
-        whileHover={{
-          scale: 1.03,
-          boxShadow: "0px 3px 3px rgba(0,0,0,0.15)"
-        }}
-        whileTap={{
-          scale: 1.04,
-          boxShadow: "0px 5px 5px rgba(0,0,0,0.1)"
-        }}
+        animate={{ scale: isdragging ? 0.98 : 1 }}
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 1.02 }}
         onViewportBoxUpdate={(_viewportBox, delta) => {
-          // updatePosition(ind, _viewportBox);
-          console.log("change")
           !isdragging && updateOrder(ind, delta.y.translate);
         }}
-        drag="y">
-        <label htmlFor={"text-block-" + ind + 1} className={`block text-gray-700 text-sm font-bold mb-2 ${isdragging ? 'z-30' : 'z-10'}`}>Text block {ind+ 1}:</label>
-          <input 
-            form="text-block-editable-form" 
-            type="text" 
-            name={"block-" + ind+ 1} 
-            id={"text-block-" + ind+ 1} 
-            placeholder="text" 
-            defaultValue={block.data} 
-            onChange={(e) => handleUpdateBlock(block.id, e.target.value)} // Updated to call API
-            className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${isdragging ? 'z-30' : 'z-10'}`}
-          />
-
-          {/* delete item */}
-          <button type="button" onClick={(e)=>handleDeleteBlock(block.id)} className="mt-2 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Delete</button>
-        </motion.div>
-      </div>
-      
-    
+        drag="y"
+      >
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <label
+            htmlFor={"text-block-" + (ind + 1)}
+            className="pd-label mb-0"
+          >
+            Text block {ind + 1}
+          </label>
+          <button
+            type="button"
+            onClick={() => handleDeleteBlock(block.id)}
+            className="pd-btn pd-btn-danger px-2.5 py-1 text-xs"
+          >
+            Delete
+          </button>
+        </div>
+        <input
+          form="text-block-editable-form"
+          type="text"
+          name={"block-" + (ind + 1)}
+          id={"text-block-" + (ind + 1)}
+          placeholder="text"
+          defaultValue={block.data}
+          onChange={(e) => handleUpdateBlock(block.id, e.target.value)}
+          className="pd-input"
+        />
+      </motion.div>
+    </div>
   );
-}
+};

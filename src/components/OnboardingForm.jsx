@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import axios from "axios";
 import { endpoints } from "../config";
 import { useDispatch } from "react-redux";
 import { addError } from "../variables/slices/errorSlice";
@@ -124,16 +123,9 @@ function OnboardingForm({ onComplete, onSkip }) {
       
       // Try to use the API endpoint first, fallback to local mock service
       try {
-        response = await axios.post(
-          endpoints.auth.onboarding.url,
-          responses,
-          {
-            headers: endpoints.auth.onboarding.headers,
-            withCredentials: true,
-          }
-        );
+        response = await endpoints.auth.onboarding.post(responses);
 
-        // Convert axios response to match our expected format
+        // Convert API response to match our expected format
         if (response.status === 200 || response.data.success) {
           onComplete(responses);
           return;

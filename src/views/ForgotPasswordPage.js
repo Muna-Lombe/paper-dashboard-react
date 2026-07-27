@@ -1,7 +1,5 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
-axios.defaults.withCredentials = true;
 import { endpoints } from "../config";
 import { useDispatch } from "react-redux";
 import { addError } from "../variables/slices/errorSlice";
@@ -19,7 +17,7 @@ function ForgotPasswordPage() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(endpoints.auth.forgotPassword.url, { email });
+      const response = await endpoints.auth.forgotPassword.post({ email });
       
       if (response.status === 200) {
         setEmailSent(true);

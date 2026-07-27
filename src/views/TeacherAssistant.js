@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-axios.defaults.withCredentials = true;
+import { api } from "../api";
 import { useDispatch } from "react-redux";
 import { addError } from "../variables/slices/errorSlice";
 import { endpoints } from "../config";
 import { addToast } from "variables/slices/toastSlice";
+import PageHeader from "../components/admin/PageHeader";
 
 function TeacherAssistant() {
   const dispatch = useDispatch();
@@ -20,13 +20,15 @@ function TeacherAssistant() {
 
   const fetchTools = async () => {
     try {
-      const response = await axios.get(endpoints.assistant.tools?.url);
+      const response = await api.get(endpoints.assistant.tools?.url);
       setTools(response.data.tools);
       if (response.data.tools?.length > 0) {
-        setSelectedTool(response.data.tools[0].id); // Select the first tool by default
+        setSelectedTool(response.data.tools[0].id);
       }
     } catch (error) {
-      dispatch(addError(error.response?.data?.message || "Failed to fetch assistant tools?."));
+      dispatch(
+        addError(error.response?.data?.message || "Failed to fetch assistant tools.")
+      );
     }
   };
 
@@ -35,7 +37,7 @@ function TeacherAssistant() {
     setIsLoading(true);
     setProcessingResult(null);
     try {
-      const response = await axios.post(endpoints.assistant.process.url, {
+      const response = await api.post(endpoints.assistant.process.url, {
         toolId: selectedTool,
         data: inputData,
       });
@@ -49,63 +51,87 @@ function TeacherAssistant() {
   };
 
   return (
-    <div className="p-8 bg-gray-100 min-h-screen">
-      <h1 className="text-4xl font-bold text-gray-800 mb-8">Teacher Assistant</h1>
+    <div className="pd-page">
+      <PageHeader
+        title="Teacher Assistant"
+        description="Run assistant tools on text or structured input and review the result."
+      />
 
-      {/* Tools and Input Section */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8 max-w-2xl mx-auto">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4">Process Data with Tools</h2>
-        <form onSubmit={handleProcessData} className="space-y-4">
-          <div>
-            <label htmlFor="toolSelect" className="block text-gray-700 text-sm font-bold mb-2">Select Tool:</label>
-            <select
-              id="toolSelect"
-              value={selectedTool}
-              onChange={(e) => setSelectedTool(e.target.value)}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            >
-              {tools?.length === 0 ? (
-                <option value="" className="h-3.5 w-3.5 text-gray-500 " disabled>No tools available</option>
-              ) : (
-                tools?.map((tool) => (
-                  <option key={tool.id} value={tool.id}>
-                    {tool.name}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="pd-panel p-4 sm:p-5">
+          <h2 className="pd-display text-lg font-bold">
+            Process data
+          </h2>
+          <form onSubmit={handleProcessData} className="mt-4 space-y-4">
+            <div>
+              <label htmlFor="toolSelect" className="pd-label">
+                Select tool
+              </label>
+              <select
+                id="toolSelect"
+                value={selectedTool}
+                onChange={(e) => setSelectedTool(e.target.value)}
+                className="pd-input"
+              >
+                {tools?.length === 0 ? (
+                  <option value="" disabled>
+                    No tools available
                   </option>
-                ))
+                ) : (
+                  tools?.map((tool) => (
+                    <option key={tool.id} value={tool.id}>
+                      {tool.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="inputData" className="pd-label">
+                Input data
+              </label>
+              <textarea
+                id="inputData"
+                rows="8"
+                placeholder="Enter data to process..."
+                value={inputData}
+                onChange={(e) => setInputData(e.target.value)}
+                className="pd-input resize-y"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              className="pd-btn pd-btn-primary"
+              disabled={isLoading || tools?.length === 0}
+            >
+              {isLoading ? (
+                <>
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-b-transparent" />
+                  Processing…
+                </>
+              ) : (
+                "Process Data"
               )}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="inputData" className="block text-gray-700 text-sm font-bold mb-2">Input Data:</label>
-            <textarea
-              id="inputData"
-              rows="6"
-              placeholder="Enter data to process..."
-              value={inputData}
-              onChange={(e) => setInputData(e.target.value)}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              required
-            ></textarea>
-          </div>
-          <button
-            type="submit"
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            disabled={isLoading || tools?.length === 0}
-          >
-            {isLoading ? "Processing..." : "Process Data"}
-          </button>
-        </form>
-      </div>
+            </button>
+          </form>
+        </section>
 
-      {/* Processing Result Section */}
-      {processingResult && (
-        <div className="bg-white rounded-lg shadow-md p-6 max-w-2xl mx-auto">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-4">Processing Result</h2>
-          <pre className="bg-gray-100 p-4 rounded-md overflow-auto text-gray-800">
-            {JSON.stringify(processingResult, null, 2)}
-          </pre>
-        </div>
-      )}
+        <section className="pd-panel p-4 sm:p-5">
+          <h2 className="pd-display text-lg font-bold">
+            Result
+          </h2>
+          {processingResult ? (
+            <pre className="mt-4 max-h-[28rem] overflow-auto rounded-[10px] border border-[var(--pd-border)] bg-[color-mix(in_srgb,var(--pd-canvas-end)_85%,white)] p-4 font-mono text-xs leading-relaxed text-[var(--pd-ink)] sm:text-sm">
+              {JSON.stringify(processingResult, null, 2)}
+            </pre>
+          ) : (
+            <p className="mt-8 text-center text-sm text-[var(--pd-muted)]">
+              Processed output will appear here.
+            </p>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

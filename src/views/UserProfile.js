@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-axios.defaults.withCredentials = true;
+import { api } from "../api";
 import { useDispatch } from "react-redux";
 import { addError} from "../variables/slices/errorSlice"; // Assuming addSuccess is available or create it
 import { endpoints } from "../config";
@@ -24,7 +23,7 @@ function UserProfile() {
 
   const fetchUserProfile = async () => {
     try {
-      const response = await axios.get(endpoints.user.profile.get.url);
+      const response = await api.get(endpoints.user.profile.get.url);
       setProfile(response.data.user);
     } catch (error) {
       dispatch(addError(error.response?.data?.message || "Failed to fetch user profile."));
@@ -34,7 +33,7 @@ function UserProfile() {
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.put(endpoints.user.profile.update.url, profile);
+      const response = await api.put(endpoints.user.profile.update.url, profile);
       dispatch(addToast(response.data.message || "Profile updated successfully!"));
       setIsEditingProfile(false);
     } catch (error) {
@@ -49,7 +48,7 @@ function UserProfile() {
       return;
     }
     try {
-      const response = await axios.put(endpoints.user.password.update.url, { newPassword });
+      const response = await api.put(endpoints.user.password.update.url, { newPassword });
       dispatch(addToast(response.data.message || "Password changed successfully!"));
       setNewPassword("");
       setConfirmNewPassword("");
@@ -62,7 +61,7 @@ function UserProfile() {
   const handleDeleteAccount = async () => {
     if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
       try {
-        const response = await axios.delete(endpoints.user.profile.delete.url);
+        const response = await api.delete(endpoints.user.profile.delete.url);
         dispatch(addToast(response.data.message || "Account deleted successfully."));
         // Redirect to login page after account deletion
         // navigate('/login'); // Assuming you have navigate from react-router-dom

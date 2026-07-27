@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
-import axios from "axios";
-axios.defaults.withCredentials = true;
 import { useDispatch } from "react-redux";
 import { addToast } from "../variables/slices/toastSlice";
 import { addError } from "../variables/slices/errorSlice";
@@ -50,14 +48,7 @@ function VerifyEmailPage() {
       }
 
       // Call verification endpoint
-      const response = await axios.post(
-        endpoints.auth.verifyEmail.url,
-        { token },
-        {
-          headers: endpoints.auth.verifyEmail.headers,
-          withCredentials: true,
-        }
-      );
+      const response = await endpoints.auth.verifyEmail.post({ token });
 
       // Handle success
       if (response.data.success) {

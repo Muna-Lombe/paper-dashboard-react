@@ -2,11 +2,8 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { addError, clearErrors, removeError } from "../slices/errorSlice"; // Assuming clearErrors is available
 import { addToast } from "../slices/toastSlice";
-import { endpoints } from "../../config";
+import { DEV_USER, endpoints, isDevMode } from "../../api";
 import { useState, useEffect } from "react";
-import axios from "axios";
-
-axios.defaults.withCredentials = true;
 
 const useAuth = () => {
   const navigate = useNavigate();
@@ -34,7 +31,7 @@ const useAuth = () => {
     setIsLoading(true);
     dispatch(clearErrors()); // Clear previous errors
     try {
-      const response = await axios.post(endpoints.auth.register.url, { email, password });
+      const response = await endpoints.auth.register.post({ email, password });
       if (response.status === 200) {
         return {
           success: true, 
@@ -61,24 +58,26 @@ const useAuth = () => {
   const login = async (email, password) => {
     setIsLoading(true);
     dispatch(clearErrors()); // Clear previous errors
+
     try {
-      const response = await axios.post(endpoints.auth.login.url, { email, password });
-      // console.log("resp", response);
-      
+      // x-api-key is attached via api.js when VITE_DEV_MODE is on
+      const response = await endpoints.auth.login.post({ email, password });
+
       if (response.status === 200) {
         // Assuming HttpOnly cookie handles token, no need to store in sessionStorage
+        const userId = isDevMode ? DEV_USER.userId : response.data.user.id;
         setIsAuthenticated(true);
-        setUserId(response.data.user.id); // Assuming user ID is returned in response.data.user
-        sessionStorage.setItem("userId", response.data.user.id); // Store for initial load check in useEffect
+        setUserId(userId);
+        sessionStorage.setItem("userId", userId);
         // dispatch(addToast("Login successful!"));
         return {
-          success: true, 
+          success: true,
           message: "Login successful!",
           requiresEmailVerification: false
         };
       } else {
         return {
-          success: false, 
+          success: false,
           message: response.data?.msg || "Login failed.",
           requiresEmailVerification: response.data?.requiresEmailVerification || false
         };
@@ -87,7 +86,7 @@ const useAuth = () => {
       // console.error("Login error:", error);
       // dispatch(addError(error.response?.data?.msg || "Login failed. Please try again."));
       return {
-        success: false, 
+        success: false,
         message: error.response?.data?.msg || "Login failed. Please try again.",
         requiresEmailVerification: error.response?.data?.requiresEmailVerification || false
       };
@@ -101,7 +100,7 @@ const useAuth = () => {
     // For now, we just clear local state and assume backend will handle cookie invalidation on next request
     console.log("url", endpoints.auth.logout.url);
     
-    const response = await axios.post(endpoints.auth.logout.url);
+    const response = await endpoints.auth.logout.post();
       // console.log("resp", response);
       
     if (response.status === 200) {
@@ -116,7 +115,7 @@ const useAuth = () => {
   };
 
   const getProgressmeUser = async(apiToken) => {
-    const response = await axios.post(endpoints.paperDashApi.authenticateUser.url, { apiToken });
+    const response = await endpoints.paperDashApi.authenticateUser.post({ apiToken });
       // console.log("resp", response);
       
     if (response.status === 200) {
@@ -140,7 +139,7 @@ const useAuth = () => {
     setIsLoading(true);
     dispatch(clearErrors());
     try {
-      const response = await axios.post(endpoints.auth.forgotPassword.url, { email });
+      const response = await endpoints.auth.forgotPassword.post({ email });
       if (response.status === 200) {
         return { success: true, message: response.data.message || "Password reset link sent to your email." };
       }
@@ -156,7 +155,7 @@ const useAuth = () => {
     setIsLoading(true);
     dispatch(clearErrors());
     try {
-      const response = await axios.post(endpoints.auth.resetPassword.url, { token, newPassword });
+      const response = await endpoints.auth.resetPassword.post({ token, newPassword });
       if (response.status === 200) {
         return { success: true, message: response.data.message || "Password reset successful!" };
       }
@@ -181,4 +180,4 @@ const useAuth = () => {
   };
 }
 
-export default useAuth; 
+export default useAuth;

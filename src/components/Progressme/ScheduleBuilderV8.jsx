@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import html2canvas from 'html2canvas';
-import axios from "axios";
-axios.defaults.withCredentials = true;
+import { api } from "../../api";
 import { useDispatch } from "react-redux";
 import { addError} from "../../variables/slices/errorSlice"; // Assuming addSuccess is available
 import { endpoints } from '../../config';
@@ -158,6 +157,34 @@ const ScheduleBuilder = () => {
     fetchSchedule();
   }, []);
 
+  useEffect(() => {
+    const hasOpenPopover = Object.values(popoverOpen).some(Boolean);
+    if (!hasOpenPopover) return undefined;
+
+    const closePopovers = () => {
+      setPopoverOpen({});
+      setCurrentCell(null);
+    };
+
+    const onPointerDown = (event) => {
+      if (event.target.closest("[data-schedule-popover]") || event.target.closest("[data-schedule-cell]")) {
+        return;
+      }
+      closePopovers();
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") closePopovers();
+    };
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [popoverOpen]);
+
   const clearSchedule = async () => {
     setTempSelectedDays({
       lessonDays: [],
@@ -174,7 +201,7 @@ const ScheduleBuilder = () => {
   }
   const fetchSchedule = async () => {
     try {
-      const response = await axios.get(endpoints.schedule.get.url);
+      const response = await api.get(endpoints.schedule.get.url);
       if (response.data && response.data.scheduleData) {
         const { lessonDays, holidayDays, holidayLessons, selectedMonths, selectAll, language } = response.data.scheduleData;
         setLessonDays(lessonDays || {});
@@ -199,7 +226,7 @@ const ScheduleBuilder = () => {
         selectAll,
         language,
       };
-      const response = await axios.post(endpoints.schedule.save.url, scheduleData);
+      const response = await api.post(endpoints.schedule.save.url, scheduleData);
       dispatch(addToast(response.data.message || "Schedule saved successfully!"));
     } catch (error) {
       dispatch(addError(error.response?.data?.message || "Failed to save schedule."));
@@ -306,20 +333,28 @@ const ScheduleBuilder = () => {
     setSelectedCategory(''); // Clear category selection after adding
   };
 
-  // Handle cell click to open popover
+  // Handle cell click to toggle popover (click same cell again to dismiss)
   const handleCellClick = (e, monthIndex, day) => {
+    e.stopPropagation();
+    const cellId = `cell-${monthIndex}-${day}`;
+    const isOpen = !!popoverOpen[cellId];
+
+    if (isOpen) {
+      setPopoverOpen({});
+      setCurrentCell(null);
+      return;
+    }
+
     setCurrentCell({ monthIndex, day });
-    setPopoverOpen({ ...popoverOpen, [`cell-${monthIndex}-${day}`]: true });
-    setSelectedDayType('lesson');
+    setPopoverOpen({ [cellId]: true });
+    setSelectedDayType("lesson");
     setMakeRecurring(false);
   };
 
-  // Toggle popover
-  const togglePopover = (monthIndex, day) => {
-    setPopoverOpen({
-      ...popoverOpen,
-      [`cell-${monthIndex}-${day}`]: !popoverOpen[`cell-${monthIndex}-${day}`],
-    });
+  const closePopover = (e) => {
+    e?.stopPropagation();
+    setPopoverOpen({});
+    setCurrentCell(null);
   };
 
   // Add day from cell menu
@@ -372,6 +407,7 @@ const ScheduleBuilder = () => {
       setHolidayLessons(updatedHolidayLessons);
     }
     setPopoverOpen({});
+    setCurrentCell(null);
   };
 
   // Helper function to dynamically determine the color class for each cell
@@ -419,27 +455,34 @@ const ScheduleBuilder = () => {
   );
 
   return (
-    <div className="flex flex-col">
-      <div className="w-full flex flex-row">
-        {/* Left Sidebar */}
-        <div className="p-3 border-r min-w-[225px] w-2/12">
-          <button className="text-blue-500 hover:underline" onClick={toggleLanguage}>
-            {currentLabels.toggleLanguage}
-          </button>
-          <h5 className="text-lg font-semibold mt-4">{currentLabels.lessonSettings}</h5>
-          <form id="schedule-properties" className="space-y-4 mt-4"> {/* Wrapped in a form */}
-            <div className="mb-4">
-              <label htmlFor="selectedCategory" className="block text-gray-700 text-sm font-bold mb-2">
-                Select Category:
+    <div className="pd-page pd-page-wide">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="pd-title">{currentLabels.wednesdaySchedule}</h1>
+          <p className="pd-subtitle">
+            Mark lesson days, holidays, and holiday lessons across the school year.
+          </p>
+        </div>
+        <button type="button" className="pd-btn pd-btn-ghost" onClick={toggleLanguage}>
+          {currentLabels.toggleLanguage}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[16.5rem_minmax(0,1fr)]">
+        <aside className="pd-panel h-fit p-4 lg:sticky lg:top-3">
+          <h2 className="pd-display text-base font-bold">
+            {currentLabels.lessonSettings}
+          </h2>
+          <form id="schedule-properties" className="mt-4 space-y-4">
+            <div>
+              <label htmlFor="selectedCategory" className="pd-label">
+                Select category
               </label>
               <select
                 id="selectedCategory"
                 value={selectedCategory}
-                onChange={(e) => {
-                  setSelectedCategory(e.target.value);
-                   // Clear selected days when category changes
-                }}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="pd-input"
               >
                 <option value="">Select a category</option>
                 <option value="lessonDays">{currentLabels.daysForLessons}</option>
@@ -449,165 +492,123 @@ const ScheduleBuilder = () => {
             </div>
 
             {selectedCategory && (
-              <div className="mb-4 p-3 border rounded shadow-sm bg-gray-50">
-                <p className="block text-gray-700 text-sm font-bold mb-2">Select Days:</p>
-                <div className="grid grid-cols-2 gap-2 truncate">
-                  {daysOfWeekOptions.map(option => (
-                    <label key={option.value} className="inline-flex items-center">
+              <div className="rounded-[10px] border border-[var(--pd-border)] bg-[color-mix(in_srgb,var(--pd-canvas-end)_80%,white)] p-3">
+                <p className="pd-label mb-2">Select days</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {daysOfWeekOptions.map((option) => (
+                    <label key={option.value} className="inline-flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"
                         value={option.value}
                         checked={tempSelectedDays[selectedCategory]?.includes(option.value)}
                         onChange={(e) => {
                           const { value, checked } = e.target;
-                          setTempSelectedDays(prev =>{
-                            checked ? 
-                            prev[selectedCategory].push(value) : prev[selectedCategory]?.filter(day => day !== value)
-                            return {...prev}
-
-                          }
-                          );
+                          setTempSelectedDays((prev) => {
+                            checked
+                              ? prev[selectedCategory].push(value)
+                              : prev[selectedCategory]?.filter((day) => day !== value);
+                            return { ...prev };
+                          });
                         }}
-                        className="form-checkbox"
                       />
-                      <span className="ml-2">{option.label}</span>
+                      <span>{option.label}</span>
                     </label>
                   ))}
                 </div>
-                <button type="button" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-3 w-full" onClick={handleAddDaysToSchedule}>
+                <button
+                  type="button"
+                  className="pd-btn pd-btn-primary mt-3 w-full"
+                  onClick={handleAddDaysToSchedule}
+                >
                   {currentLabels.addButton}
                 </button>
               </div>
             )}
 
-            {/* // Display selected days for each category
-            {Object.entries(lessonDays).some(([, days]) => days.length > 0) && (
-              <div className="mt-4 text-sm text-gray-600 border p-2 rounded bg-blue-50">
-                <p className="font-bold">{currentLabels.daysForLessons}:</p>
-                {Object.entries(lessonDays).map(([monthIndex, days]) => (
-                  days.length > 0 && (
-                    <p key={monthIndex} className="mb-1">{monthsData[monthIndex].name}: {days.sort((a, b) => a - b).join(', ')}</p>
-                  )
-                ))}
-              </div>
-            )}
-
-            {Object.entries(holidayDays).some(([, days]) => days.length > 0) && (
-              <div className="mt-4 text-sm text-gray-600 border p-2 rounded bg-red-50">
-                <p className="font-bold">{currentLabels.holidays}:</p>
-                {Object.entries(holidayDays).map(([monthIndex, days]) => (
-                  days.length > 0 && (
-                    <p key={monthIndex} className="mb-1">{monthsData[monthIndex].name}: {days.sort((a, b) => a - b).join(', ')}</p>
-                  )
-                ))}
-              </div>
-            )}
-
-            {Object.entries(holidayLessons).some(([, days]) => days.length > 0) && (
-              <div className="mt-4 text-sm text-gray-600 border p-2 rounded bg-yellow-50">
-                <p className="font-bold">{currentLabels.lessonsOnHolidays}:</p>
-                {Object.entries(holidayLessons).map(([monthIndex, days]) => (
-                  days.length > 0 && (
-                    <p key={monthIndex} className="mb-1">{monthsData[monthIndex].name}: {days.sort((a, b) => a - b).join(', ')}</p>
-                  )
-                ))}
-              </div>
-            )} */}
-
-            <div className="mt-6">
-              <button
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded w-full"
-                onClick={saveSchedule}
-              >
-                Save Schedule
-              </button>
-            </div>
+            <button type="button" className="pd-btn pd-btn-primary w-full" onClick={saveSchedule}>
+              Save Schedule
+            </button>
           </form>
-        </div>
+        </aside>
 
-        {/* Schedule Table */}
-        <div className="flex-grow p-3 w-10/12 overflow-x-hidden " id="schedule-table">
-
-          <h5 className="text-lg font-semibold mb-4">{currentLabels.wednesdaySchedule}</h5>
-          <div className="p-3 w-full flex justify-between items-baseline">
-            {/* Legend */}
-            <div className="flex flex-wrap">
-              <div className="flex items-center mb-2 mr-4">
-                <div className="w-5 h-5 border border-black mr-2 bg-gray-400"></div>
+        <section className="pd-panel overflow-hidden" id="schedule-table">
+          <div className="flex flex-col gap-3 border-b border-[var(--pd-border)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-3 text-xs sm:text-sm">
+              <div className="inline-flex items-center gap-2">
+                <span className="h-3.5 w-3.5 rounded-sm bg-[var(--pd-muted)]" />
                 <span>{currentLabels.daysForLessons}</span>
               </div>
-              <div className="flex items-center mb-2 mr-4">
-                <div className="w-5 h-5 border border-black mr-2 bg-red-500"></div>
+              <div className="inline-flex items-center gap-2">
+                <span className="h-3.5 w-3.5 rounded-sm bg-[var(--pd-danger)]" />
                 <span>{currentLabels.holidays}</span>
               </div>
-              <div className="flex items-center mb-2">
-                <div className="w-5 h-5 border border-black mr-2 bg-yellow-400"></div>
+              <div className="inline-flex items-center gap-2">
+                <span className="h-3.5 w-3.5 rounded-sm bg-[var(--pd-warn)]" />
                 <span>{currentLabels.lessonsOnHolidays}</span>
               </div>
             </div>
-            <div className="flex gap-1 flex-row">
-              <button className="max-w-16 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"  onClick={clearSchedule}>
-                <i className='fas fa-plus mr-2' />
-                {/* <span>
-                  {currentLabels.newSchedule}
-                </span> */}
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="pd-btn pd-btn-ghost" onClick={clearSchedule} title={currentLabels.newSchedule}>
+                <i className="fas fa-plus" />
+                <span className="hidden sm:inline">New</span>
               </button>
-              <button className="max-w-36 bg-gray-500 hover:bg-gray-300 text-white font-bold py-2 px-4 rounded truncate" onClick={exportToImage}>
-                <i className='fas fa-file-export mr-2'/>
-                <span>
-                  {currentLabels.exportButton}
-                </span>
+              <button type="button" className="pd-btn pd-btn-primary" onClick={exportToImage}>
+                <i className="fas fa-file-export" />
+                <span>{currentLabels.exportButton}</span>
               </button>
-
             </div>
           </div>
-          {/* Legend */}
-          {/* <div className="mt-4 p-3 bg-gray-100 rounded-lg">
-            <h5 className="text-lg font-semibold mb-2">{currentLabels.legendTitle}</h5>
-            
-          </div> */}
-          <div className="w-full overflow-x-scroll">
-            <table className="table-auto w-full border-collapse border border-gray-400"> {/* Replaced Table */}
-              <thead className="bg-gray-200">
-                <tr>
-                  <th className="px-4 py-2 border border-gray-400"></th>
+
+          <div className="overflow-x-auto p-2 sm:p-3">
+            <table className="w-full min-w-[920px] border-collapse text-center text-xs sm:text-sm">
+              <thead>
+                <tr className="bg-[color-mix(in_srgb,var(--pd-canvas-end)_85%,white)]">
+                  <th className="sticky left-0 z-10 border border-[var(--pd-border)] bg-[color-mix(in_srgb,var(--pd-canvas-end)_95%,white)] px-2 py-2 text-left font-semibold">
+                    Month
+                  </th>
                   {Array.from({ length: 31 }, (_, i) => (
-                    <th key={i} className="px-4 py-2 border border-gray-400">{i + 1}</th>
+                    <th key={i} className="border border-[var(--pd-border)] px-1 py-2 font-semibold text-[var(--pd-muted)]">
+                      {i + 1}
+                    </th>
                   ))}
-                  <th className="px-4 py-2 border border-gray-400">{currentLabels.totalLessons}</th>
+                  <th className="border border-[var(--pd-border)] px-2 py-2 font-semibold">
+                    {currentLabels.totalLessons}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {monthsData.map((monthData, monthIndex) => (
                   <tr key={monthIndex}>
-                    <td className="px-4 py-2 border border-gray-400">
-                      <input
-                        type="checkbox"
-                        checked={selectedMonths[monthIndex]}
-                        onChange={() => toggleMonth(monthIndex)}
-                        className="mr-2"
-                      />
-                      {monthData.name}
+                    <td className="sticky left-0 z-10 border border-[var(--pd-border)] bg-[var(--pd-surface)] px-2 py-1.5 text-left font-medium whitespace-nowrap">
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedMonths[monthIndex]}
+                          onChange={() => toggleMonth(monthIndex)}
+                        />
+                        {monthData.name}
+                      </label>
                     </td>
                     {Array.from({ length: 31 }, (_, dayIndex) => {
                       const day = dayIndex + 1;
                       const cellId = `cell-${monthIndex}-${day}`;
                       const isHighlighted = selectedMonths[monthIndex];
                       const cellClass = getCellClass(monthIndex, day);
-
                       const daysInMonth = new Date(
                         monthData.year,
                         monthData.month + 1,
                         0
                       ).getDate();
-
                       const isInvalidDay = day > daysInMonth;
 
                       return (
                         <td
                           key={dayIndex}
                           id={cellId}
-                          className={`relative cursor-pointer px-4 py-2 border border-gray-400 ${isHighlighted ? cellClass : ""} ${isInvalidDay ? "bg-gray-200" : ""}`} // Updated classes
+                          data-schedule-cell={cellId}
+                          className={`relative h-8 cursor-pointer border border-[var(--pd-border)] px-0.5 py-0.5 ${
+                            isHighlighted ? cellClass : ""
+                          } ${isInvalidDay ? "bg-[color-mix(in_srgb,var(--pd-muted)_12%,white)]" : ""}`}
                           onClick={
                             !isInvalidDay
                               ? (e) => handleCellClick(e, monthIndex, day)
@@ -615,66 +616,80 @@ const ScheduleBuilder = () => {
                           }
                         >
                           {isInvalidDay ? (
-                            <div className="absolute inset-0 bg-gray-600 opacity-20 pointer-events-none transform -skew-y-12"></div> // Replaced invalid-day-overlay
+                            <div className="pointer-events-none absolute inset-0 bg-[color-mix(in_srgb,var(--pd-muted)_18%,transparent)]" />
                           ) : (
-                            isHighlighted && cellClass && "x"
+                            isHighlighted && cellClass && (
+                              <span className="text-[10px] font-bold uppercase">x</span>
+                            )
                           )}
-                          {!isInvalidDay && (
-                            <div // Replaced UncontrolledPopover
-                              className={`absolute z-10 bg-white shadow-lg rounded-lg p-4 ${popoverOpen[cellId] ? "block" : "hidden"}`}
-                              style={{ minWidth: "200px" }}
+                          {!isInvalidDay && popoverOpen[cellId] && (
+                            <div
+                              data-schedule-popover
+                              className="absolute left-0 top-full z-20 mt-1 w-52 rounded-[10px] border border-[var(--pd-border)] bg-[var(--pd-surface)] p-3 text-left"
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              <div className="mb-2"> {/* Replaced FormGroup */}
-                                <label className="inline-flex items-center">
+                              <div className="mb-2 flex items-center justify-between gap-2">
+                                <p className="text-xs font-semibold text-[var(--pd-muted)]">
+                                  Day {day}
+                                </p>
+                                <button
+                                  type="button"
+                                  className="pd-btn pd-btn-ghost px-2 py-1 text-xs"
+                                  onClick={closePopover}
+                                  aria-label="Close"
+                                >
+                                  <i className="fas fa-times" />
+                                </button>
+                              </div>
+                              <div className="mb-2">
+                                <label className="inline-flex items-center gap-2 text-sm">
                                   <input
                                     type="radio"
                                     name={`dayType-${monthIndex}-${day}`}
                                     value="lesson"
-                                    checked={selectedDayType === 'lesson'}
+                                    checked={selectedDayType === "lesson"}
                                     onChange={(e) => setSelectedDayType(e.target.value)}
-                                    className="form-radio"
                                   />
-                                  <span className="ml-2">{currentLabels.lessonDay}</span>
+                                  <span>{currentLabels.lessonDay}</span>
                                 </label>
                               </div>
-                              <div className="mb-2"> {/* Replaced FormGroup */}
-                                <label className="inline-flex items-center">
+                              <div className="mb-2">
+                                <label className="inline-flex items-center gap-2 text-sm">
                                   <input
                                     type="radio"
                                     name={`dayType-${monthIndex}-${day}`}
                                     value="holiday"
-                                    checked={selectedDayType === 'holiday'}
+                                    checked={selectedDayType === "holiday"}
                                     onChange={(e) => setSelectedDayType(e.target.value)}
-                                    className="form-radio"
                                   />
-                                  <span className="ml-2">{currentLabels.holiday}</span>
+                                  <span>{currentLabels.holiday}</span>
                                 </label>
                               </div>
-                              <div className="mb-2"> {/* Replaced FormGroup */}
-                                <label className="inline-flex items-center">
+                              <div className="mb-2">
+                                <label className="inline-flex items-center gap-2 text-sm">
                                   <input
                                     type="radio"
                                     name={`dayType-${monthIndex}-${day}`}
                                     value="holidayLesson"
-                                    checked={selectedDayType === 'holidayLesson'}
+                                    checked={selectedDayType === "holidayLesson"}
                                     onChange={(e) => setSelectedDayType(e.target.value)}
-                                    className="form-radio"
                                   />
-                                  <span className="ml-2">{currentLabels.lessonOnHoliday}</span>
+                                  <span>{currentLabels.lessonOnHoliday}</span>
                                 </label>
                               </div>
-                              <label className="inline-flex items-center mt-2"> {/* Replaced FormGroup check */}
+                              <label className="mt-1 inline-flex items-center gap-2 text-sm">
                                 <input
                                   type="checkbox"
                                   checked={makeRecurring}
                                   onChange={(e) => setMakeRecurring(e.target.checked)}
-                                  className="form-checkbox"
-                                />{" "}
-                                <span className="ml-2">
-                                  {currentLabels.makeRecurring}
-                                </span>
+                                />
+                                <span>{currentLabels.makeRecurring}</span>
                               </label>
-                              <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-2" onClick={addDayFromCell}>
+                              <button
+                                type="button"
+                                className="pd-btn pd-btn-primary mt-3 w-full"
+                                onClick={addDayFromCell}
+                              >
                                 {currentLabels.addToSchedule}
                               </button>
                             </div>
@@ -682,30 +697,26 @@ const ScheduleBuilder = () => {
                         </td>
                       );
                     })}
-                    <td className="px-4 py-2 border border-gray-400">{calculateTotalLessons(monthIndex)}</td>
+                    <td className="border border-[var(--pd-border)] px-2 py-1.5 font-semibold">
+                      {calculateTotalLessons(monthIndex)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
-              {/* Grand Total */}
               <tfoot>
                 <tr>
-                  <td colSpan={32} className="text-right px-4 py-2 border border-gray-400">
-                    <strong className="font-bold">
-                      {currentLabels.grandTotalLessons}: {grandTotalLessons}
-                    </strong>
+                  <td
+                    colSpan={32}
+                    className="border border-[var(--pd-border)] px-3 py-2.5 text-right font-bold"
+                  >
+                    {currentLabels.grandTotalLessons}: {grandTotalLessons}
                   </td>
                 </tr>
               </tfoot>
             </table>
-
           </div>
-        </div>
-
-        {/* Right Sidebar */}
-        
+        </section>
       </div>
-
-      
     </div>
   );
 };

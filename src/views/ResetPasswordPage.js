@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import axios from "axios";
-axios.defaults.withCredentials = true;
 import { endpoints } from "../config";
 import { useDispatch } from "react-redux";
 import { addError } from "../variables/slices/errorSlice";
@@ -56,7 +54,7 @@ function ResetPasswordPage() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(endpoints.auth.resetPassword.url, {
+      const response = await endpoints.auth.resetPassword.post( {
         token,
         newPassword: password,
       });

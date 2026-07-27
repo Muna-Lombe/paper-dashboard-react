@@ -1,11 +1,17 @@
-
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-axios.defaults.withCredentials = true;
+import React, { useState, useEffect, useMemo } from "react";
+import { api } from "../api";
 import { useDispatch } from "react-redux";
 import { addError } from "../variables/slices/errorSlice";
 import { endpoints } from "../config";
 import { addToast } from "../variables/slices/toastSlice";
+import PageHeader from "../components/admin/PageHeader";
+
+function getInitials(name = "") {
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+}
 
 function Dashboard() {
   const dispatch = useDispatch();
@@ -14,35 +20,33 @@ function Dashboard() {
     totalSales: 0,
     totalLectures: 0,
   });
-  // Calendar states
   const [currentWeekStart, setCurrentWeekStart] = useState(new Date());
-  const [calendarEvents, setCalendarEvents] = useState([]); // Fetched events
+  const [calendarEvents, setCalendarEvents] = useState({});
   const [studentRequests, setStudentRequests] = useState([]);
 
   useEffect(() => {
     fetchDashboardData();
-  }, [currentWeekStart]); // Re-fetch when week changes
+  }, [currentWeekStart]);
 
   const fetchDashboardData = async () => {
     try {
-      const summaryResponse = await axios.get(endpoints.dashboard.summary.url);
+      const summaryResponse = await api.get(endpoints.dashboard.summary.url);
       setSummary(summaryResponse.data);
 
-      // Fetch calendar events for the current week
-      const calendarResponse = await axios.get(endpoints.dashboard.calendarEvents.url, {
+      const calendarResponse = await api.get(endpoints.dashboard.calendarEvents.url, {
         params: {
-          startDate: currentWeekStart.toISOString().split('T')[0],
-          endDate: new Date(currentWeekStart.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 6 days after start
+          startDate: currentWeekStart.toISOString().split("T")[0],
+          endDate: new Date(currentWeekStart.getTime() + 6 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0],
         },
       });
-      // Transform fetched events into a map for easier rendering {dayIndex: {time: [events]}}
+
       const organizedEvents = {};
-      calendarResponse.data.events.forEach(event => {
+      (calendarResponse.data.events || []).forEach((event) => {
         const eventDate = new Date(event.date);
-        const dayOfWeek = eventDate.getDay(); // 0 for Sunday, 1 for Monday, etc.
-        if (!organizedEvents[dayOfWeek]) {
-          organizedEvents[dayOfWeek] = {};
-        }
+        const dayOfWeek = eventDate.getDay();
+        if (!organizedEvents[dayOfWeek]) organizedEvents[dayOfWeek] = {};
         if (!organizedEvents[dayOfWeek][event.time]) {
           organizedEvents[dayOfWeek][event.time] = [];
         }
@@ -50,10 +54,12 @@ function Dashboard() {
       });
       setCalendarEvents(organizedEvents);
 
-      const requestsResponse = await axios.get(endpoints.dashboard.studentRequests.get.url);
-      setStudentRequests(requestsResponse.data.requests);
+      const requestsResponse = await api.get(endpoints.dashboard.studentRequests.get.url);
+      setStudentRequests(requestsResponse.data.requests || []);
     } catch (error) {
-      dispatch(addError(error.response?.data?.message || "Failed to fetch dashboard data."));
+      dispatch(
+        addError(error.response?.data?.message || "Failed to fetch dashboard data.")
+      );
     }
   };
 
@@ -61,32 +67,27 @@ function Dashboard() {
     try {
       let response;
       if (action === "approve") {
-        response = await axios.post(endpoints.dashboard.studentRequests.approve(id).url);
+        response = await api.post(endpoints.dashboard.studentRequests.approve(id).url);
       } else {
-        response = await axios.post(endpoints.dashboard.studentRequests.reject(id).url);
+        response = await api.post(endpoints.dashboard.studentRequests.reject(id).url);
       }
       dispatch(addToast(response.data.message || `Request ${action}d successfully.`));
-      fetchDashboardData(); // Refresh data
+      fetchDashboardData();
     } catch (error) {
-      dispatch(addError(error.response?.data?.message || `Failed to ${action} request.`));
+      dispatch(
+        addError(error.response?.data?.message || `Failed to ${action} request.`)
+      );
     }
   };
 
-  const CalendarEvent = ({ time, title, grade, type, color }) => (
-    <div className={`p-2 rounded-lg text-white text-sm mb-1 ${color}`}>
-      <p className="font-bold">{time}</p>
-      <p>{title}</p>
-      <p className="text-xs opacity-80">{grade}</p>
-      <p className="text-xs opacity-80">{type}</p>
-    </div>
-  );
-
-  // Calendar Utility Functions
-  const daysOfWeek = ["Sun", "Mon", "Tues", "Wed", "Thurs", "Fri", "Sat"];
-  const timeSlots = [];
-  for (let i = 9; i <= 22; i++) { // 09:00 to 22:00 (10 PM)
-    timeSlots.push(`${i.toString().padStart(2, '0')}:00`);
-  }
+  const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const timeSlots = useMemo(() => {
+    const slots = [];
+    for (let i = 9; i <= 18; i++) {
+      slots.push(`${i.toString().padStart(2, "0")}:00`);
+    }
+    return slots;
+  }, []);
 
   const getWeekDays = (startOfWeek) => {
     const days = [];
@@ -112,128 +113,197 @@ function Dashboard() {
     setCurrentWeekStart(newDate);
   };
 
-  const formatDate = (date) => {
-    const options = { month: 'short', day: 'numeric' };
-    return date.toLocaleDateString('en-US', options);
-  };
+  const formatDate = (date) =>
+    date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
   const getWeekRange = (startOfWeek) => {
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
-    return `${formatDate(startOfWeek)} - ${formatDate(endOfWeek)} ${startOfWeek.getFullYear()}`;
+    return `${formatDate(startOfWeek)} – ${formatDate(endOfWeek)} ${startOfWeek.getFullYear()}`;
   };
 
   return (
-    <div className="h-full w-full ">
-      {/* Central Content (col-span-9 from previous design, now col-span-9 of the overall grid when sidebar is external) */}
-      <main className="col-span-9">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-3 gap-6 mb-6">
-          <div className="bg-white p-5 rounded-lg shadow-md flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm">Joined Students</p>
-              <p className="text-3xl font-bold text-gray-900">{summary?.totalStudents}</p>
-            </div>
-            <i className="fas fa-users text-blue-500 text-4xl opacity-50"></i>
+    <div className="pd-page">
+      <PageHeader
+        title="Dashboard"
+        description="Overview of students, lectures, and this week's schedule."
+      />
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="pd-stat">
+          <div>
+            <p className="pd-stat-label">Joined Students</p>
+            <p className="pd-stat-value">{summary?.totalStudents ?? 0}</p>
           </div>
-          <div className="bg-white p-5 rounded-lg shadow-md flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm">Total Sales</p>
-              <p className="text-3xl font-bold text-gray-900">${summary?.totalSales?.toFixed(2)}</p>
-            </div>
-            <i className="fas fa-dollar-sign text-green-500 text-4xl opacity-50"></i>
-          </div>
-          <div className="bg-white p-5 rounded-lg shadow-md flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm">Total Lectures</p>
-              <p className="text-3xl font-bold text-gray-900">{summary?.totalLectures}</p>
-            </div>
-            <i className="fas fa-book-open text-purple-500 text-4xl opacity-50"></i>
+          <div className="pd-stat-icon">
+            <i className="fas fa-users" aria-hidden="true" />
           </div>
         </div>
+        <div className="pd-stat">
+          <div>
+            <p className="pd-stat-label">Total Sales</p>
+            <p className="pd-stat-value">
+              ${(summary?.totalSales ?? 0).toFixed(2)}
+            </p>
+          </div>
+          <div className="pd-stat-icon">
+            <i className="fas fa-dollar-sign" aria-hidden="true" />
+          </div>
+        </div>
+        <div className="pd-stat sm:col-span-2 xl:col-span-1">
+          <div>
+            <p className="pd-stat-label">Total Lectures</p>
+            <p className="pd-stat-value">{summary?.totalLectures ?? 0}</p>
+          </div>
+          <div className="pd-stat-icon">
+            <i className="fas fa-book-open" aria-hidden="true" />
+          </div>
+        </div>
+      </div>
 
-        {/* Calendar Section */}
-        <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Calendar</h2>
-            <div className="flex items-center space-x-2">
-              <button onClick={handlePreviousWeek} className="p-2 rounded-full hover:bg-gray-200"><i className="fas fa-chevron-left text-gray-600"></i></button>
-              <span className="text-gray-700">{getWeekRange(currentWeekStart)}</span>
-              <button onClick={handleNextWeek} className="p-2 rounded-full hover:bg-gray-200"><i className="fas fa-chevron-right text-gray-600"></i></button>
+      <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <section className="pd-panel overflow-hidden">
+          <div className="flex flex-col gap-3 border-b border-[var(--pd-border)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="pd-display text-lg font-bold">
+              Calendar
+            </h2>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handlePreviousWeek}
+                className="pd-btn pd-btn-ghost px-2.5 py-2"
+                aria-label="Previous week"
+              >
+                <i className="fas fa-chevron-left" />
+              </button>
+              <span className="min-w-[10rem] text-center text-sm font-semibold text-[var(--pd-muted)]">
+                {getWeekRange(currentWeekStart)}
+              </span>
+              <button
+                type="button"
+                onClick={handleNextWeek}
+                className="pd-btn pd-btn-ghost px-2.5 py-2"
+                aria-label="Next week"
+              >
+                <i className="fas fa-chevron-right" />
+              </button>
             </div>
           </div>
-          <div className="grid grid-cols-8 text-center border-b pb-2 mb-2">
-            <div className="font-semibold text-gray-700">Time</div>
-            {weekDays.map((day, index) => (
-              <div key={index} className="font-semibold text-gray-700">
-                {daysOfWeek[day.getDay()]}
-                <p className="text-xs text-gray-500">{formatDate(day)}</p>
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-8 gap-1 text-sm">
-            {timeSlots.map((time, timeIndex) => (
-              <React.Fragment key={timeIndex}>
-                <div className="text-right pr-2 font-medium text-gray-700">{time}</div>
-                {weekDays.map((day, dayIndex) => {
-                  const dayEvents = calendarEvents[day.getDay()]?.[time] || [];
-                  return (
-                    <div key={dayIndex} className="border-t border-gray-200 pt-1">
-                      {dayEvents.map((event, eventIndex) => (
-                        <CalendarEvent
-                          key={eventIndex}
-                          time={event.time}
-                          title={event.title}
-                          grade={event.grade}
-                          type={event.type}
-                          color={event.color}
-                        />
-                      ))}
+
+          <div className="overflow-x-auto px-2 py-3">
+            <div className="min-w-[640px]">
+              <div className="mb-2 grid grid-cols-8 gap-1 px-1 text-center text-xs font-semibold uppercase tracking-wide text-[var(--pd-muted)]">
+                <div className="text-left">Time</div>
+                {weekDays.map((day, index) => (
+                  <div key={index}>
+                    <div>{daysOfWeek[day.getDay()]}</div>
+                    <div className="font-medium normal-case tracking-normal">
+                      {formatDate(day)}
                     </div>
-                  );
-                })}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-      </main>
-
-      {/* Right Sidebar - Student Requests (col-span-3 of the overall grid when sidebar is external) */}
-      <aside className="col-span-3 bg-white p-6 rounded-lg shadow-md">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-800">Students Requests</h2>
-          <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">{studentRequests.length}</span>
-          <a href="#" className="text-blue-600 text-sm">View All</a>
-        </div>
-        <div className="space-y-4">
-          {studentRequests.map((request) => (
-            <div key={request.id} className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <img src="/path/to/student-avatar.png" alt={request.name} className="h-10 w-10 rounded-full" /> {/* Replace with actual avatar path */}
-                <div>
-                  <p className="font-semibold text-gray-800">{request.name}</p>
-                  <p className="text-sm text-gray-600">{request.grade}</p>
-                </div>
+                  </div>
+                ))}
               </div>
-              <div className="flex space-x-2">
-                {request.approved ? (
-                  <i className="fas fa-check-circle text-green-500 text-xl"></i>
-                ) : (
-                  <>
-                    <button onClick={() => handleApproveRejectRequest(request.id, "approve")}>
-                      <i className="fas fa-check-circle text-gray-400 hover:text-green-500 text-xl"></i>
-                    </button>
-                    <button onClick={() => handleApproveRejectRequest(request.id, "reject")}>
-                      <i className="fas fa-times-circle text-gray-400 hover:text-red-500 text-xl"></i>
-                    </button>
-                  </>
-                )}
-                <button className="p-1 rounded-full hover:bg-gray-200"><i className="fas fa-ellipsis-v text-gray-500"></i></button>
+
+              <div className="space-y-1">
+                {timeSlots.map((time) => (
+                  <div key={time} className="grid grid-cols-8 gap-1">
+                    <div className="pr-2 pt-1 text-right text-xs font-semibold text-[var(--pd-muted)]">
+                      {time}
+                    </div>
+                    {weekDays.map((day, dayIndex) => {
+                      const dayEvents = calendarEvents[day.getDay()]?.[time] || [];
+                      return (
+                        <div
+                          key={dayIndex}
+                          className="min-h-10 rounded-md border border-[var(--pd-border)] bg-[color-mix(in_srgb,var(--pd-canvas-end)_70%,white)] p-1"
+                        >
+                          {dayEvents.map((event, eventIndex) => (
+                            <div
+                              key={eventIndex}
+                              className={`mb-1 rounded-md px-1.5 py-1 text-[11px] leading-snug text-white last:mb-0 ${
+                                event.color || "bg-[var(--pd-accent)]"
+                              }`}
+                            >
+                              <p className="font-bold">{event.time}</p>
+                              <p className="truncate">{event.title}</p>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
-        </div>
-      </aside>
+          </div>
+        </section>
+
+        <aside className="pd-panel flex flex-col">
+          <div className="flex items-center justify-between gap-2 border-b border-[var(--pd-border)] px-4 py-3">
+            <h2 className="pd-display text-lg font-bold">
+              Student Requests
+            </h2>
+            <span className="rounded-md bg-[color-mix(in_srgb,var(--pd-danger)_12%,white)] px-2 py-0.5 text-xs font-bold text-[var(--pd-danger)]">
+              {studentRequests.length}
+            </span>
+          </div>
+
+          <div className="flex-1 space-y-3 overflow-y-auto p-3">
+            {studentRequests.length === 0 ? (
+              <p className="px-1 py-6 text-center text-sm text-[var(--pd-muted)]">
+                No pending student requests.
+              </p>
+            ) : (
+              studentRequests.map((request) => (
+                <div
+                  key={request.id}
+                  className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--pd-border)] px-3 py-2.5"
+                >
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <div className="pd-avatar text-[0.7rem]">
+                      {getInitials(request.name)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{request.name}</p>
+                      <p className="truncate text-xs text-[var(--pd-muted)]">
+                        {request.grade}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {request.approved ? (
+                      <i className="fas fa-check-circle text-[var(--pd-accent)]" />
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="pd-btn pd-btn-ghost px-2 py-1.5 text-[var(--pd-accent)]"
+                          onClick={() =>
+                            handleApproveRejectRequest(request.id, "approve")
+                          }
+                          aria-label={`Approve ${request.name}`}
+                        >
+                          <i className="fas fa-check" />
+                        </button>
+                        <button
+                          type="button"
+                          className="pd-btn pd-btn-ghost px-2 py-1.5 text-[var(--pd-danger)]"
+                          onClick={() =>
+                            handleApproveRejectRequest(request.id, "reject")
+                          }
+                          aria-label={`Reject ${request.name}`}
+                        >
+                          <i className="fas fa-times" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }
